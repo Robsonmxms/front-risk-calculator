@@ -1,4 +1,4 @@
-# font-risk-calculator
+# front-risk-calculator
 
 Frontend Next.js + TypeScript do Risk Calculator, uma plataforma de analytics de portfolios de
 investimento. Este projeto apresenta a experiencia do usuario: autenticacao, portfolios,
@@ -15,7 +15,7 @@ Este diretorio esta em fase de bootstrap. Antes de implementar codigo, leia:
 - [Convencoes de API](../.specs/api/conventions.md)
 - A macro spec da feature em `../.specs/features/<feature>/`
 
-As specs vivem apenas na raiz do workspace. Nao crie `font-risk-calculator/.specs/`.
+As specs vivem apenas na raiz do workspace. Nao crie `front-risk-calculator/.specs/`.
 
 ## Responsabilidades
 
@@ -46,7 +46,7 @@ As specs vivem apenas na raiz do workspace. Nao crie `font-risk-calculator/.spec
 Layout esperado:
 
 ```text
-font-risk-calculator/
+front-risk-calculator/
   src/
     app/
       (auth)/

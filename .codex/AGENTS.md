@@ -4,7 +4,7 @@ Guidance for AI agents working in the frontend project.
 
 ## Frontend Role
 
-`font-risk-calculator` is the Next.js user interface for the Investment Portfolio Analytics Platform. It presents
+`front-risk-calculator` is the Next.js user interface for the Investment Portfolio Analytics Platform. It presents
 auth, portfolio management, analytics dashboards, reports, alerts, and realtime updates.
 
 Specs are not local to this project. Before implementation, read the relevant root macro spec in
@@ -25,7 +25,7 @@ Specs are not local to this project. Before implementation, read the relevant ro
 
 ## Frontend Rules
 
-- Do not create `font-risk-calculator/.specs/`.
+- Do not create `front-risk-calculator/.specs/`.
 - The backend API is the source of truth.
 - Do not call market data providers from the browser, server components, or Next route handlers.
 - Do not implement analytics formulas except presentational formatting.
@@ -38,7 +38,7 @@ Specs are not local to this project. Before implementation, read the relevant ro
 ## Expected Source Layout
 
 ```text
-font-risk-calculator/
+front-risk-calculator/
   src/
     app/
       (auth)/
