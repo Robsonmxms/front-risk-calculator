@@ -40,26 +40,40 @@ interface ErrorEnvelope {
 
 interface SuccessEnvelope<T> {
   data: T;
+  meta?: Record<string, unknown>;
+}
+
+export interface ApiEnvelope<T, M = Record<string, unknown> | undefined> {
+  data: T;
+  meta?: M;
 }
 
 export async function apiFetch<T>(
   path: string,
   options: ApiFetchOptions = {}
 ): Promise<T> {
+  const envelope = await apiFetchEnvelope<T>(path, options);
+  return envelope.data;
+}
+
+export async function apiFetchEnvelope<T, M = Record<string, unknown> | undefined>(
+  path: string,
+  options: ApiFetchOptions = {}
+): Promise<ApiEnvelope<T, M>> {
   const retryOnUnauthorized = options.retryOnUnauthorized ?? true;
   const response = await rawFetch(path, options);
 
   if (response.status === 401 && retryOnUnauthorized && getRefreshToken()) {
     try {
       await refreshSession();
-      return apiFetch<T>(path, { ...options, retryOnUnauthorized: false });
+      return apiFetchEnvelope<T, M>(path, { ...options, retryOnUnauthorized: false });
     } catch {
       clearSession();
       throw new SessionExpiredError();
     }
   }
 
-  return parseResponse<T>(response);
+  return parseResponse<T, M>(response);
 }
 
 export async function refreshSession(): Promise<AuthSession> {
@@ -73,7 +87,7 @@ export async function refreshSession(): Promise<AuthSession> {
     retryOnUnauthorized: false,
     body: JSON.stringify({ refreshToken })
   });
-  const session = await parseResponse<AuthSession>(response);
+  const session = (await parseResponse<AuthSession>(response)).data;
   saveSession(session);
   return session;
 }
@@ -92,12 +106,15 @@ async function rawFetch(path: string, options: ApiFetchOptions = {}): Promise<Re
   });
 }
 
-async function parseResponse<T>(response: Response): Promise<T> {
+async function parseResponse<T, M = Record<string, unknown> | undefined>(
+  response: Response
+): Promise<ApiEnvelope<T, M>> {
   if (response.status === 204) {
-    return undefined as T;
+    return { data: undefined as T };
   }
 
-  const body = (await response.json().catch(() => ({}))) as SuccessEnvelope<T> & ErrorEnvelope;
+  const body = (await response.json().catch(() => ({}))) as SuccessEnvelope<T> &
+    ErrorEnvelope;
 
   if (!response.ok) {
     throw new ApiError(
@@ -108,5 +125,8 @@ async function parseResponse<T>(response: Response): Promise<T> {
     );
   }
 
-  return body.data;
+  return {
+    data: body.data,
+    meta: body.meta as M
+  };
 }
