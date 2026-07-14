@@ -1,0 +1,57 @@
+import { apiFetch } from "../../lib/api/client";
+import { clearSession, getRefreshToken, saveSession } from "./sessionStore";
+import { AuthSession, CurrentUserResponse, LoginCredentials } from "./types";
+
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000/api/v1";
+
+export async function loginWithPassword(
+  credentials: LoginCredentials
+): Promise<AuthSession> {
+  const session = await postPublic<AuthSession>("/auth/login", credentials);
+  saveSession(session);
+  return session;
+}
+
+export async function loginWithGoogle(input: {
+  idToken?: string;
+  code?: string;
+  redirectUri?: string;
+}): Promise<AuthSession> {
+  const session = await postPublic<AuthSession>("/auth/google", input);
+  saveSession(session);
+  return session;
+}
+
+export async function getCurrentUser(): Promise<CurrentUserResponse> {
+  return apiFetch<CurrentUserResponse>("/users/me");
+}
+
+export async function logout(): Promise<void> {
+  const refreshToken = getRefreshToken();
+  if (refreshToken) {
+    await apiFetch<void>("/auth/logout", {
+      method: "POST",
+      body: JSON.stringify({ refreshToken })
+    }).catch(() => undefined);
+  }
+
+  clearSession();
+}
+
+async function postPublic<T>(path: string, body: unknown): Promise<T> {
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(body)
+  });
+  const payload = await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    throw new Error(payload.error?.message ?? "Request failed");
+  }
+
+  return payload.data as T;
+}

@@ -1,49 +1,72 @@
 # front-risk-calculator
 
-Frontend Next.js + TypeScript do Risk Calculator, uma plataforma de analytics de portfolios de
-investimento. Este projeto apresenta a experiencia do usuario: autenticacao, portfolios,
-dashboards de analytics, relatorios, alertas e atualizacoes realtime.
+Frontend em Next.js + TypeScript do Risk Calculator. No estado atual, este projeto implementa o
+fluxo de autenticacao, bootstrap de sessao, telas protegidas e uma interface inicial para
+visualizacao de acesso do usuario e operacoes administrativas.
 
 ## Estado atual
 
-Este diretorio esta em fase de bootstrap. Antes de implementar codigo, leia:
+O frontend ja possui telas funcionais e testes unitarios. O escopo implementado hoje e:
 
-- [Guia do projeto](.codex/AGENTS.md)
-- [Contexto do workspace](../.specs/context.md)
-- [Visao de produto](../.specs/product/vision.md)
-- [Arquitetura](../.specs/architecture/overview.md)
-- [Convencoes de API](../.specs/api/conventions.md)
-- A macro spec da feature em `../.specs/features/<feature>/`
+- redirecionamento da raiz para `/dashboard`;
+- pagina de login em `/login`;
+- bootstrap de sessao via `AuthProvider`;
+- armazenamento do access token e do actor em `sessionStorage`;
+- refresh token mantido apenas em memoria no browser;
+- renovacao automatica de sessao quando a API responde `401`;
+- pagina protegida de dashboard;
+- pagina protegida de administracao;
+- telas de sessao expirada e acesso nao autorizado.
 
-As specs vivem apenas na raiz do workspace. Nao crie `front-risk-calculator/.specs/`.
-
-## Responsabilidades
-
-- Apresentar login, logout, bootstrap de sessao e telas protegidas.
-- Consumir apenas contratos REST/realtime do backend.
-- Renderizar portfolios, posicoes, transacoes, analytics, relatorios, alertas e notificacoes.
-- Mostrar estados de loading, vazio, erro, nao autorizado, dados parciais, dados obsoletos e
-  processamento assincrono.
-- Exibir metricas e insights gerados pelo backend como explicacoes, nao como recomendacoes.
-- Usar tabelas para dados operacionais, graficos para alocacao/performance e texto conciso para insights.
-- Manter a UI profissional, analitica e eficiente para uso repetido.
-
-## Stack planejada
+## Stack atual
 
 | Camada | Tecnologia |
 | --- | --- |
-| Framework | Next.js App Router |
+| Framework | Next.js 16 App Router |
 | Linguagem | TypeScript |
-| UI | React |
-| Server state | TanStack Query ou equivalente |
-| Formularios | React Hook Form + validacao por schema |
-| Graficos | Recharts, Tremor, Visx ou biblioteca documentada |
-| Estilo | Tailwind CSS ou design system definido pelo projeto |
-| Testes | Vitest, React Testing Library e Playwright |
+| UI | React 19 |
+| Estilo | CSS global do app |
+| Cliente HTTP | `fetch` com wrapper proprio |
+| Testes | Vitest + Testing Library + jsdom |
 
-## Arquitetura esperada
+## Rotas da interface
 
-Layout esperado:
+- `/` redireciona para `/dashboard`
+- `/login`
+- `/dashboard`
+- `/admin`
+- `/session-expired`
+- `/unauthorized`
+
+## Integracao com a API
+
+Base URL padrao:
+
+```text
+http://localhost:8000/api/v1
+```
+
+Configuracao por ambiente:
+
+- `NEXT_PUBLIC_API_BASE_URL`
+
+Chamadas usadas no frontend atual:
+
+- `POST /auth/login`
+- `POST /auth/google`
+- `POST /auth/refresh`
+- `POST /auth/logout`
+- `GET /users/me`
+- `GET /admin/users`
+
+## Comportamento de sessao
+
+- `accessToken` e actor sao gravados em `sessionStorage`;
+- refresh token nao vai para `localStorage` nem `sessionStorage`;
+- quando uma request recebe `401`, o cliente tenta `POST /auth/refresh` uma unica vez;
+- se o refresh falhar, a sessao local e limpa e a aplicacao trata a sessao como expirada.
+
+## Estrutura atual
 
 ```text
 front-risk-calculator/
@@ -53,52 +76,51 @@ front-risk-calculator/
       (dashboard)/
     components/
       layout/
-      portfolio/
-      analytics/
-      reports/
-      ui/
     features/
       auth/
-      portfolios/
-      analytics/
-      reports/
-      alerts/
     lib/
       api/
-      auth/
-      realtime/
-      formatters/
-    types/
   tests/
-    e2e/
     unit/
 ```
 
 ## Desenvolvimento local
 
-O scaffold de aplicacao ainda nao foi criado. Quando existir `package.json`, os comandos
-esperados devem seguir este formato:
+Use Node e Yarn nas versoes do projeto:
 
 ```bash
-npm install
-npm run dev
-npm test
+nvm use
+yarn install
+yarn dev
 ```
 
-A API local planejada para consumo e:
+Comandos uteis:
 
-```text
-http://localhost:8000/api/v1
+```bash
+yarn test
+yarn typecheck
+yarn lint
 ```
 
-## Regras importantes
+Docker:
 
-- Nao chame provedores de dados de mercado diretamente do browser, server components ou route handlers.
-- Nao implemente formulas de analytics no frontend, exceto formatacao presentacional.
-- Nao trate UI escondida como barreira de seguranca; RBAC e decisao do backend.
-- Nao armazene refresh tokens em `localStorage`.
-- Prefira tipos gerados a partir do contrato OpenAPI quando ele existir.
-- Evite linguagem de recomendacao financeira; a UI deve explicar risco e metricas.
+```bash
+docker build --target dev -t front-risk-calculator:dev .
+docker run --rm -p 3000:3000 -e NEXT_PUBLIC_API_BASE_URL=http://localhost:8000/api/v1 front-risk-calculator:dev
+```
+
+Compose do projeto:
+
+```bash
+docker compose up --build
+```
+
+## Testes
+
+Os testes unitarios atuais validam o comportamento do cliente HTTP em expiracao de sessao:
+
+- retry apos refresh bem-sucedido;
+- limpeza de sessao quando o refresh falha.
 
 ## Licenca
 
