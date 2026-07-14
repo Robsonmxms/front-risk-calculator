@@ -1,5 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { apiFetch, SessionExpiredError } from "../../src/lib/api/client";
+import {
+  apiFetch,
+  apiFetchEnvelope,
+  SessionExpiredError
+} from "../../src/lib/api/client";
 import {
   clearSession,
   getAccessToken,
@@ -97,5 +101,24 @@ describe("apiFetch session behavior", () => {
     expect(getAccessToken()).toBeNull();
     expect(window.sessionStorage.length).toBe(0);
     expect(window.localStorage.length).toBe(0);
+  });
+
+  it("returns envelope metadata when requested", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValueOnce(
+        jsonResponse(200, {
+          data: { portfolios: [] },
+          meta: { count: 0 }
+        })
+      )
+    );
+
+    await expect(
+      apiFetchEnvelope<{ portfolios: [] }, { count: number }>("/accounts")
+    ).resolves.toEqual({
+      data: { portfolios: [] },
+      meta: { count: 0 }
+    });
   });
 });

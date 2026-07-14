@@ -14,7 +14,7 @@ export default function LoginPage() {
           <strong>Refresh rotativo</strong>
         </div>
         <div>
-          <p className="metric-label">Papels</p>
+          <p className="metric-label">Papeis</p>
           <strong>Admin, analyst, user</strong>
         </div>
       </section>

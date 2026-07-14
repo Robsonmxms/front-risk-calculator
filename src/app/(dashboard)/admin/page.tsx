@@ -2,17 +2,27 @@
 
 import { useEffect, useState } from "react";
 import { AppShell } from "../../../components/layout/AppShell";
+import { StatePanel } from "../../../components/status/StatePanel";
 import { ProtectedRoute } from "../../../features/auth/ProtectedRoute";
 import { SafeUser } from "../../../features/auth/types";
-import { apiFetch } from "../../../lib/api/client";
+import { ApiError, apiFetch } from "../../../lib/api/client";
 
 export default function AdminPage() {
   const [users, setUsers] = useState<SafeUser[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     apiFetch<{ users: SafeUser[] }>("/admin/users")
       .then((data) => setUsers(data.users))
+      .catch((caught: unknown) => {
+        if (caught instanceof ApiError) {
+          setError(`${caught.message} (${caught.code})`);
+          return;
+        }
+
+        setError("Nao foi possivel carregar os usuarios.");
+      })
       .finally(() => setLoading(false));
   }, []);
 
@@ -25,7 +35,23 @@ export default function AdminPage() {
             <p className="muted">Operacao disponivel apenas para admin.</p>
           </div>
           {loading ? (
-            <p className="muted">Carregando...</p>
+            <StatePanel
+              tone="loading"
+              title="Carregando usuarios"
+              description="Buscando o cadastro seguro retornado pelo backend."
+            />
+          ) : error ? (
+            <StatePanel
+              tone="error"
+              title="Falha ao carregar usuarios"
+              description={error}
+            />
+          ) : users.length === 0 ? (
+            <StatePanel
+              tone="empty"
+              title="Nenhum usuario encontrado"
+              description="O backend nao retornou registros para esta consulta administrativa."
+            />
           ) : (
             <table>
               <thead>
