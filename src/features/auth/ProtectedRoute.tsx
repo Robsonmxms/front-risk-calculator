@@ -30,11 +30,19 @@ export function ProtectedRoute({
   }, [actor, roles, router, status]);
 
   if (status === "loading" || status === "guest" || status === "expired") {
-    return <main className="state-screen">Carregando sessao...</main>;
+    return (
+      <main className="flex min-h-screen items-center justify-center px-5 py-10 text-stone-700">
+        Carregando sessao...
+      </main>
+    );
   }
 
   if (roles && actor && !roles.includes(actor.role)) {
-    return <main className="state-screen">Acesso nao autorizado.</main>;
+    return (
+      <main className="flex min-h-screen items-center justify-center px-5 py-10 text-stone-700">
+        Acesso nao autorizado.
+      </main>
+    );
   }
 
   return <>{children}</>;

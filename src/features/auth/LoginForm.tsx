@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useState } from "react";
+import { Alert, Button, Card, Label, TextInput } from "flowbite-react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "./AuthProvider";
 
@@ -80,44 +81,54 @@ export function LoginForm() {
   }
 
   return (
-    <form className="login-panel" onSubmit={handleSubmit} noValidate>
-      <div className="login-panel__heading">
-        <p className="eyebrow">Risk Calculator</p>
-        <h1>Acessar plataforma</h1>
-      </div>
+    <Card className="w-full max-w-md border-gray-200 bg-white shadow-sm">
+      <form className="space-y-5" onSubmit={handleSubmit} noValidate>
+        <div className="space-y-1">
+          <p className="text-xs font-semibold uppercase text-teal-700">
+            Risk Calculator
+          </p>
+          <h1 className="text-3xl font-semibold text-stone-900">Acessar plataforma</h1>
+        </div>
 
-      <label>
-        <span>Email</span>
-        <input
-          autoComplete="email"
-          inputMode="email"
-          name="email"
-          onChange={(event) => setEmail(event.target.value)}
-          type="email"
-          value={email}
-        />
-      </label>
+        <div>
+          <Label htmlFor="email">Email</Label>
+          <TextInput
+            id="email"
+            autoComplete="email"
+            inputMode="email"
+            name="email"
+            onChange={(event) => setEmail(event.target.value)}
+            type="email"
+            value={email}
+            className="mt-2"
+          />
+        </div>
 
-      <label>
-        <span>Senha</span>
-        <input
-          autoComplete="current-password"
-          name="password"
-          onChange={(event) => setPassword(event.target.value)}
-          type="password"
-          value={password}
-        />
-      </label>
+        <div>
+          <Label htmlFor="password">Senha</Label>
+          <TextInput
+            id="password"
+            autoComplete="current-password"
+            name="password"
+            onChange={(event) => setPassword(event.target.value)}
+            type="password"
+            value={password}
+            className="mt-2"
+          />
+        </div>
 
-      {fieldError ? <p className="form-message form-message--warning">{fieldError}</p> : null}
-      {safeError ? <p className="form-message form-message--danger">{safeError}</p> : null}
+        {fieldError ? <Alert color="warning">{fieldError}</Alert> : null}
+        {safeError ? <Alert color="failure">{safeError}</Alert> : null}
 
-      <button className="button button--primary" disabled={submitting} type="submit">
-        {submitting ? "Entrando..." : "Entrar"}
-      </button>
-      <button className="button button--secondary" onClick={handleGoogleLogin} type="button">
-        Google
-      </button>
-    </form>
+        <div className="flex flex-col gap-3 sm:flex-row">
+          <Button color="teal" disabled={submitting} type="submit" className="sm:flex-1">
+            {submitting ? "Entrando..." : "Entrar"}
+          </Button>
+          <Button color="light" onClick={handleGoogleLogin} type="button" className="sm:flex-1">
+            Google
+          </Button>
+        </div>
+      </form>
+    </Card>
   );
 }
