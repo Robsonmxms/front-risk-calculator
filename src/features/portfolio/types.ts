@@ -68,3 +68,27 @@ export interface PortfolioSnapshot {
 export interface PortfolioListResponse {
   portfolios: PortfolioListItem[];
 }
+
+export interface MarketAsset {
+  id: string;
+  symbol: string;
+  providerSymbol: string;
+  name: string;
+  exchange?: string;
+  currency: string;
+  assetType: "stock" | "etf" | "fund" | "crypto";
+  region?: string;
+  sector?: string;
+  providerName: string;
+  isActive: boolean;
+  updatedAt: string;
+}
+
+export interface MarketAssetSearchResponse {
+  assets: MarketAsset[];
+}
+
+export interface MarketAssetSearchMeta {
+  count: number;
+  providerStatus: "available" | "degraded";
+}

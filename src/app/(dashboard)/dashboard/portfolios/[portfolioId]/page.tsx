@@ -31,9 +31,11 @@ import {
   getPortfolio,
   listPortfolioPositions,
   listPortfolioSnapshots,
-  listPortfolioTransactions
+  listPortfolioTransactions,
+  searchMarketAssets
 } from "../../../../../features/portfolio/portfolioApi";
 import {
+  MarketAsset,
   PortfolioDetail,
   PortfolioPosition,
   PortfolioSnapshot,
@@ -52,6 +54,8 @@ interface TransactionFormState {
   notes: string;
 }
 
+type AssetSearchStatus = "idle" | "loading" | "success" | "empty" | "error";
+
 export default function PortfolioDetailPage() {
   const { actor } = useAuth();
   const routeParams = useParams<{ portfolioId: string }>();
@@ -65,7 +69,11 @@ export default function PortfolioDetailPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [submissionNotice, setSubmissionNotice] = useState<string | null>(null);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+  const [assetSearchStatus, setAssetSearchStatus] = useState<AssetSearchStatus>("idle");
+  const [assetSearchResults, setAssetSearchResults] = useState<MarketAsset[]>([]);
+  const [assetSearchMessage, setAssetSearchMessage] = useState<string | null>(null);
   const [form, setForm] = useState<TransactionFormState>({
     assetSymbol: "",
     assetName: "",
@@ -138,6 +146,53 @@ export default function PortfolioDetailPage() {
     };
   }, [portfolioId, selectedAsOf]);
 
+  useEffect(() => {
+    const query = form.assetSymbol.trim();
+    if (query.length < 2) {
+      setAssetSearchStatus("idle");
+      setAssetSearchResults([]);
+      setAssetSearchMessage(null);
+      return;
+    }
+
+    let isActive = true;
+    setAssetSearchStatus("loading");
+    setAssetSearchMessage(null);
+
+    const timeoutId = window.setTimeout(() => {
+      searchMarketAssets(query)
+        .then((response) => {
+          if (!isActive) {
+            return;
+          }
+
+          setAssetSearchResults(response.data.assets);
+          setAssetSearchStatus(response.data.assets.length > 0 ? "success" : "empty");
+          setAssetSearchMessage(
+            response.meta?.providerStatus === "degraded"
+              ? "Provider indisponivel; exibindo dados conhecidos pelo backend."
+              : null
+          );
+        })
+        .catch((requestError: unknown) => {
+          if (!isActive) {
+            return;
+          }
+
+          setAssetSearchResults([]);
+          setAssetSearchStatus("error");
+          setAssetSearchMessage(
+            getMessage(requestError, "Provider indisponivel. Informe o ativo manualmente.")
+          );
+        });
+    }, 250);
+
+    return () => {
+      isActive = false;
+      window.clearTimeout(timeoutId);
+    };
+  }, [form.assetSymbol]);
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!portfolioId) {
@@ -145,6 +200,7 @@ export default function PortfolioDetailPage() {
     }
 
     setSubmitError(null);
+    setSubmissionNotice(null);
     setFormErrors({});
     setIsSubmitting(true);
 
@@ -170,6 +226,11 @@ export default function PortfolioDetailPage() {
       setPositions(positionsData.positions);
       setTransactions(transactionsData.transactions);
       setSnapshots(snapshotsData.snapshots);
+      setSubmissionNotice(
+        portfolioData.marketDataState === "pending"
+          ? "Transacao registrada. O backend enfileirou o enriquecimento de market data para este ativo."
+          : null
+      );
       setForm({
         assetSymbol: "",
         assetName: "",
@@ -227,9 +288,14 @@ export default function PortfolioDetailPage() {
           <>
             {portfolio.warnings.length > 0 ? (
               <Alert color={portfolio.freshness === "partial" ? "warning" : "failure"}>
-                {portfolio.warnings[0]}
+                <div className="space-y-1">
+                  {portfolio.warnings.map((warning) => (
+                    <p key={warning}>{warning}</p>
+                  ))}
+                </div>
               </Alert>
             ) : null}
+            {submissionNotice ? <Alert color="warning">{submissionNotice}</Alert> : null}
 
             <Card className="border-gray-200 bg-white shadow-sm">
               <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
@@ -332,6 +398,19 @@ export default function PortfolioDetailPage() {
                     {formErrors.assetSymbol ? (
                       <p className="mt-1 text-sm text-red-600">{formErrors.assetSymbol}</p>
                     ) : null}
+                    <AssetSearchState
+                      status={assetSearchStatus}
+                      results={assetSearchResults}
+                      message={assetSearchMessage}
+                      onSelect={(asset) =>
+                        setForm((current) => ({
+                          ...current,
+                          assetSymbol: asset.symbol,
+                          assetName: asset.name,
+                          currency: asset.currency
+                        }))
+                      }
+                    />
                   </div>
 
                   <div>
@@ -482,12 +561,14 @@ export default function PortfolioDetailPage() {
                     <div className="overflow-x-auto">
                       <Table hoverable>
                         <TableHead>
-                          <TableHeadCell>Codigo</TableHeadCell>
-                          <TableHeadCell>Ativo</TableHeadCell>
-                          <TableHeadCell>Quantidade</TableHeadCell>
-                          <TableHeadCell>Custo medio</TableHeadCell>
-                          <TableHeadCell>Custo total</TableHeadCell>
-                          <TableHeadCell>Ultima operacao</TableHeadCell>
+                          <tr>
+                            <TableHeadCell>Codigo</TableHeadCell>
+                            <TableHeadCell>Ativo</TableHeadCell>
+                            <TableHeadCell>Quantidade</TableHeadCell>
+                            <TableHeadCell>Custo medio</TableHeadCell>
+                            <TableHeadCell>Custo total</TableHeadCell>
+                            <TableHeadCell>Ultima operacao</TableHeadCell>
+                          </tr>
                         </TableHead>
                         <TableBody className="divide-y">
                           {positions.map((position) => (
@@ -583,6 +664,68 @@ export default function PortfolioDetailPage() {
         )}
       </main>
     </ProtectedRoute>
+  );
+}
+
+function AssetSearchState({
+  status,
+  results,
+  message,
+  onSelect
+}: {
+  status: AssetSearchStatus;
+  results: MarketAsset[];
+  message: string | null;
+  onSelect: (asset: MarketAsset) => void;
+}) {
+  if (status === "idle") {
+    return null;
+  }
+
+  if (status === "loading") {
+    return (
+      <p className="mt-2 text-sm text-stone-600" role="status">
+        Buscando ativos pelo backend...
+      </p>
+    );
+  }
+
+  if (status === "error") {
+    return (
+      <Alert color="failure" className="mt-3">
+        {message ?? "Provider indisponivel. Informe o ativo manualmente."}
+      </Alert>
+    );
+  }
+
+  if (status === "empty") {
+    return (
+      <Alert color="warning" className="mt-3">
+        Nenhum ativo encontrado pelo backend.
+      </Alert>
+    );
+  }
+
+  return (
+    <div className="mt-3 space-y-2 rounded-lg border border-gray-200 bg-gray-50 p-2">
+      {message ? <p className="px-2 text-sm text-amber-700">{message}</p> : null}
+      {results.map((asset) => (
+        <button
+          key={asset.id}
+          type="button"
+          className="flex w-full items-start justify-between gap-3 rounded-md px-3 py-2 text-left hover:bg-white focus:outline-none focus:ring-2 focus:ring-teal-500"
+          onClick={() => onSelect(asset)}
+        >
+          <span>
+            <span className="block font-semibold text-stone-900">{asset.symbol}</span>
+            <span className="block text-sm text-stone-600">{asset.name}</span>
+          </span>
+          <span className="shrink-0 text-xs font-semibold uppercase text-stone-500">
+            {asset.exchange ?? asset.region ?? "mercado"} · {asset.currency}
+          </span>
+        </button>
+      ))}
+    </div>
   );
 }
 

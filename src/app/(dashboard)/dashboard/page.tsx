@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import {
   Alert,
   Badge,
@@ -22,6 +22,7 @@ import { LogoutButton } from "../../../features/auth/LogoutButton";
 import { createPortfolio, listPortfolios } from "../../../features/portfolio/portfolioApi";
 import { PortfolioListItem } from "../../../features/portfolio/types";
 import { ApiError } from "../../../lib/api/client";
+import { UserRole } from "../../../features/auth/types";
 
 interface CreatePortfolioFormState {
   accountId: string;
@@ -30,31 +31,55 @@ interface CreatePortfolioFormState {
   baseCurrency: string;
 }
 
+const DASHBOARD_ROLES: UserRole[] = ["admin", "analyst", "user"];
+
 export default function DashboardPage() {
-  const { actor } = useAuth();
+  const { actor, status } = useAuth();
   const [portfolios, setPortfolios] = useState<PortfolioListItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const memberships = actor?.accountMemberships ?? [];
+  const memberships = useMemo(() => actor?.accountMemberships ?? [], [actor]);
   const [form, setForm] = useState<CreatePortfolioFormState>({
-    accountId: memberships[0]?.accountId ?? "",
+    accountId: "",
     name: "",
     description: "",
     baseCurrency: "USD"
   });
 
   useEffect(() => {
-    setForm((current) => ({
-      ...current,
-      accountId: current.accountId || memberships[0]?.accountId || ""
-    }));
+    const firstAccountId = memberships[0]?.accountId ?? "";
+
+    setForm((current) => {
+      if (memberships.some((membership) => membership.accountId === current.accountId)) {
+        return current;
+      }
+
+      if (!firstAccountId && !current.accountId) {
+        return current;
+      }
+
+      return {
+        ...current,
+        accountId: firstAccountId
+      };
+    });
   }, [memberships]);
 
   useEffect(() => {
+    if (status !== "authenticated") {
+      setPortfolios([]);
+      setError(null);
+      setIsLoading(status === "loading");
+      return;
+    }
+
     let isActive = true;
+
+    setIsLoading(true);
+    setError(null);
 
     listPortfolios()
       .then((data) => {
@@ -76,7 +101,7 @@ export default function DashboardPage() {
     return () => {
       isActive = false;
     };
-  }, []);
+  }, [actor?.id, status]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -106,7 +131,7 @@ export default function DashboardPage() {
   }
 
   return (
-    <ProtectedRoute roles={["admin", "analyst", "user"]}>
+    <ProtectedRoute roles={DASHBOARD_ROLES}>
       <main className="mx-auto flex min-h-screen max-w-7xl flex-col gap-6 px-4 py-5 lg:px-6">
         <Navbar fluid rounded className="border border-gray-200 bg-white/95 shadow-sm">
           <NavbarBrand as={Link} href="/dashboard">
@@ -203,6 +228,7 @@ export default function DashboardPage() {
                   <Label htmlFor="name">Nome</Label>
                   <TextInput
                     id="name"
+                    autoComplete="off"
                     className="mt-2"
                     color={formErrors.name ? "failure" : "gray"}
                     value={form.name}
@@ -221,6 +247,7 @@ export default function DashboardPage() {
                   <Label htmlFor="description">Descricao</Label>
                   <Textarea
                     id="description"
+                    autoComplete="off"
                     className="mt-2"
                     color={formErrors.description ? "failure" : "gray"}
                     rows={4}
@@ -239,6 +266,7 @@ export default function DashboardPage() {
                   <Label htmlFor="baseCurrency">Moeda base</Label>
                   <TextInput
                     id="baseCurrency"
+                    autoComplete="off"
                     className="mt-2"
                     color={formErrors.baseCurrency ? "failure" : "gray"}
                     value={form.baseCurrency}

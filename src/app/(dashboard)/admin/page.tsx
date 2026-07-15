@@ -19,19 +19,41 @@ import {
 import { ProtectedRoute } from "../../../features/auth/ProtectedRoute";
 import { useAuth } from "../../../features/auth/AuthProvider";
 import { LogoutButton } from "../../../features/auth/LogoutButton";
-import { SafeUser } from "../../../features/auth/types";
+import { SafeUser, UserRole } from "../../../features/auth/types";
 import { ApiError, apiFetch } from "../../../lib/api/client";
 
+const ADMIN_ROLES: UserRole[] = ["admin"];
+
 export default function AdminPage() {
-  const { actor } = useAuth();
+  const { actor, status } = useAuth();
   const [users, setUsers] = useState<SafeUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (status !== "authenticated" || actor?.role !== "admin") {
+      setUsers([]);
+      setError(null);
+      setLoading(status === "loading");
+      return;
+    }
+
+    let isActive = true;
+
+    setLoading(true);
+    setError(null);
+
     apiFetch<{ users: SafeUser[] }>("/admin/users")
-      .then((data) => setUsers(data.users))
+      .then((data) => {
+        if (isActive) {
+          setUsers(data.users);
+        }
+      })
       .catch((caught: unknown) => {
+        if (!isActive) {
+          return;
+        }
+
         if (caught instanceof ApiError) {
           setError(`${caught.message} (${caught.code})`);
           return;
@@ -39,11 +61,19 @@ export default function AdminPage() {
 
         setError("Nao foi possivel carregar os usuarios.");
       })
-      .finally(() => setLoading(false));
-  }, []);
+      .finally(() => {
+        if (isActive) {
+          setLoading(false);
+        }
+      });
+
+    return () => {
+      isActive = false;
+    };
+  }, [actor?.id, actor?.role, status]);
 
   return (
-    <ProtectedRoute roles={["admin"]}>
+    <ProtectedRoute roles={ADMIN_ROLES}>
       <main className="mx-auto flex min-h-screen max-w-7xl flex-col gap-6 px-4 py-5 lg:px-6">
         <Navbar fluid rounded className="border border-gray-200 bg-white/95 shadow-sm">
           <NavbarBrand as={Link} href="/dashboard">
@@ -86,10 +116,12 @@ export default function AdminPage() {
             <div className="overflow-x-auto">
               <Table hoverable>
                 <TableHead>
-                  <TableHeadCell>Nome</TableHeadCell>
-                  <TableHeadCell>Email</TableHeadCell>
-                  <TableHeadCell>Papel</TableHeadCell>
-                  <TableHeadCell>Status</TableHeadCell>
+                  <tr>
+                    <TableHeadCell>Nome</TableHeadCell>
+                    <TableHeadCell>Email</TableHeadCell>
+                    <TableHeadCell>Papel</TableHeadCell>
+                    <TableHeadCell>Status</TableHeadCell>
+                  </tr>
                 </TableHead>
                 <TableBody className="divide-y">
                   {users.map((user) => (

@@ -1,5 +1,7 @@
-import { apiFetch } from "../../lib/api/client";
+import { apiFetch, apiFetchEnvelope } from "../../lib/api/client";
 import {
+  MarketAssetSearchMeta,
+  MarketAssetSearchResponse,
   PortfolioDetail,
   PortfolioListResponse,
   PortfolioPosition,
@@ -72,4 +74,10 @@ export async function listPortfolioPositions(portfolioId: string, asOf?: string)
 
 export async function listPortfolioSnapshots(portfolioId: string) {
   return apiFetch<{ snapshots: PortfolioSnapshot[] }>(`/portfolios/${portfolioId}/snapshots`);
+}
+
+export async function searchMarketAssets(query: string) {
+  return apiFetchEnvelope<MarketAssetSearchResponse, MarketAssetSearchMeta>(
+    `/market-data/assets/search?q=${encodeURIComponent(query)}`
+  );
 }
