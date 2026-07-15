@@ -2,109 +2,67 @@ import { AccountMemberRole } from "../auth/types";
 
 export type PortfolioFreshness = "fresh" | "stale" | "partial";
 export type PortfolioStatus = "ready" | "syncing" | "degraded";
-export type ReportStatus = "ready" | "generating";
-export type AlertSeverity = "low" | "medium" | "high";
+export type ProcessingState = "ready" | "pending";
+export type PortfolioTransactionType = "buy" | "sell";
 
 export interface PortfolioListItem {
+  id: string;
   accountId: string;
   accountName: string;
+  name: string;
+  description?: string;
+  baseCurrency: string;
   membershipRole: AccountMemberRole;
-  currency: string;
-  marketValue: number;
-  unrealizedPnl: number;
-  dayChangePercent: number;
   holdingsCount: number;
-  openAlerts: number;
-  reportStatus: ReportStatus;
-  riskScore: number;
+  transactionCount: number;
+  totalCostBasis: number;
   freshness: PortfolioFreshness;
   status: PortfolioStatus;
+  analyticsState: ProcessingState;
+  marketDataState: ProcessingState;
+  lastTransactionDate?: string;
 }
 
-export interface PortfolioHolding {
-  symbol: string;
-  name: string;
-  assetClass: string;
-  quantity: number;
-  weightPercent: number;
-  marketValue: number;
-  dayChangePercent: number;
+export interface PortfolioDetail extends PortfolioListItem {
+  createdAt: string;
+  updatedAt: string;
+  warnings: string[];
 }
 
 export interface PortfolioTransaction {
   id: string;
+  portfolioId: string;
+  assetSymbol: string;
+  assetName: string;
   tradeDate: string;
-  type: "buy" | "sell" | "dividend" | "rebalance";
-  description: string;
+  type: PortfolioTransactionType;
   quantity: number;
-  amount: number;
+  unitPrice: number;
+  totalAmount: number;
   currency: string;
-  status: "posted" | "pending";
+  notes?: string;
+  createdAt: string;
 }
 
-export interface AllocationSlice {
-  label: string;
-  weightPercent: number;
-}
-
-export interface PerformancePoint {
-  label: string;
-  returnPercent: number;
-}
-
-export interface PortfolioReport {
-  id: string;
-  name: string;
-  asOf: string;
-  status: ReportStatus;
-  format: "pdf" | "csv";
-}
-
-export interface PortfolioAlert {
-  id: string;
-  title: string;
-  severity: AlertSeverity;
-  status: "open" | "monitoring";
-}
-
-export interface PortfolioAnalytics {
-  riskScore: number;
-  volatilityPercent: number;
-  valueAtRisk95: number;
-  maxDrawdownPercent: number;
-  diversificationScore: number;
-  notes: string[];
-}
-
-export interface PortfolioMeta {
-  status: PortfolioStatus;
-  freshness: PortfolioFreshness;
-  asOf: string;
-  lastSuccessfulSyncAt: string;
-  warnings: string[];
-}
-
-export interface PortfolioDashboard {
-  accountId: string;
-  accountName: string;
-  membershipRole: AccountMemberRole;
+export interface PortfolioPosition {
+  portfolioId: string;
+  assetSymbol: string;
+  assetName: string;
+  quantity: number;
+  averageCost: number;
+  totalCostBasis: number;
   currency: string;
-  marketValue: number;
-  costBasis: number;
-  unrealizedPnl: number;
-  dayChangePercent: number;
-  holdingsCount: number;
-  openAlerts: number;
-  reportStatus: ReportStatus;
-  analytics: PortfolioAnalytics;
-  allocation: AllocationSlice[];
-  performance: PerformancePoint[];
-  holdings: PortfolioHolding[];
-  transactions: PortfolioTransaction[];
-  reports: PortfolioReport[];
-  alerts: PortfolioAlert[];
-  insights: string[];
-  meta: PortfolioMeta;
+  lastTransactionDate: string;
+}
+
+export interface PortfolioSnapshot {
+  id: string;
+  portfolioId: string;
+  asOfDate: string;
+  createdAt: string;
+  positions: PortfolioPosition[];
+  transactionCount: number;
+  totalCostBasis: number;
 }
 
 export interface PortfolioListResponse {

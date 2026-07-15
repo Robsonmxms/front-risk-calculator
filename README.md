@@ -28,6 +28,7 @@ O frontend ja possui telas funcionais e testes unitarios. O escopo implementado 
 | Estilo | CSS global do app |
 | Cliente HTTP | `fetch` com wrapper proprio |
 | Testes | Vitest + Testing Library + jsdom |
+| Pacotes | Yarn 4.17.1 via `packageManager` |
 
 ## Rotas da interface
 
@@ -90,9 +91,13 @@ Use Node e Yarn nas versoes do projeto:
 
 ```bash
 nvm use
+corepack enable
 yarn install
 yarn dev
 ```
+
+Use `yarn` para instalar dependencias e executar scripts; o projeto declara `packageManager`
+como `yarn@4.17.1` e usa `nodeLinker: node-modules`.
 
 Comandos uteis:
 
