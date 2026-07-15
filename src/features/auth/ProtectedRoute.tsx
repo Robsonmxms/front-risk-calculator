@@ -1,6 +1,6 @@
 "use client";
 
-import { ReactNode, useEffect } from "react";
+import { ReactNode, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "./AuthProvider";
 import { UserRole } from "./types";
@@ -14,20 +14,34 @@ export function ProtectedRoute({
 }) {
   const router = useRouter();
   const { actor, status } = useAuth();
+  const lastRedirectPath = useRef<string | null>(null);
+  const rolesKey = roles?.join("|") ?? "";
 
   useEffect(() => {
+    let redirectPath: string | null = null;
+
     if (status === "guest") {
-      router.replace("/login");
+      redirectPath = "/login";
     }
 
     if (status === "expired") {
-      router.replace("/session-expired");
+      redirectPath = "/session-expired";
     }
 
     if (status === "authenticated" && roles && actor && !roles.includes(actor.role)) {
-      router.replace("/unauthorized");
+      redirectPath = "/unauthorized";
     }
-  }, [actor, roles, router, status]);
+
+    if (!redirectPath) {
+      lastRedirectPath.current = null;
+      return;
+    }
+
+    if (lastRedirectPath.current !== redirectPath) {
+      lastRedirectPath.current = redirectPath;
+      router.replace(redirectPath);
+    }
+  }, [actor, roles, rolesKey, router, status]);
 
   if (status === "loading" || status === "guest" || status === "expired") {
     return (
