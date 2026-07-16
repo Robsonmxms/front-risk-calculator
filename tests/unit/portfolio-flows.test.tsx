@@ -85,6 +85,13 @@ const actor: Actor = {
   email: "investidor@example.com",
   name: "Investidor Principal",
   role: "user",
+  officeMemberships: [
+    {
+      officeId: "ofc_main",
+      officeName: "Orion Advisory",
+      role: "office_admin"
+    }
+  ],
   accountMemberships: [
     {
       accountId: "acc_main",
