@@ -2,6 +2,7 @@ import { Actor, AuthSession } from "./types";
 
 const ACCESS_TOKEN_KEY = "risk_calculator.access_token";
 const ACTOR_KEY = "risk_calculator.actor";
+const SELECTED_OFFICE_KEY = "risk_calculator.selected_office_id";
 
 let refreshTokenMemory: string | null = null;
 let actorMemory: Actor | null = null;
@@ -62,6 +63,20 @@ export function getStoredActor(): Actor | null {
   }
 }
 
+export function saveSelectedOfficeId(officeId: string): void {
+  if (canUseStorage()) {
+    window.sessionStorage.setItem(SELECTED_OFFICE_KEY, officeId);
+  }
+}
+
+export function getSelectedOfficeId(): string | null {
+  if (!canUseStorage()) {
+    return null;
+  }
+
+  return window.sessionStorage.getItem(SELECTED_OFFICE_KEY);
+}
+
 export function clearSession(): void {
   refreshTokenMemory = null;
   actorMemory = null;
@@ -69,6 +84,7 @@ export function clearSession(): void {
   if (canUseStorage()) {
     window.sessionStorage.removeItem(ACCESS_TOKEN_KEY);
     window.sessionStorage.removeItem(ACTOR_KEY);
+    window.sessionStorage.removeItem(SELECTED_OFFICE_KEY);
     window.dispatchEvent(new Event("auth-session-changed"));
   }
 }

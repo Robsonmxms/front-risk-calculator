@@ -1,8 +1,11 @@
+"use client";
+
 import Link from "next/link";
 import { ReactNode } from "react";
+import { useAuth } from "../../features/auth/AuthProvider";
 import { cn } from "../../lib/utils";
 
-type ActiveRoute = "dashboard" | "admin";
+type ActiveRoute = "dashboard" | "admin" | "office";
 
 export function AppHeader({
   title,
@@ -15,6 +18,8 @@ export function AppHeader({
   showAdmin?: boolean;
   actions?: ReactNode;
 }) {
+  const { activeOffice, officeMemberships, selectOffice } = useAuth();
+
   return (
     <header className="rounded-lg border border-border bg-card/95 px-4 py-3 shadow-sm">
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
@@ -35,7 +40,33 @@ export function AppHeader({
                 Admin
               </HeaderLink>
             ) : null}
+            {activeOffice ? (
+              <HeaderLink
+                href={`/dashboard/offices/${activeOffice.officeId}/settings`}
+                active={active === "office"}
+              >
+                Office
+              </HeaderLink>
+            ) : null}
           </nav>
+          {officeMemberships.length > 1 ? (
+            <select
+              aria-label="Selecionar office"
+              className="h-9 rounded-md border border-border bg-background px-3 text-sm text-foreground shadow-sm"
+              value={activeOffice?.officeId ?? ""}
+              onChange={(event) => selectOffice(event.target.value)}
+            >
+              {officeMemberships.map((office) => (
+                <option key={office.officeId} value={office.officeId}>
+                  {office.officeName}
+                </option>
+              ))}
+            </select>
+          ) : activeOffice ? (
+            <span className="rounded-md border border-border bg-muted px-3 py-2 text-sm font-medium text-foreground">
+              {activeOffice.officeName}
+            </span>
+          ) : null}
           {actions}
         </div>
       </div>

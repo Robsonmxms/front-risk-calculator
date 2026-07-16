@@ -1,6 +1,18 @@
 export type UserRole = "admin" | "analyst" | "user";
 export type UserStatus = "active" | "disabled";
 export type AccountMemberRole = "owner" | "analyst" | "viewer";
+export type OfficeMembershipRole =
+  | "office_admin"
+  | "advisor"
+  | "analyst"
+  | "assistant"
+  | "client";
+
+export interface OfficeMembershipSummary {
+  officeId: string;
+  officeName: string;
+  role: OfficeMembershipRole;
+}
 
 export interface AccountMembershipSummary {
   accountId: string;
@@ -13,6 +25,7 @@ export interface Actor {
   email: string;
   name: string;
   role: UserRole;
+  officeMemberships: OfficeMembershipSummary[];
   accountMemberships: AccountMembershipSummary[];
 }
 
