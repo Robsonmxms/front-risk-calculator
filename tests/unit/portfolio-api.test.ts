@@ -5,6 +5,7 @@ import {
   listNotifications,
   listPortfolioReports,
   listMarketExchanges,
+  markNotificationRead,
   requestPortfolioReport,
   searchMarketAssets
 } from "../../src/features/portfolio/portfolioApi";
@@ -286,5 +287,24 @@ describe("portfolio api market data client", () => {
       "http://localhost:8000/api/v1/portfolios/prt_main/alerts"
     );
     expect(fetchMock.mock.calls[1][0]).toBe("http://localhost:8000/api/v1/notifications");
+  });
+
+  it("surfaces forbidden notification read responses without client-side success", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValueOnce(
+        jsonResponse(403, {
+          error: {
+            code: "auth.notification_access_denied",
+            message: "Notification access denied"
+          }
+        })
+      )
+    );
+
+    await expect(markNotificationRead("ntf-1")).rejects.toMatchObject({
+      status: 403,
+      code: "auth.notification_access_denied"
+    });
   });
 });
