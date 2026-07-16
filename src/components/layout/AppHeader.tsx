@@ -5,7 +5,7 @@ import { ReactNode } from "react";
 import { useAuth } from "../../features/auth/AuthProvider";
 import { cn } from "../../lib/utils";
 
-type ActiveRoute = "dashboard" | "admin" | "office";
+type ActiveRoute = "dashboard" | "admin" | "office" | "clients";
 
 export function AppHeader({
   title,
@@ -40,6 +40,11 @@ export function AppHeader({
             {showAdmin ? (
               <HeaderLink href="/admin" active={active === "admin"}>
                 Admin
+              </HeaderLink>
+            ) : null}
+            {activeOffice ? (
+              <HeaderLink href="/dashboard/clients" active={active === "clients"}>
+                Clients
               </HeaderLink>
             ) : null}
             {activeOffice && canOpenOfficeSettings ? (

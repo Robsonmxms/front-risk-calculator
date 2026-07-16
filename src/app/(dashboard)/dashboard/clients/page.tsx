@@ -1,0 +1,353 @@
+"use client";
+
+import Link from "next/link";
+import { FormEvent, useEffect, useMemo, useState } from "react";
+import { AppHeader } from "../../../../components/layout/AppHeader";
+import { Alert } from "../../../../components/ui/alert";
+import { Badge } from "../../../../components/ui/badge";
+import { Button } from "../../../../components/ui/button";
+import { Card } from "../../../../components/ui/card";
+import { Label } from "../../../../components/ui/form";
+import { Input } from "../../../../components/ui/input";
+import { Select } from "../../../../components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
+} from "../../../../components/ui/table";
+import { Textarea } from "../../../../components/ui/textarea";
+import { useAuth } from "../../../../features/auth/AuthProvider";
+import { LogoutButton } from "../../../../features/auth/LogoutButton";
+import { ProtectedRoute } from "../../../../features/auth/ProtectedRoute";
+import {
+  createClient,
+  listClients,
+  listHouseholds
+} from "../../../../features/client/clientApi";
+import {
+  ClientOnboardingStatus,
+  ClientStatus,
+  ClientSummary,
+  Household
+} from "../../../../features/client/types";
+import { ApiError } from "../../../../lib/api/client";
+
+const CLIENT_STATUSES: Array<ClientStatus | ""> = ["", "active", "inactive", "archived"];
+const ONBOARDING_STATUSES: Array<ClientOnboardingStatus | ""> = [
+  "",
+  "invited",
+  "onboarding",
+  "complete",
+  "paused"
+];
+
+export default function ClientDirectoryPage() {
+  const { actor, activeOffice } = useAuth();
+  const [clients, setClients] = useState<ClientSummary[]>([]);
+  const [households, setHouseholds] = useState<Household[]>([]);
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<ClientStatus | "">("");
+  const [onboardingFilter, setOnboardingFilter] = useState<ClientOnboardingStatus | "">("");
+  const [householdFilter, setHouseholdFilter] = useState("");
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [riskProfileDescriptor, setRiskProfileDescriptor] = useState("");
+  const [householdId, setHouseholdId] = useState("");
+  const [notes, setNotes] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+
+  const officeId = activeOffice?.officeId;
+  const activeClients = useMemo(
+    () => clients.filter((client) => client.status === "active").length,
+    [clients]
+  );
+
+  useEffect(() => {
+    if (!officeId) {
+      setClients([]);
+      setHouseholds([]);
+      setLoading(false);
+      return;
+    }
+
+    let isActive = true;
+    setLoading(true);
+    setError(null);
+
+    Promise.all([
+      listClients(officeId, {
+        search,
+        status: statusFilter,
+        householdId: householdFilter,
+        onboardingStatus: onboardingFilter
+      }),
+      listHouseholds(officeId)
+    ])
+      .then(([clientData, householdData]) => {
+        if (!isActive) {
+          return;
+        }
+        setClients(clientData.clients);
+        setHouseholds(householdData.households);
+      })
+      .catch((caught) => {
+        if (isActive) {
+          setError(getMessage(caught, "Não foi possível carregar clientes."));
+        }
+      })
+      .finally(() => {
+        if (isActive) {
+          setLoading(false);
+        }
+      });
+
+    return () => {
+      isActive = false;
+    };
+  }, [householdFilter, officeId, onboardingFilter, search, statusFilter]);
+
+  async function handleCreateClient(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!officeId) {
+      return;
+    }
+
+    setSaving(true);
+    setError(null);
+    setNotice(null);
+    try {
+      const client = await createClient(officeId, {
+        name,
+        email,
+        householdId: householdId || undefined,
+        riskProfileDescriptor: riskProfileDescriptor || undefined,
+        notes: notes || undefined,
+        onboardingStatus: "onboarding",
+        advisorUserId: actor?.id
+      });
+      setClients((current) => [client, ...current]);
+      setName("");
+      setEmail("");
+      setRiskProfileDescriptor("");
+      setHouseholdId("");
+      setNotes("");
+      setNotice("Cliente criado.");
+    } catch (caught) {
+      setError(getMessage(caught, "Não foi possível criar o cliente."));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <ProtectedRoute roles={["admin", "analyst", "user"]}>
+      <main className="mx-auto flex min-h-screen max-w-7xl flex-col gap-6 px-4 py-5 lg:px-6">
+        <AppHeader
+          title="Client book"
+          active="clients"
+          showAdmin={actor?.role === "admin"}
+          actions={
+            <>
+              {activeOffice ? <Badge variant="outline">{activeOffice.officeName}</Badge> : null}
+              <LogoutButton />
+            </>
+          }
+        />
+
+        {!officeId ? (
+          <Alert variant="warning">Selecione um office para ver clientes.</Alert>
+        ) : (
+          <section className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
+            <div className="grid gap-4">
+              <Card>
+                <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+                  <div>
+                    <p className="text-xs font-semibold uppercase text-moss">Clientes</p>
+                    <h1 className="text-3xl font-semibold text-stone-900">
+                      {activeOffice?.officeName}
+                    </h1>
+                    <p className="text-sm text-stone-600">
+                      {clients.length} registros · {activeClients} ativos
+                    </p>
+                  </div>
+                  <div className="grid gap-3 md:grid-cols-4">
+                    <Input
+                      aria-label="Buscar clientes"
+                      placeholder="Buscar"
+                      value={search}
+                      onChange={(event) => setSearch(event.target.value)}
+                    />
+                    <Select
+                      aria-label="Filtrar status"
+                      value={statusFilter}
+                      onChange={(event) => setStatusFilter(event.target.value as ClientStatus | "")}
+                    >
+                      {CLIENT_STATUSES.map((status) => (
+                        <option key={status || "all"} value={status}>
+                          {status || "todos"}
+                        </option>
+                      ))}
+                    </Select>
+                    <Select
+                      aria-label="Filtrar onboarding"
+                      value={onboardingFilter}
+                      onChange={(event) =>
+                        setOnboardingFilter(event.target.value as ClientOnboardingStatus | "")
+                      }
+                    >
+                      {ONBOARDING_STATUSES.map((status) => (
+                        <option key={status || "all"} value={status}>
+                          {status || "onboarding"}
+                        </option>
+                      ))}
+                    </Select>
+                    <Select
+                      aria-label="Filtrar household"
+                      value={householdFilter}
+                      onChange={(event) => setHouseholdFilter(event.target.value)}
+                    >
+                      <option value="">households</option>
+                      {households.map((household) => (
+                        <option key={household.id} value={household.id}>
+                          {household.name}
+                        </option>
+                      ))}
+                    </Select>
+                  </div>
+                </div>
+              </Card>
+
+              {error ? <Alert variant="failure">{error}</Alert> : null}
+              {loading ? <Alert variant="info">Carregando clientes.</Alert> : null}
+
+              {!loading && clients.length === 0 ? (
+                <Alert variant="info">Nenhum cliente encontrado para este office.</Alert>
+              ) : (
+                <Card>
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Cliente</TableHead>
+                          <TableHead>Household</TableHead>
+                          <TableHead>Advisor</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead>Onboarding</TableHead>
+                          <TableHead>Portfolios</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {clients.map((client) => (
+                          <TableRow key={client.id}>
+                            <TableCell className="font-medium text-stone-900">
+                              <Link href={`/dashboard/clients/${client.id}`} className="hover:text-moss">
+                                {client.name}
+                              </Link>
+                              <p className="text-xs text-stone-500">{client.email}</p>
+                            </TableCell>
+                            <TableCell>{client.householdName ?? "Sem household"}</TableCell>
+                            <TableCell>{client.advisorName ?? "Sem advisor"}</TableCell>
+                            <TableCell>
+                              <Badge variant={client.status === "archived" ? "outline" : "default"}>
+                                {client.status}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>{client.onboardingStatus}</TableCell>
+                            <TableCell>{client.portfolioCount}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </Card>
+              )}
+            </div>
+
+            <Card>
+              <div className="space-y-1">
+                <p className="text-xs font-semibold uppercase text-moss">Novo cliente</p>
+                <h2 className="text-xl font-semibold text-stone-900">Cadastro mínimo</h2>
+              </div>
+              {notice ? <Alert variant="info">{notice}</Alert> : null}
+              <form className="mt-5 space-y-4" onSubmit={handleCreateClient}>
+                <div>
+                  <Label htmlFor="clientName">Nome</Label>
+                  <Input
+                    id="clientName"
+                    className="mt-2"
+                    value={name}
+                    onChange={(event) => setName(event.target.value)}
+                    required
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="clientEmail">E-mail</Label>
+                  <Input
+                    id="clientEmail"
+                    className="mt-2"
+                    type="email"
+                    value={email}
+                    onChange={(event) => setEmail(event.target.value)}
+                    required
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="clientHousehold">Household</Label>
+                  <Select
+                    id="clientHousehold"
+                    className="mt-2"
+                    value={householdId}
+                    onChange={(event) => setHouseholdId(event.target.value)}
+                  >
+                    <option value="">Sem household</option>
+                    {households.map((household) => (
+                      <option key={household.id} value={household.id}>
+                        {household.name}
+                      </option>
+                    ))}
+                  </Select>
+                </div>
+                <div>
+                  <Label htmlFor="riskProfileDescriptor">Perfil de risco</Label>
+                  <Input
+                    id="riskProfileDescriptor"
+                    className="mt-2"
+                    value={riskProfileDescriptor}
+                    onChange={(event) => setRiskProfileDescriptor(event.target.value)}
+                    placeholder="Ex.: Balanced growth profile"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="clientNotes">Notas</Label>
+                  <Textarea
+                    id="clientNotes"
+                    className="mt-2"
+                    rows={4}
+                    value={notes}
+                    onChange={(event) => setNotes(event.target.value)}
+                  />
+                </div>
+                <Button type="submit" disabled={saving || !name.trim() || !email.trim()}>
+                  {saving ? "Criando..." : "Criar cliente"}
+                </Button>
+              </form>
+            </Card>
+          </section>
+        )}
+      </main>
+    </ProtectedRoute>
+  );
+}
+
+function getMessage(error: unknown, fallback: string) {
+  if (error instanceof ApiError) {
+    return error.message;
+  }
+  return fallback;
+}
