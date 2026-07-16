@@ -5,7 +5,7 @@ import { ReactNode } from "react";
 import { useAuth } from "../../features/auth/AuthProvider";
 import { cn } from "../../lib/utils";
 
-type ActiveRoute = "dashboard" | "admin" | "office" | "clients" | "workbench";
+type ActiveRoute = "dashboard" | "admin" | "office" | "clients" | "workbench" | "compliance";
 
 export function AppHeader({
   title,
@@ -21,6 +21,7 @@ export function AppHeader({
   const { actor, activeOffice, officeMemberships, selectOffice } = useAuth();
   const canOpenOfficeSettings =
     actor?.role === "admin" || activeOffice?.role === "office_admin";
+  const canOpenCompliance = actor?.role === "admin" || activeOffice?.role === "office_admin";
 
   return (
     <header className="rounded-lg border border-border bg-card/95 px-4 py-3 shadow-sm">
@@ -45,6 +46,11 @@ export function AppHeader({
             {activeOffice ? (
               <HeaderLink href="/dashboard/workbench" active={active === "workbench"}>
                 Workbench
+              </HeaderLink>
+            ) : null}
+            {activeOffice && canOpenCompliance ? (
+              <HeaderLink href="/dashboard/compliance" active={active === "compliance"}>
+                Compliance
               </HeaderLink>
             ) : null}
             {activeOffice ? (
