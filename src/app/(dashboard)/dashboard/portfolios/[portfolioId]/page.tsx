@@ -654,11 +654,16 @@ export default function PortfolioDetailPage() {
   }
 
   async function handleMarkNotificationRead(notification: NotificationRecord) {
+    setNotificationsError(null);
     try {
       await markNotificationRead(notification.id);
       await reloadNotifications();
     } catch (requestError) {
-      setNotificationsError(getMessage(requestError, "Não foi possível atualizar a notificação."));
+      const message =
+        requestError instanceof ApiError && [403, 404].includes(requestError.status)
+          ? "Notificação indisponível para esta sessão."
+          : getMessage(requestError, "Não foi possível atualizar a notificação.");
+      setNotificationsError(message);
     }
   }
 
