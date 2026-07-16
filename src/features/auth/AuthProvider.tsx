@@ -15,7 +15,7 @@ import {
   loginWithPassword,
   logout as logoutRequest
 } from "./authApi";
-import { getAccessToken, getStoredActor } from "./sessionStore";
+import { clearSession, getAccessToken, getStoredActor } from "./sessionStore";
 import { Actor, LoginCredentials } from "./types";
 
 type AuthStatus = "loading" | "guest" | "authenticated" | "expired";
@@ -55,6 +55,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setActor(currentUser.actor);
       setStatus("authenticated");
     } catch {
+      clearSession();
       setActor(null);
       setStatus("expired");
     }
