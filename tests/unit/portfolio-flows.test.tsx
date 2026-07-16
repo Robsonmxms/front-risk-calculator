@@ -267,6 +267,27 @@ describe("dashboard portfolio creation flow", () => {
     expect(await screen.findByRole("heading", { name: "Dividendos Brasil" })).toBeInTheDocument();
     expect(screen.getByText("Conta Principal · papel owner")).toBeInTheDocument();
   });
+
+  it("blocks invalid FX converter amounts before calling the backend", async () => {
+    portfolioApiMocks.listPortfolios.mockResolvedValue({ portfolios: [] });
+
+    renderWithAuth(<DashboardPage />);
+
+    expect(
+      await screen.findByRole("heading", { name: "Investidor Principal" })
+    ).toBeInTheDocument();
+
+    portfolioApiMocks.convertCurrency.mockClear();
+    fireEvent.change(screen.getByLabelText("USD"), {
+      target: { value: "-1" }
+    });
+
+    expect(
+      await screen.findByText("Informe um valor positivo para converter.")
+    ).toBeInTheDocument();
+    await new Promise((resolve) => window.setTimeout(resolve, 300));
+    expect(portfolioApiMocks.convertCurrency).not.toHaveBeenCalled();
+  });
 });
 
 describe("portfolio detail ledger and market-data flow", () => {
