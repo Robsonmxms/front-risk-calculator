@@ -367,10 +367,19 @@ function CurrencyConverterCard() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const numericAmount = Number(amount);
-    if (!targetCurrency || !numericAmount || numericAmount <= 0) {
+    const trimmedAmount = amount.trim();
+    if (!targetCurrency || trimmedAmount.length === 0) {
       setConversion(null);
       setStatus("idle");
+      setError(null);
+      return;
+    }
+
+    const numericAmount = Number(trimmedAmount);
+    if (!Number.isFinite(numericAmount) || numericAmount <= 0) {
+      setConversion(null);
+      setStatus("error");
+      setError("Informe um valor positivo para converter.");
       return;
     }
 
