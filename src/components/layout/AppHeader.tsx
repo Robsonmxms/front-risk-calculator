@@ -18,7 +18,9 @@ export function AppHeader({
   showAdmin?: boolean;
   actions?: ReactNode;
 }) {
-  const { activeOffice, officeMemberships, selectOffice } = useAuth();
+  const { actor, activeOffice, officeMemberships, selectOffice } = useAuth();
+  const canOpenOfficeSettings =
+    actor?.role === "admin" || activeOffice?.role === "office_admin";
 
   return (
     <header className="rounded-lg border border-border bg-card/95 px-4 py-3 shadow-sm">
@@ -40,7 +42,7 @@ export function AppHeader({
                 Admin
               </HeaderLink>
             ) : null}
-            {activeOffice ? (
+            {activeOffice && canOpenOfficeSettings ? (
               <HeaderLink
                 href={`/dashboard/offices/${activeOffice.officeId}/settings`}
                 active={active === "office"}
