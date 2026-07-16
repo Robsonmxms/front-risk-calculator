@@ -1,12 +1,23 @@
-import { apiFetch, apiFetchEnvelope } from "../../lib/api/client";
+import { apiFetch, apiFetchBlob, apiFetchEnvelope } from "../../lib/api/client";
 import {
   MarketAssetSearchMeta,
   MarketAssetSearchResponse,
+  MarketExchange,
+  CurrencyConversion,
+  AlertCondition,
+  AlertSeverity,
+  AlertStatus,
+  NotificationRecord,
+  PortfolioAlert,
+  PortfolioAnalyticsReadModel,
   PortfolioDetail,
   PortfolioListResponse,
   PortfolioPosition,
+  PortfolioReport,
   PortfolioSnapshot,
-  PortfolioTransaction
+  PortfolioTransaction,
+  ReportFormat,
+  TradePriceQuote
 } from "./types";
 
 export async function listPortfolios(): Promise<PortfolioListResponse> {
@@ -76,8 +87,124 @@ export async function listPortfolioSnapshots(portfolioId: string) {
   return apiFetch<{ snapshots: PortfolioSnapshot[] }>(`/portfolios/${portfolioId}/snapshots`);
 }
 
-export async function searchMarketAssets(query: string) {
+export async function searchMarketAssets(query: string, exchangeCode?: string) {
+  const params = new URLSearchParams({ q: query });
+  if (exchangeCode) {
+    params.set("exchange", exchangeCode);
+  }
+
   return apiFetchEnvelope<MarketAssetSearchResponse, MarketAssetSearchMeta>(
-    `/market-data/assets/search?q=${encodeURIComponent(query)}`
+    `/market-data/assets/search?${params.toString()}`
   );
+}
+
+export async function listMarketExchanges() {
+  return apiFetch<{ exchanges: MarketExchange[] }>("/market-data/exchanges");
+}
+
+export async function getTradePrice(
+  assetId: string,
+  input: { tradeDate: string; quantity: number }
+) {
+  const params = new URLSearchParams({
+    tradeDate: input.tradeDate,
+    quantity: String(input.quantity)
+  });
+
+  return apiFetchEnvelope<
+    { tradePrice: TradePriceQuote },
+    { providerName: string; priceSource: TradePriceQuote["priceSource"]; asOf: string }
+  >(`/market-data/assets/${encodeURIComponent(assetId)}/trade-price?${params.toString()}`);
+}
+
+export async function getPortfolioAnalytics(portfolioId: string) {
+  return apiFetchEnvelope<PortfolioAnalyticsReadModel, { status: string; baseCurrency: string }>(
+    `/portfolios/${portfolioId}/analytics`
+  );
+}
+
+export async function requestPortfolioAnalyticsRecompute(portfolioId: string) {
+  return apiFetch<{ jobId: string; status: string; portfolioId: string }>(
+    `/portfolios/${portfolioId}/analytics/recompute`,
+    {
+      method: "POST"
+    }
+  );
+}
+
+export async function convertCurrency(input: {
+  from: string;
+  to: string;
+  amount: number;
+}) {
+  return apiFetchEnvelope<{ conversion: CurrencyConversion }, { providerName: string; asOf: string }>(
+    `/market-data/fx-rate?from=${encodeURIComponent(input.from)}&to=${encodeURIComponent(
+      input.to
+    )}&amount=${encodeURIComponent(String(input.amount))}`
+  );
+}
+
+export async function requestPortfolioReport(portfolioId: string, format: ReportFormat) {
+  return apiFetchEnvelope<PortfolioReport, { status: string }>(
+    `/portfolios/${portfolioId}/reports`,
+    {
+      method: "POST",
+      body: JSON.stringify({ format })
+    }
+  );
+}
+
+export async function listPortfolioReports(portfolioId: string) {
+  return apiFetch<{ reports: PortfolioReport[] }>(`/portfolios/${portfolioId}/reports`);
+}
+
+export async function downloadPortfolioReport(reportId: string) {
+  return apiFetchBlob(`/reports/${reportId}/download`, {
+    headers: {
+      Accept: "application/pdf,text/csv"
+    }
+  });
+}
+
+export async function listPortfolioAlerts(portfolioId: string) {
+  return apiFetch<{ alerts: PortfolioAlert[] }>(`/portfolios/${portfolioId}/alerts`);
+}
+
+export async function createPortfolioAlert(
+  portfolioId: string,
+  input: {
+    title: string;
+    severity: AlertSeverity;
+    condition?: AlertCondition;
+  }
+) {
+  return apiFetch<PortfolioAlert>(`/portfolios/${portfolioId}/alerts`, {
+    method: "POST",
+    body: JSON.stringify(input)
+  });
+}
+
+export async function updatePortfolioAlert(
+  alertId: string,
+  input: Partial<{
+    title: string;
+    severity: AlertSeverity;
+    status: AlertStatus;
+    condition: AlertCondition;
+  }>
+) {
+  return apiFetch<PortfolioAlert>(`/alerts/${alertId}`, {
+    method: "PATCH",
+    body: JSON.stringify(input)
+  });
+}
+
+export async function listNotifications() {
+  return apiFetch<{ notifications: NotificationRecord[] }>("/notifications");
+}
+
+export async function markNotificationRead(notificationId: string) {
+  return apiFetch<NotificationRecord>(`/notifications/${notificationId}/read`, {
+    method: "PATCH"
+  });
 }

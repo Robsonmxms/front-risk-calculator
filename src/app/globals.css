@@ -2,15 +2,27 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  color-scheme: light;
-}
+@layer base {
+  :root {
+    color-scheme: light;
+    --background: 75 20% 96%;
+    --foreground: 150 8% 9%;
+    --card: 0 0% 100%;
+    --card-foreground: 150 8% 9%;
+    --muted: 80 14% 92%;
+    --muted-foreground: 150 6% 38%;
+    --secondary: 80 16% 94%;
+    --secondary-foreground: 150 8% 16%;
+    --border: 80 10% 86%;
+    --input: 80 10% 82%;
+    --ring: 168 73% 21%;
+  }
 
-body {
-  @apply min-h-screen bg-canvas text-ink;
-  background: #f7f8fa;
-}
+  body {
+    @apply min-h-screen bg-background text-foreground;
+  }
 
-a {
-  @apply no-underline;
+  a {
+    @apply no-underline;
+  }
 }

@@ -1,21 +1,17 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useState } from "react";
+import { AppHeader } from "../../../components/layout/AppHeader";
+import { Alert } from "../../../components/ui/alert";
+import { Badge } from "../../../components/ui/badge";
 import {
-  Alert,
-  Button,
-  Navbar,
-  NavbarBrand,
-  NavbarCollapse,
-  NavbarLink,
   Table,
   TableBody,
   TableCell,
   TableHead,
-  TableHeadCell,
+  TableHeader,
   TableRow
-} from "flowbite-react";
+} from "../../../components/ui/table";
 import { ProtectedRoute } from "../../../features/auth/ProtectedRoute";
 import { useAuth } from "../../../features/auth/AuthProvider";
 import { LogoutButton } from "../../../features/auth/LogoutButton";
@@ -59,7 +55,7 @@ export default function AdminPage() {
           return;
         }
 
-        setError("Nao foi possivel carregar os usuarios.");
+        setError("Não foi possível carregar os usuários.");
       })
       .finally(() => {
         if (isActive) {
@@ -75,57 +71,47 @@ export default function AdminPage() {
   return (
     <ProtectedRoute roles={ADMIN_ROLES}>
       <main className="mx-auto flex min-h-screen max-w-7xl flex-col gap-6 px-4 py-5 lg:px-6">
-        <Navbar fluid rounded className="border border-gray-200 bg-white/95 shadow-sm">
-          <NavbarBrand as={Link} href="/dashboard">
-            <div>
-              <span className="block text-xs font-semibold uppercase text-teal-700">
-                Risk Calculator
-              </span>
-              <span className="block text-lg font-semibold text-stone-900">Admin console</span>
-            </div>
-          </NavbarBrand>
-          <div className="flex items-center gap-3">
-            <NavbarCollapse className="hidden md:flex">
-              <NavbarLink as={Link} href="/dashboard">
-                Dashboard
-              </NavbarLink>
-              <NavbarLink as={Link} href="/admin" active>
-                Admin
-              </NavbarLink>
-            </NavbarCollapse>
-            {actor ? <Button color="light">{actor.role}</Button> : null}
-            <LogoutButton />
-          </div>
-        </Navbar>
+        <AppHeader
+          title="Admin console"
+          active="admin"
+          showAdmin
+          actions={
+            <>
+              {actor ? <Badge variant="outline">{actor.role}</Badge> : null}
+              <LogoutButton />
+            </>
+          }
+        />
 
-        <section className="space-y-4 rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
+        <section className="space-y-4 rounded-lg border border-border bg-card p-5 shadow-sm">
           <div>
-            <h1 className="text-2xl font-semibold text-stone-900">Usuarios</h1>
-            <p className="text-stone-600">Operacao disponivel apenas para admin.</p>
+            <p className="text-xs font-semibold uppercase text-moss">Administração</p>
+            <h1 className="text-2xl font-semibold text-stone-900">Usuários</h1>
+            <p className="text-stone-600">Operação disponível apenas para admin.</p>
           </div>
 
           {loading ? (
-            <Alert color="info">Buscando o cadastro seguro retornado pelo backend.</Alert>
+            <Alert variant="info">Buscando o cadastro seguro retornado pelo backend.</Alert>
           ) : error ? (
-            <Alert color="failure">{error}</Alert>
+            <Alert variant="failure">{error}</Alert>
           ) : users.length === 0 ? (
-            <Alert color="warning">
-              O backend nao retornou registros para esta consulta administrativa.
+            <Alert variant="warning">
+              O backend não retornou registros para esta consulta administrativa.
             </Alert>
           ) : (
             <div className="overflow-x-auto">
-              <Table hoverable>
-                <TableHead>
-                  <tr>
-                    <TableHeadCell>Nome</TableHeadCell>
-                    <TableHeadCell>Email</TableHeadCell>
-                    <TableHeadCell>Papel</TableHeadCell>
-                    <TableHeadCell>Status</TableHeadCell>
-                  </tr>
-                </TableHead>
-                <TableBody className="divide-y">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Nome</TableHead>
+                    <TableHead>E-mail</TableHead>
+                    <TableHead>Papel</TableHead>
+                    <TableHead>Status</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
                   {users.map((user) => (
-                    <TableRow key={user.id} className="bg-white">
+                    <TableRow key={user.id}>
                       <TableCell className="font-medium text-stone-900">{user.name}</TableCell>
                       <TableCell>{user.email}</TableCell>
                       <TableCell>{user.role}</TableCell>

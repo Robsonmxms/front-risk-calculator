@@ -6,7 +6,7 @@ import {
 } from "../../features/auth/sessionStore";
 import { AuthSession } from "../../features/auth/types";
 
-const API_BASE_URL =
+export const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000/api/v1";
 
 export class ApiError extends Error {
@@ -74,6 +74,36 @@ export async function apiFetchEnvelope<T, M = Record<string, unknown> | undefine
   }
 
   return parseResponse<T, M>(response);
+}
+
+export async function apiFetchBlob(
+  path: string,
+  options: ApiFetchOptions = {}
+): Promise<{ blob: Blob; filename?: string; contentType?: string }> {
+  const retryOnUnauthorized = options.retryOnUnauthorized ?? true;
+  const response = await rawFetch(path, options);
+
+  if (response.status === 401 && retryOnUnauthorized && getRefreshToken()) {
+    try {
+      await refreshSession();
+      return apiFetchBlob(path, { ...options, retryOnUnauthorized: false });
+    } catch {
+      clearSession();
+      throw new SessionExpiredError();
+    }
+  }
+
+  if (!response.ok) {
+    await parseResponse<never>(response);
+  }
+
+  const disposition = response.headers.get("Content-Disposition") ?? "";
+  const filename = disposition.match(/filename="([^"]+)"/)?.[1];
+  return {
+    blob: await response.blob(),
+    filename,
+    contentType: response.headers.get("Content-Type") ?? undefined
+  };
 }
 
 export async function refreshSession(): Promise<AuthSession> {
