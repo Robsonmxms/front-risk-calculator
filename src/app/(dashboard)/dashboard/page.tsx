@@ -1,26 +1,27 @@
 "use client";
 
-import Link from "next/link";
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import {
-  Alert,
-  Badge,
-  Button,
-  Card,
-  Label,
-  Navbar,
-  NavbarBrand,
-  NavbarCollapse,
-  NavbarLink,
-  Select,
-  TextInput,
-  Textarea
-} from "flowbite-react";
+import { AppHeader } from "../../../components/layout/AppHeader";
+import { Alert } from "../../../components/ui/alert";
+import { Badge } from "../../../components/ui/badge";
+import { Button, LinkButton } from "../../../components/ui/button";
+import { Card } from "../../../components/ui/card";
+import { FieldError, Label } from "../../../components/ui/form";
+import { Input } from "../../../components/ui/input";
+import { Select } from "../../../components/ui/select";
+import { Textarea } from "../../../components/ui/textarea";
 import { ProtectedRoute } from "../../../features/auth/ProtectedRoute";
 import { useAuth } from "../../../features/auth/AuthProvider";
 import { LogoutButton } from "../../../features/auth/LogoutButton";
-import { createPortfolio, listPortfolios } from "../../../features/portfolio/portfolioApi";
-import { PortfolioListItem } from "../../../features/portfolio/types";
+import {
+  convertCurrency,
+  createPortfolio,
+  listPortfolios
+} from "../../../features/portfolio/portfolioApi";
+import {
+  CurrencyConversion,
+  PortfolioListItem
+} from "../../../features/portfolio/types";
 import { ApiError } from "../../../lib/api/client";
 import { UserRole } from "../../../features/auth/types";
 
@@ -32,6 +33,7 @@ interface CreatePortfolioFormState {
 }
 
 const DASHBOARD_ROLES: UserRole[] = ["admin", "analyst", "user"];
+const COMMON_CURRENCIES = ["USD", "BRL", "EUR", "GBP", "JPY", "CAD", "AUD", "CHF", "MXN"];
 
 export default function DashboardPage() {
   const { actor, status } = useAuth();
@@ -89,7 +91,7 @@ export default function DashboardPage() {
       })
       .catch((requestError: unknown) => {
         if (isActive) {
-          setError(getMessage(requestError, "Nao foi possivel carregar os portfolios."));
+          setError(getMessage(requestError, "Não foi possível carregar os portfolios."));
         }
       })
       .finally(() => {
@@ -124,7 +126,7 @@ export default function DashboardPage() {
       }));
     } catch (requestError) {
       setFormErrors(getFieldErrors(requestError));
-      setSubmitError(getMessage(requestError, "Nao foi possivel criar o portfolio."));
+      setSubmitError(getMessage(requestError, "Não foi possível criar o portfolio."));
     } finally {
       setIsSubmitting(false);
     }
@@ -133,35 +135,18 @@ export default function DashboardPage() {
   return (
     <ProtectedRoute roles={DASHBOARD_ROLES}>
       <main className="mx-auto flex min-h-screen max-w-7xl flex-col gap-6 px-4 py-5 lg:px-6">
-        <Navbar fluid rounded className="border border-gray-200 bg-white/95 shadow-sm">
-          <NavbarBrand as={Link} href="/dashboard">
-            <div>
-              <span className="block text-xs font-semibold uppercase text-teal-700">
-                Risk Calculator
-              </span>
-              <span className="block text-lg font-semibold text-stone-900">Portfolio analytics</span>
-            </div>
-          </NavbarBrand>
-          <div className="flex items-center gap-3">
-            <NavbarCollapse className="hidden md:flex">
-              <NavbarLink as={Link} href="/dashboard" active>
-                Dashboard
-              </NavbarLink>
-              {actor?.role === "admin" ? (
-                <NavbarLink as={Link} href="/admin">
-                  Admin
-                </NavbarLink>
-              ) : null}
-            </NavbarCollapse>
-            <LogoutButton />
-          </div>
-        </Navbar>
+        <AppHeader
+          title="Portfolio analytics"
+          active="dashboard"
+          showAdmin={actor?.role === "admin"}
+          actions={<LogoutButton />}
+        />
 
-        <section className="grid gap-4 lg:grid-cols-[minmax(0,1.2fr)_minmax(280px,360px)]">
-          <Card className="border-gray-200 bg-white shadow-sm">
+        <section className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px] xl:grid-cols-[minmax(0,1fr)_320px_360px]">
+          <Card>
             <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
               <div className="space-y-1">
-                <p className="text-xs font-semibold uppercase text-teal-700">
+                <p className="text-xs font-semibold uppercase text-moss">
                   Portfolio ledger
                 </p>
                 <h1 className="text-3xl font-semibold text-stone-900">{actor?.name}</h1>
@@ -170,14 +155,14 @@ export default function DashboardPage() {
                 </p>
               </div>
               <div className="grid gap-3 sm:grid-cols-2">
-                <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+                <div className="rounded-lg border border-border bg-muted/40 p-4">
                   <span className="text-xs font-semibold uppercase text-stone-500">
                     Portfolios
                   </span>
                   <strong className="text-3xl text-stone-900">{portfolios.length}</strong>
-                  <p className="text-sm text-stone-600">visiveis nesta sessao</p>
+                  <p className="text-sm text-stone-600">visíveis nesta sessão</p>
                 </div>
-                <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+                <div className="rounded-lg border border-border bg-muted/40 p-4">
                   <span className="text-xs font-semibold uppercase text-stone-500">
                     Contas
                   </span>
@@ -188,7 +173,9 @@ export default function DashboardPage() {
             </div>
           </Card>
 
-          <Card className="border-gray-200 bg-white shadow-sm">
+          <CurrencyConverterCard />
+
+          <Card>
             <div className="space-y-1">
               <h2 className="text-xl font-semibold text-stone-900">Criar portfolio</h2>
               <p className="text-sm text-stone-600">
@@ -197,8 +184,8 @@ export default function DashboardPage() {
             </div>
 
             {memberships.length === 0 ? (
-              <Alert color="info">
-                A sessao atual nao possui memberships para provisionar um portfolio.
+              <Alert variant="info">
+                A sessão atual não possui memberships para provisionar um portfolio.
               </Alert>
             ) : (
               <form className="space-y-4" onSubmit={handleSubmit}>
@@ -207,11 +194,11 @@ export default function DashboardPage() {
                   <Select
                     id="accountId"
                     className="mt-2"
-                    color={formErrors.accountId ? "failure" : "gray"}
                     value={form.accountId}
                     onChange={(event) =>
                       setForm((current) => ({ ...current, accountId: event.target.value }))
                     }
+                    aria-invalid={Boolean(formErrors.accountId)}
                   >
                     {memberships.map((membership) => (
                       <option key={membership.accountId} value={membership.accountId}>
@@ -219,74 +206,70 @@ export default function DashboardPage() {
                       </option>
                     ))}
                   </Select>
-                  {formErrors.accountId ? (
-                    <p className="mt-1 text-sm text-red-600">{formErrors.accountId}</p>
-                  ) : null}
+                  <FieldError>{formErrors.accountId}</FieldError>
                 </div>
 
                 <div>
                   <Label htmlFor="name">Nome</Label>
-                  <TextInput
+                  <Input
                     id="name"
                     autoComplete="off"
                     className="mt-2"
-                    color={formErrors.name ? "failure" : "gray"}
                     value={form.name}
                     onChange={(event) =>
                       setForm((current) => ({ ...current, name: event.target.value }))
                     }
                     placeholder="Ex.: Dividendos Brasil"
                     required
+                    aria-invalid={Boolean(formErrors.name)}
                   />
-                  {formErrors.name ? (
-                    <p className="mt-1 text-sm text-red-600">{formErrors.name}</p>
-                  ) : null}
+                  <FieldError>{formErrors.name}</FieldError>
                 </div>
 
                 <div>
-                  <Label htmlFor="description">Descricao</Label>
+                  <Label htmlFor="description">Descrição</Label>
                   <Textarea
                     id="description"
                     autoComplete="off"
                     className="mt-2"
-                    color={formErrors.description ? "failure" : "gray"}
                     rows={4}
                     value={form.description}
                     onChange={(event) =>
                       setForm((current) => ({ ...current, description: event.target.value }))
                     }
-                    placeholder="Mandato, horizonte e observacoes operacionais."
+                    placeholder="Mandato, horizonte e observações operacionais."
+                    aria-invalid={Boolean(formErrors.description)}
                   />
-                  {formErrors.description ? (
-                    <p className="mt-1 text-sm text-red-600">{formErrors.description}</p>
-                  ) : null}
+                  <FieldError>{formErrors.description}</FieldError>
                 </div>
 
                 <div>
                   <Label htmlFor="baseCurrency">Moeda base</Label>
-                  <TextInput
+                  <Select
                     id="baseCurrency"
-                    autoComplete="off"
                     className="mt-2"
-                    color={formErrors.baseCurrency ? "failure" : "gray"}
                     value={form.baseCurrency}
                     onChange={(event) =>
                       setForm((current) => ({
                         ...current,
-                        baseCurrency: event.target.value.toUpperCase()
+                        baseCurrency: event.target.value
                       }))
                     }
-                    maxLength={3}
                     required
-                  />
-                  {formErrors.baseCurrency ? (
-                    <p className="mt-1 text-sm text-red-600">{formErrors.baseCurrency}</p>
-                  ) : null}
+                    aria-invalid={Boolean(formErrors.baseCurrency)}
+                  >
+                    {COMMON_CURRENCIES.map((currency) => (
+                      <option key={currency} value={currency}>
+                        {currency}
+                      </option>
+                    ))}
+                  </Select>
+                  <FieldError>{formErrors.baseCurrency}</FieldError>
                 </div>
 
-                {submitError ? <Alert color="failure">{submitError}</Alert> : null}
+                {submitError ? <Alert variant="failure">{submitError}</Alert> : null}
 
-                <Button color="teal" type="submit" disabled={isSubmitting}>
+                <Button type="submit" disabled={isSubmitting}>
                   {isSubmitting ? "Criando..." : "Criar portfolio"}
                 </Button>
               </form>
@@ -295,19 +278,19 @@ export default function DashboardPage() {
         </section>
 
         {isLoading ? (
-          <Alert color="info">Buscando ledger, estados de analytics e historico de transacoes.</Alert>
+          <Alert variant="info">Buscando ledger, estados de analytics e histórico de transações.</Alert>
         ) : error ? (
-          <Alert color="failure">{error}</Alert>
+          <Alert variant="failure">{error}</Alert>
         ) : portfolios.length === 0 ? (
-          <Alert color="warning">
-            Crie o primeiro portfolio para iniciar o ledger e as projecoes de positions.
+          <Alert variant="warning">
+            Crie o primeiro portfolio para iniciar o ledger e as projeções de posições.
           </Alert>
         ) : (
           <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             {portfolios.map((portfolio) => (
               <Card
                 key={portfolio.id}
-                className="border-gray-200 bg-white shadow-sm transition-transform hover:-translate-y-1"
+                className="transition-transform hover:-translate-y-1"
               >
                 <div className="space-y-4">
                   <div className="flex items-start justify-between gap-3">
@@ -317,7 +300,7 @@ export default function DashboardPage() {
                         {portfolio.accountName} · papel {portfolio.membershipRole}
                       </p>
                     </div>
-                    <Badge color={badgeColorForFreshness(portfolio.freshness)}>{portfolio.freshness}</Badge>
+                    <Badge variant={badgeColorForFreshness(portfolio.freshness)}>{portfolio.freshness}</Badge>
                   </div>
 
                   {portfolio.description ? (
@@ -327,13 +310,13 @@ export default function DashboardPage() {
                   <dl className="grid grid-cols-2 gap-3 text-sm">
                     <div>
                       <dt className="text-xs font-semibold uppercase text-stone-500">
-                        Posicoes
+                        Posições
                       </dt>
                       <dd className="mt-1 text-stone-900">{portfolio.holdingsCount}</dd>
                     </div>
                     <div>
                       <dt className="text-xs font-semibold uppercase text-stone-500">
-                        Transacoes
+                        Transações
                       </dt>
                       <dd className="mt-1 text-stone-900">{portfolio.transactionCount}</dd>
                     </div>
@@ -354,18 +337,18 @@ export default function DashboardPage() {
                   </dl>
 
                   <div className="flex flex-wrap items-center gap-2">
-                    <Badge color={badgeColorForStatus(portfolio.status)}>{portfolio.status}</Badge>
-                    <Badge color={portfolio.analyticsState === "pending" ? "warning" : "success"}>
+                    <Badge variant={badgeColorForStatus(portfolio.status)}>{portfolio.status}</Badge>
+                    <Badge variant={portfolio.analyticsState === "pending" ? "warning" : "success"}>
                       analytics {portfolio.analyticsState}
                     </Badge>
-                    <Badge color={portfolio.marketDataState === "pending" ? "warning" : "success"}>
+                    <Badge variant={portfolio.marketDataState === "pending" ? "warning" : "success"}>
                       market data {portfolio.marketDataState}
                     </Badge>
                   </div>
 
-                  <Button as={Link} href={`/dashboard/portfolios/${portfolio.id}`} color="teal">
+                  <LinkButton href={`/dashboard/portfolios/${portfolio.id}`} className="w-fit">
                     Abrir portfolio
-                  </Button>
+                  </LinkButton>
                 </div>
               </Card>
             ))}
@@ -373,6 +356,110 @@ export default function DashboardPage() {
         )}
       </main>
     </ProtectedRoute>
+  );
+}
+
+function CurrencyConverterCard() {
+  const [targetCurrency, setTargetCurrency] = useState("BRL");
+  const [amount, setAmount] = useState("1");
+  const [conversion, setConversion] = useState<CurrencyConversion | null>(null);
+  const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const numericAmount = Number(amount);
+    if (!targetCurrency || !numericAmount || numericAmount <= 0) {
+      setConversion(null);
+      setStatus("idle");
+      return;
+    }
+
+    let isActive = true;
+    setStatus("loading");
+    setError(null);
+
+    const timeoutId = window.setTimeout(() => {
+      convertCurrency({ from: "USD", to: targetCurrency, amount: numericAmount })
+        .then((response) => {
+          if (!isActive) {
+            return;
+          }
+
+          setConversion(response.data.conversion);
+          setStatus("success");
+        })
+        .catch((requestError: unknown) => {
+          if (!isActive) {
+            return;
+          }
+
+          setConversion(null);
+          setStatus("error");
+          setError(getMessage(requestError, "Não foi possível converter a moeda."));
+        });
+    }, 250);
+
+    return () => {
+      isActive = false;
+      window.clearTimeout(timeoutId);
+    };
+  }, [amount, targetCurrency]);
+
+  return (
+    <Card>
+      <div className="space-y-1">
+        <p className="text-xs font-semibold uppercase text-moss">Dólar agora</p>
+        <h2 className="text-xl font-semibold text-stone-900">
+          {conversion
+            ? formatCurrency(conversion.convertedAmount, conversion.to)
+            : formatCurrency(0, targetCurrency)}
+        </h2>
+        <p className="text-sm text-stone-600">
+          {status === "loading"
+            ? "Atualizando..."
+            : conversion
+              ? `${formatCurrency(conversion.amount, "USD")} via ${conversion.providerName}`
+              : "USD"}
+        </p>
+      </div>
+
+      <div className="grid grid-cols-[1fr_110px] gap-3">
+        <div>
+          <Label htmlFor="usdAmount">USD</Label>
+          <Input
+            id="usdAmount"
+            className="mt-2"
+            type="number"
+            min="0.01"
+            step="0.01"
+            value={amount}
+            onChange={(event) => setAmount(event.target.value)}
+          />
+        </div>
+        <div>
+          <Label htmlFor="targetCurrency">Moeda</Label>
+          <Select
+            id="targetCurrency"
+            className="mt-2"
+            value={targetCurrency}
+            onChange={(event) => setTargetCurrency(event.target.value)}
+          >
+            {COMMON_CURRENCIES.filter((currency) => currency !== "USD").map((currency) => (
+              <option key={currency} value={currency}>
+                {currency}
+              </option>
+            ))}
+          </Select>
+        </div>
+      </div>
+
+      {conversion ? (
+        <p className="text-xs text-stone-500">
+          Cotação {new Date(conversion.asOf).toLocaleString("pt-BR")}
+        </p>
+      ) : null}
+      {status === "error" ? <Alert variant="failure">{error}</Alert> : null}
+    </Card>
   );
 }
 

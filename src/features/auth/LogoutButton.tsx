@@ -1,7 +1,7 @@
 "use client";
 
-import { Button } from "flowbite-react";
 import { useRouter } from "next/navigation";
+import { Button } from "../../components/ui/button";
 import { useAuth } from "./AuthProvider";
 
 export function LogoutButton() {
@@ -14,7 +14,7 @@ export function LogoutButton() {
   }
 
   return (
-    <Button color="light" onClick={handleLogout} type="button">
+    <Button variant="outline" onClick={handleLogout} type="button">
       Sair
     </Button>
   );

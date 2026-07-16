@@ -1,8 +1,12 @@
 "use client";
 
 import { FormEvent, useState } from "react";
-import { Alert, Button, Card, Label, TextInput } from "flowbite-react";
 import { useRouter } from "next/navigation";
+import { Alert } from "../../components/ui/alert";
+import { Button } from "../../components/ui/button";
+import { Card } from "../../components/ui/card";
+import { FieldError, Label } from "../../components/ui/form";
+import { Input } from "../../components/ui/input";
 import { useAuth } from "./AuthProvider";
 
 declare global {
@@ -36,7 +40,7 @@ export function LoginForm() {
     setSafeError(null);
 
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || password.length < 8) {
-      setFieldError("Informe email e senha validos.");
+      setFieldError("Informe e-mail e senha válidos.");
       return;
     }
 
@@ -45,7 +49,7 @@ export function LoginForm() {
       await login({ email, password });
       router.replace("/dashboard");
     } catch {
-      setSafeError("Nao foi possivel entrar com essas credenciais.");
+      setSafeError("Não foi possível entrar com essas credenciais.");
     } finally {
       setSubmitting(false);
     }
@@ -57,7 +61,7 @@ export function LoginForm() {
     const googleIdentity = window.google?.accounts?.id;
 
     if (!clientId || !googleIdentity) {
-      setSafeError("Google login indisponivel neste ambiente.");
+      setSafeError("Login com Google indisponível neste ambiente.");
       return;
     }
 
@@ -65,7 +69,7 @@ export function LoginForm() {
       client_id: clientId,
       callback: async ({ credential }) => {
         if (!credential) {
-          setSafeError("Google login indisponivel neste ambiente.");
+          setSafeError("Login com Google indisponível neste ambiente.");
           return;
         }
 
@@ -73,7 +77,7 @@ export function LoginForm() {
           await loginWithGoogleCredential(credential);
           router.replace("/dashboard");
         } catch {
-          setSafeError("Nao foi possivel entrar com Google.");
+          setSafeError("Não foi possível entrar com Google.");
         }
       }
     });
@@ -81,18 +85,21 @@ export function LoginForm() {
   }
 
   return (
-    <Card className="w-full max-w-md border-gray-200 bg-white shadow-sm">
+    <Card className="w-full max-w-md">
       <form className="space-y-5" onSubmit={handleSubmit} noValidate>
         <div className="space-y-1">
-          <p className="text-xs font-semibold uppercase text-teal-700">
+          <p className="text-xs font-semibold uppercase text-moss">
             Risk Calculator
           </p>
           <h1 className="text-3xl font-semibold text-stone-900">Acessar plataforma</h1>
+          <p className="text-sm text-muted-foreground">
+            Entre para acompanhar portfolios, ledger e analytics de risco.
+          </p>
         </div>
 
         <div>
-          <Label htmlFor="email">Email</Label>
-          <TextInput
+          <Label htmlFor="email">E-mail</Label>
+          <Input
             id="email"
             autoComplete="email"
             inputMode="email"
@@ -101,12 +108,13 @@ export function LoginForm() {
             type="email"
             value={email}
             className="mt-2"
+            aria-invalid={Boolean(fieldError)}
           />
         </div>
 
         <div>
           <Label htmlFor="password">Senha</Label>
-          <TextInput
+          <Input
             id="password"
             autoComplete="current-password"
             name="password"
@@ -114,17 +122,18 @@ export function LoginForm() {
             type="password"
             value={password}
             className="mt-2"
+            aria-invalid={Boolean(fieldError)}
           />
         </div>
 
-        {fieldError ? <Alert color="warning">{fieldError}</Alert> : null}
-        {safeError ? <Alert color="failure">{safeError}</Alert> : null}
+        <FieldError>{fieldError ?? undefined}</FieldError>
+        {safeError ? <Alert variant="failure">{safeError}</Alert> : null}
 
         <div className="flex flex-col gap-3 sm:flex-row">
-          <Button color="teal" disabled={submitting} type="submit" className="sm:flex-1">
+          <Button disabled={submitting} type="submit" className="sm:flex-1">
             {submitting ? "Entrando..." : "Entrar"}
           </Button>
-          <Button color="light" onClick={handleGoogleLogin} type="button" className="sm:flex-1">
+          <Button variant="outline" onClick={handleGoogleLogin} type="button" className="sm:flex-1">
             Google
           </Button>
         </div>

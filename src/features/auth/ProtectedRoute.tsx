@@ -2,6 +2,7 @@
 
 import { ReactNode, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
+import { Card } from "../../components/ui/card";
 import { useAuth } from "./AuthProvider";
 import { UserRole } from "./types";
 
@@ -45,16 +46,20 @@ export function ProtectedRoute({
 
   if (status === "loading" || status === "guest" || status === "expired") {
     return (
-      <main className="flex min-h-screen items-center justify-center px-5 py-10 text-stone-700">
-        Carregando sessao...
+      <main className="flex min-h-screen items-center justify-center px-5 py-10">
+        <Card className="max-w-sm text-center text-stone-700" role="status">
+          Carregando sessão...
+        </Card>
       </main>
     );
   }
 
   if (roles && actor && !roles.includes(actor.role)) {
     return (
-      <main className="flex min-h-screen items-center justify-center px-5 py-10 text-stone-700">
-        Acesso nao autorizado.
+      <main className="flex min-h-screen items-center justify-center px-5 py-10">
+        <Card className="max-w-sm text-center text-stone-700" role="alert">
+          Acesso não autorizado.
+        </Card>
       </main>
     );
   }
