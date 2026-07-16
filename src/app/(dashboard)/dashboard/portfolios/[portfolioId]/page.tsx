@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import { useParams } from "next/navigation";
 import { AppHeader } from "../../../../../components/layout/AppHeader";
 import { Alert } from "../../../../../components/ui/alert";
@@ -708,6 +709,15 @@ export default function PortfolioDetailPage() {
                   <p className="text-stone-600">
                     {portfolio.accountName} · papel {portfolio.membershipRole}
                   </p>
+                  {portfolio.clientId ? (
+                    <Link
+                      href={`/dashboard/clients/${portfolio.clientId}`}
+                      className="inline-flex text-sm font-medium text-moss hover:text-moss/80"
+                    >
+                      {portfolio.clientName ?? "Cliente vinculado"}
+                      {portfolio.householdName ? ` · ${portfolio.householdName}` : ""}
+                    </Link>
+                  ) : null}
                 </div>
                 <div className="flex flex-wrap gap-2">
                   <Badge variant={badgeColorForFreshness(portfolio.freshness)}>{portfolio.freshness}</Badge>

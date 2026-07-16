@@ -7,8 +7,13 @@ export type PortfolioTransactionType = "buy" | "sell";
 
 export interface PortfolioListItem {
   id: string;
+  officeId: string;
   accountId: string;
   accountName: string;
+  clientId?: string;
+  clientName?: string;
+  householdId?: string;
+  householdName?: string;
   name: string;
   description?: string;
   baseCurrency: string;

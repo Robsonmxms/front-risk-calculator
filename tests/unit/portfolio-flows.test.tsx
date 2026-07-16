@@ -336,6 +336,10 @@ describe("portfolio detail ledger and market-data flow", () => {
     renderWithAuth(<PortfolioDetailPage />);
 
     expect(await screen.findByRole("heading", { name: "Carteira principal" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Marina Silva/i })).toHaveAttribute(
+      "href",
+      "/dashboard/clients/client_main"
+    );
 
     fireEvent.change(screen.getByLabelText("Data base"), {
       target: { value: "2026-07-01" }
@@ -584,8 +588,13 @@ function makePortfolioListItem(
 ): PortfolioListItem {
   return {
     id: "prt_main",
+    officeId: "ofc_main",
     accountId: "acc_main",
     accountName: "Conta Principal",
+    clientId: "client_main",
+    clientName: "Marina Silva",
+    householdId: "hh_main",
+    householdName: "Silva Family",
     name: "Carteira principal",
     description: "Carteira de acompanhamento",
     baseCurrency: "USD",
