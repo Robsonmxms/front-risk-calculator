@@ -1,4 +1,4 @@
-import { apiFetch } from "../../lib/api/client";
+import { ApiError, apiFetch } from "../../lib/api/client";
 import { clearSession, getRefreshToken, saveSession } from "./sessionStore";
 import { AuthSession, CurrentUserResponse, LoginCredentials } from "./types";
 
@@ -42,6 +42,7 @@ export async function logout(): Promise<void> {
 async function postPublic<T>(path: string, body: unknown): Promise<T> {
   const response = await fetch(`${API_BASE_URL}${path}`, {
     method: "POST",
+    cache: "no-store",
     headers: {
       "Content-Type": "application/json"
     },
@@ -50,7 +51,12 @@ async function postPublic<T>(path: string, body: unknown): Promise<T> {
   const payload = await response.json().catch(() => ({}));
 
   if (!response.ok) {
-    throw new Error(payload.error?.message ?? "Request failed");
+    throw new ApiError(
+      response.status,
+      payload.error?.code ?? "api.request_failed",
+      payload.error?.message ?? "Request failed",
+      payload.error?.details
+    );
   }
 
   return payload.data as T;

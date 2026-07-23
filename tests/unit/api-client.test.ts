@@ -74,9 +74,11 @@ describe("apiFetch session behavior", () => {
     expect(fetchMock.mock.calls[0][1].headers.Authorization).toBe(
       "Bearer old-access-token"
     );
+    expect(fetchMock.mock.calls[0][1].cache).toBe("no-store");
     expect(fetchMock.mock.calls[2][1].headers.Authorization).toBe(
       "Bearer new-access-token"
     );
+    expect(fetchMock.mock.calls[2][1].cache).toBe("no-store");
     expect(getAccessToken()).toBe("new-access-token");
     expect(window.localStorage.length).toBe(0);
   });
@@ -111,15 +113,13 @@ describe("apiFetch session behavior", () => {
   });
 
   it("returns envelope metadata when requested", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockResolvedValueOnce(
-        jsonResponse(200, {
-          data: { portfolios: [] },
-          meta: { count: 0 }
-        })
-      )
+    const fetchMock = vi.fn().mockResolvedValueOnce(
+      jsonResponse(200, {
+        data: { portfolios: [] },
+        meta: { count: 0 }
+      })
     );
+    vi.stubGlobal("fetch", fetchMock);
 
     await expect(
       apiFetchEnvelope<{ portfolios: [] }, { count: number }>("/accounts")
@@ -127,5 +127,6 @@ describe("apiFetch session behavior", () => {
       data: { portfolios: [] },
       meta: { count: 0 }
     });
+    expect(fetchMock.mock.calls[0][1]?.cache).toBe("no-store");
   });
 });
