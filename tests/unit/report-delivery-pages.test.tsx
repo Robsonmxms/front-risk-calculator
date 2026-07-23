@@ -291,6 +291,12 @@ describe("report delivery pages", () => {
     expect(screen.queryByText("Acompanhamento restrito à equipe.")).not.toBeInTheDocument();
     expect(screen.getByText("Core Growth")).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: /Core Growth/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Mesa" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Clientes" })).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Portal" })).toHaveAttribute(
+      "href",
+      "/dashboard/client-portal"
+    );
     expect(deliveryApiMocks.getClientPortal).toHaveBeenCalled();
   });
 });

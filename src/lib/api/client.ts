@@ -128,6 +128,7 @@ async function rawFetch(path: string, options: ApiFetchOptions = {}): Promise<Re
 
   return fetch(`${API_BASE_URL}${path}`, {
     ...fetchOptions,
+    cache: fetchOptions.cache ?? "no-store",
     headers: {
       "Content-Type": "application/json",
       ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),

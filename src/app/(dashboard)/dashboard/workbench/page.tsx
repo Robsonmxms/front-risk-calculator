@@ -70,7 +70,7 @@ export default function WorkbenchPage() {
   const [notice, setNotice] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!officeId) {
+    if (!officeId || isClientOffice) {
       setWorkbench(null);
       setReviewItems([]);
       setLoading(false);
@@ -106,7 +106,7 @@ export default function WorkbenchPage() {
     return () => {
       isActive = false;
     };
-  }, [officeId, severityFilter, statusFilter]);
+  }, [isClientOffice, officeId, severityFilter, statusFilter]);
 
   useEffect(() => {
     if (!workbench || isClientOffice || resourceId) {
@@ -214,6 +214,18 @@ export default function WorkbenchPage() {
 
         {!officeId ? (
           <Alert variant="warning">Selecione um escritório para abrir a mesa de acompanhamento.</Alert>
+        ) : isClientOffice ? (
+          <section className="grid gap-4">
+            <Alert variant="warning">
+              Esta área é restrita à equipe. Os pacotes disponíveis para cliente ficam no portal.
+            </Alert>
+            <Link
+              href="/dashboard/client-portal"
+              className="w-fit rounded-md border border-border bg-background px-3 py-2 text-sm font-medium text-foreground shadow-sm hover:bg-muted"
+            >
+              Abrir portal do cliente
+            </Link>
+          </section>
         ) : loading ? (
           <Alert variant="info">Carregando mesa de acompanhamento.</Alert>
         ) : error ? (

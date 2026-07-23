@@ -214,7 +214,7 @@ describe("workbench page", () => {
     });
   });
 
-  it("renders client office workbench as read-only business labels", async () => {
+  it("blocks client office users from opening the staff workbench route", async () => {
     window.sessionStorage.clear();
     clearSession();
     saveSession({
@@ -230,10 +230,17 @@ describe("workbench page", () => {
       </AuthProvider>
     );
 
-    expect(await screen.findByText("Revisar pacote mensal de risco")).toBeInTheDocument();
-    expect(screen.getByText("cliente: Marina Silva")).toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: "cliente: Marina Silva" })).not.toBeInTheDocument();
-    expect(screen.queryByText("cliente: client_main")).not.toBeInTheDocument();
+    expect(
+      await screen.findByText("Esta área é restrita à equipe. Os pacotes disponíveis para cliente ficam no portal.")
+    ).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Abrir portal do cliente" })).toHaveAttribute(
+      "href",
+      "/dashboard/client-portal"
+    );
+    expect(screen.queryByText("Revisar pacote mensal de risco")).not.toBeInTheDocument();
+    expect(workbenchApiMocks.getWorkbench).not.toHaveBeenCalled();
+    expect(workbenchApiMocks.listReviewItems).not.toHaveBeenCalled();
+    expect(workbenchApiMocks.createReviewItem).not.toHaveBeenCalled();
     expect(screen.queryByRole("button", { name: "Criar item" })).not.toBeInTheDocument();
     expect(
       screen.queryByLabelText("Status Revisar pacote mensal de risco")
