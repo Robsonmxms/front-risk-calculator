@@ -79,6 +79,7 @@ import {
   labelAnalyticsMetricKey,
   labelAnalyticsMetricStatus,
   labelAnalyticsStatus,
+  labelDataQualityIssueCode,
   labelDataQualitySeverity,
   labelInsightSeverity,
   labelNotificationSeverity,
@@ -87,6 +88,7 @@ import {
   labelPortfolioStatus,
   labelProcessingState,
   labelRealtimeStatus,
+  labelReportFailureCode,
   labelReportStatus,
   labelTransactionType,
   notificationSeverityVariant,
@@ -869,8 +871,8 @@ export default function PortfolioDetailPage() {
                       }
                       aria-invalid={Boolean(formErrors.type)}
                     >
-                      <option value="buy">Compra</option>
-                      <option value="sell">Venda</option>
+                      <option value="buy">{labelTransactionType("buy")}</option>
+                      <option value="sell">{labelTransactionType("sell")}</option>
                     </Select>
                     <FieldError>{formErrors.type}</FieldError>
                   </div>
@@ -1307,7 +1309,9 @@ function ReportsAlertsNotificationsPanel({
                         : `Solicitado em ${formatDateTime(report.createdAt)}`}
                     </p>
                     {report.failureCode ? (
-                      <p className="mt-1 text-sm text-red-600">{report.failureCode}</p>
+                      <p className="mt-1 text-sm text-red-600">
+                        {labelReportFailureCode(report.failureCode)}
+                      </p>
                     ) : null}
                   </div>
                   {report.status === "failed" ? (
@@ -1317,7 +1321,7 @@ function ReportsAlertsNotificationsPanel({
                       disabled={isRequestingReport}
                       onClick={() => onRetryReport(report.format)}
                     >
-                      Reenfileirar
+                      Solicitar novamente
                     </Button>
                   ) : (
                     <Button
@@ -1360,9 +1364,9 @@ function ReportsAlertsNotificationsPanel({
                 value={alertSeverity}
                 onChange={(event) => onAlertSeverityChange(event.target.value as AlertSeverity)}
               >
-                <option value="low">Baixa</option>
-                <option value="medium">Média</option>
-                <option value="high">Alta</option>
+                <option value="low">{labelAlertSeverity("low")}</option>
+                <option value="medium">{labelAlertSeverity("medium")}</option>
+                <option value="high">{labelAlertSeverity("high")}</option>
               </Select>
             </div>
             <Button type="submit" disabled={isCreatingAlert}>
@@ -1562,7 +1566,9 @@ function AnalyticsDashboard({
                       <Badge variant={dataQualitySeverityVariant(issue.severity)}>
                         {labelDataQualitySeverity(issue.severity)}
                       </Badge>
-                      <strong className="text-sm text-stone-900">{issue.code}</strong>
+                      <strong className="text-sm text-stone-900">
+                        {labelDataQualityIssueCode(issue.code)}
+                      </strong>
                     </div>
                     <p className="mt-1 text-sm text-stone-600">
                       {formatAnalyticsMessage(issue.message)}
@@ -1653,7 +1659,7 @@ function PerformancePanel({ snapshot }: { snapshot: PortfolioAnalyticsSnapshot }
   return (
     <Card>
       <div className="flex items-start justify-between gap-3">
-        <h3 className="text-lg font-semibold text-stone-900">Performance</h3>
+        <h3 className="text-lg font-semibold text-stone-900">Desempenho</h3>
         {latest ? (
           <span className="text-sm font-medium text-stone-700">
             {formatCurrency(latest.value, "USD")}
@@ -1683,7 +1689,7 @@ function PerformancePanel({ snapshot }: { snapshot: PortfolioAnalyticsSnapshot }
 function DrawdownPanel({ snapshot }: { snapshot: PortfolioAnalyticsSnapshot }) {
   return (
     <Card>
-      <h3 className="text-lg font-semibold text-stone-900">Drawdown</h3>
+      <h3 className="text-lg font-semibold text-stone-900">Perda máxima</h3>
       {snapshot.drawdown.length === 0 ? (
         <Alert variant="warning">Sem drawdown calculado.</Alert>
       ) : (
@@ -1743,7 +1749,7 @@ function CorrelationPanel({ snapshot }: { snapshot: PortfolioAnalyticsSnapshot }
 function InsightPanel({ snapshot }: { snapshot: PortfolioAnalyticsSnapshot }) {
   return (
     <Card>
-      <h3 className="text-lg font-semibold text-stone-900">Insights explicativos</h3>
+      <h3 className="text-lg font-semibold text-stone-900">Observações explicativas</h3>
       {snapshot.insights.length === 0 ? (
         <Alert variant="info">Nenhuma observação gerada para este retrato de risco.</Alert>
       ) : (
@@ -1943,7 +1949,7 @@ function formatAnalyticsMessage(message: string) {
     return "Exige ao menos dois ativos com observações históricas de retorno.";
   }
 
-  return message
+  const localized = message
     .replace(/\bstale\b/gi, "desatualizada")
     .replace(/\bprovider\b/gi, "provedor")
     .replace(/\bbenchmark history unavailable; beta cannot be calculated\b/gi, "histórico do índice de referência indisponível; o beta não pode ser calculado")
@@ -1952,6 +1958,10 @@ function formatAnalyticsMessage(message: string) {
     .replace(/\bposition cost basis\b/gi, "base de custo da posição")
     .replace(/\bUSD conversion rates\b/gi, "taxas de conversão para USD")
     .replace(/\basset metadata\b/gi, "metadados do ativo");
+
+  return hasUntranslatedAnalyticsText(localized)
+    ? "Mensagem das análises registrada pela plataforma."
+    : localized;
 }
 
 function barWidth(percent: number) {
@@ -1983,7 +1993,11 @@ function getFieldErrors(error: unknown): Record<string, string> {
 function formatAlertCondition(condition: PortfolioAlert["condition"]) {
   if (condition.eventType === "metric_threshold") {
     const operator = condition.operator === "lte" ? "menor ou igual" : "maior ou igual";
-    return `${condition.metricKey} ${operator} ${condition.threshold}`;
+    const metricLabel = condition.metricKey
+      ? labelAnalyticsMetricKey(condition.metricKey)
+      : "métrica monitorada";
+
+    return `${metricLabel} ${operator} ${condition.threshold}`;
   }
 
   switch (condition.eventType) {
@@ -1994,4 +2008,10 @@ function formatAlertCondition(condition: PortfolioAlert["condition"]) {
     default:
       return "Dispara quando relatório é gerado.";
   }
+}
+
+function hasUntranslatedAnalyticsText(value: string) {
+  return /\b(analytics|ledger|market data|snapshot|provider|failed|pending|portfolio|quote|refresh|unavailable|warning|stale)\b/i.test(
+    value
+  );
 }

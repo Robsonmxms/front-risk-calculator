@@ -61,7 +61,7 @@ export function AppHeader({
             ) : null}
             {activeOffice && canOpenCompliance ? (
               <HeaderLink href="/dashboard/compliance" active={active === "compliance"}>
-                Compliance
+                Conformidade
               </HeaderLink>
             ) : null}
             {activeOffice && canOpenReportDelivery ? (
@@ -69,12 +69,12 @@ export function AppHeader({
                 href="/dashboard/report-delivery"
                 active={active === "reportDelivery"}
               >
-                Relatórios
+                Entregas
               </HeaderLink>
             ) : null}
             {activeOffice ? (
               <HeaderLink href="/dashboard/client-portal" active={active === "clientPortal"}>
-                Portal
+                Portal do cliente
               </HeaderLink>
             ) : null}
             {canOpenTeamAreas ? (
