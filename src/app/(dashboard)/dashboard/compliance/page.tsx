@@ -131,7 +131,7 @@ export default function CompliancePage() {
       })
       .catch((caught) => {
         if (isActive) {
-          setError(getApiErrorMessage(caught, "Não foi possível carregar compliance."));
+          setError(getApiErrorMessage(caught, "Não foi possível carregar conformidade."));
         }
       })
       .finally(() => {
@@ -155,7 +155,11 @@ export default function CompliancePage() {
     setNotice(null);
     try {
       const exportJob = await requestAuditExport(officeId, { format, filters });
-      setNotice(`Exportação ${exportJob.format.toUpperCase()} pronta com ${exportJob.eventCount} eventos.`);
+      setNotice(
+        `Exportação ${exportJob.format.toUpperCase()} pronta com ${exportJob.eventCount} ${
+          exportJob.eventCount === 1 ? "evento" : "eventos"
+        }.`
+      );
     } catch (caught) {
       setError(getApiErrorMessage(caught, "Não foi possível solicitar a exportação."));
     } finally {
@@ -170,7 +174,7 @@ export default function CompliancePage() {
     try {
       const updated = await updateSupervisionReview(review.id, {
         status: "resolved",
-        resolutionComment: "Revisado no dashboard de compliance."
+        resolutionComment: "Revisado no painel de conformidade."
       });
       setReviews((current) => current.map((entry) => (entry.id === updated.id ? updated : entry)));
       setNotice("Revisão de supervisão resolvida.");
@@ -185,7 +189,7 @@ export default function CompliancePage() {
     <ProtectedRoute roles={["admin", "analyst", "user"]}>
       <main className="mx-auto flex min-h-screen max-w-7xl flex-col gap-6 px-4 py-5 lg:px-6">
         <AppHeader
-          title="Compliance"
+          title="Conformidade"
           active="compliance"
           showAdmin={actor?.role === "admin"}
           actions={
@@ -197,7 +201,7 @@ export default function CompliancePage() {
         />
 
         {!officeId ? (
-          <Alert variant="warning">Selecione um escritório para abrir compliance.</Alert>
+          <Alert variant="warning">Selecione um escritório para abrir conformidade.</Alert>
         ) : !canReadAudit ? (
           <Alert variant="failure">Acesso de auditoria indisponível para este perfil.</Alert>
         ) : loading ? (
@@ -460,15 +464,16 @@ function metadataKeyLabel(key: string) {
     itemCount: "itens",
     onboardingStatus: "cadastro",
     permissionCount: "permissões",
+    previousStatus: "status anterior",
     resourceId: "recurso",
     resourceType: "tipo de recurso",
     status: "status",
     transactionType: "tipo"
   };
 
-	  return labels[key] ?? key;
-	}
-	
+  return labels[key] ?? "campo";
+}
+
 function metadataValueLabel(event: AuditEvent, key: string, value: unknown) {
   if (value === null || value === undefined) {
     return "não informado";
@@ -543,12 +548,12 @@ function auditResourceDisplayName(event: AuditEvent) {
 function businessResourceName(value: string, event: AuditEvent) {
   const knownNames: Record<string, string> = {
     asn_core_client_main: "Permissão para Marina Silva",
-    client_founder: "Alice Founder",
+    client_founder: "Alice Fundadora",
     client_main: "Marina Silva",
     client_spouse: "Renato Silva",
     hh_main_silva: "Família Silva",
     pltxn_001: "Movimentação de MSFT",
-    prt_main: "Core Growth",
+    prt_main: "Carteira Crescimento",
     rpkg_delivered_main: "Pacote mensal de risco",
     rpt_001: "Relatório mensal de risco"
   };

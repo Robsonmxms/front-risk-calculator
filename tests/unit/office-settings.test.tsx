@@ -251,7 +251,7 @@ describe("office settings", () => {
     expect(screen.getAllByText("Core Advisory Team").length).toBeGreaterThan(0);
     expect(screen.getByText("cliente: Marina Silva")).toBeInTheDocument();
     expect(screen.queryByText("cliente: client_main")).not.toBeInTheDocument();
-    expect(screen.getByLabelText("Referência")).toHaveDisplayValue("Core Growth");
+    expect(screen.getByLabelText("Referência")).toHaveDisplayValue("Carteira Crescimento");
 
     fireEvent.change(screen.getByLabelText("Nome"), {
       target: { value: "Orion Advisory Group" }

@@ -244,7 +244,7 @@ describe("report delivery pages", () => {
     await waitFor(() => {
       expect(deliveryApiMocks.createReportPackage).toHaveBeenCalledWith("client_main", {
         title: "Pacote de revisão do cliente",
-        summaryNotes: "Resumo somente leitura preparado para a revisão do cliente.",
+        summaryNotes: "Resumo preparado para consulta do cliente no portal.",
         internalNotes: undefined,
         submitForApproval: true,
         items: [
@@ -293,7 +293,7 @@ describe("report delivery pages", () => {
     expect(screen.queryByRole("link", { name: /Core Growth/i })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Mesa" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Clientes" })).not.toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Portal" })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: "Portal do cliente" })).toHaveAttribute(
       "href",
       "/dashboard/client-portal"
     );

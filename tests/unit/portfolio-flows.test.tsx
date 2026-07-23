@@ -512,7 +512,8 @@ describe("portfolio analytics states", () => {
     expect(await screen.findByText("parcial")).toBeInTheDocument();
     expect(screen.getByText("Retrato de risco parcial com 1 métricas indisponíveis.")).toBeInTheDocument();
     expect(screen.getByText("Indisponível")).toBeInTheDocument();
-    expect(screen.getByText("market_data.stale")).toBeInTheDocument();
+    expect(screen.getByText("Dados de mercado desatualizados")).toBeInTheDocument();
+    expect(screen.queryByText("market_data.stale")).not.toBeInTheDocument();
     expect(screen.getByText("Cotação desatualizada para MSFT.")).toBeInTheDocument();
   });
 

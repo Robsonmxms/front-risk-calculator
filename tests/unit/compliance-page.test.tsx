@@ -126,7 +126,7 @@ describe("compliance page", () => {
     complianceApiMocks.updateSupervisionReview.mockResolvedValue({
       ...review,
       status: "resolved",
-      resolutionComment: "Revisado no dashboard de compliance.",
+      resolutionComment: "Revisado no painel de conformidade.",
       resolvedAt: "2026-07-16T00:00:00.000Z"
     });
   });
@@ -143,7 +143,7 @@ describe("compliance page", () => {
       </AuthProvider>
     );
 
-    expect(await screen.findAllByText("Entrega de relatório falhou")).toHaveLength(2);
+    expect(await screen.findAllByText("Falha na entrega do relatório")).toHaveLength(2);
     expect(screen.queryByText("delivery.report.failed")).not.toBeInTheDocument();
     expect(screen.queryByText("entrega: rpt_001")).not.toBeInTheDocument();
     expect(screen.queryByText(/delivery_timeout/)).not.toBeInTheDocument();
@@ -170,7 +170,7 @@ describe("compliance page", () => {
         filters: expect.objectContaining({ severity: "critical" })
       });
     });
-    expect(await screen.findByText("Exportação CSV pronta com 1 eventos.")).toBeInTheDocument();
+    expect(await screen.findByText("Exportação CSV pronta com 1 evento.")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Resolver revisão" }));
     await waitFor(() => {
@@ -178,7 +178,7 @@ describe("compliance page", () => {
         "sv_aud_report_delivery_failed",
         {
           status: "resolved",
-          resolutionComment: "Revisado no dashboard de compliance."
+          resolutionComment: "Revisado no painel de conformidade."
         }
       );
     });

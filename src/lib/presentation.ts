@@ -96,6 +96,17 @@ const dataQualitySeverityLabels = {
   blocking: "bloqueante"
 } as const;
 
+const dataQualityIssueCodeLabels: Record<string, string> = {
+  "analytics.benchmark_unavailable": "Referência de mercado indisponível",
+  "analytics.history_unavailable": "Histórico insuficiente",
+  "analytics.metric_unavailable": "Métrica indisponível",
+  "analytics.quote_unavailable": "Cotação indisponível",
+  "market_data.historical_prices_unavailable": "Histórico de preços indisponível",
+  "market_data.quote_unavailable": "Cotação indisponível",
+  "market_data.stale": "Dados de mercado desatualizados",
+  "market_data.usd_conversion_unavailable": "Conversão para USD indisponível"
+};
+
 const insightSeverityLabels: LabelMap<RiskInsightSeverity> = {
   info: "informativo",
   watch: "acompanhamento",
@@ -113,6 +124,15 @@ const reportStatusLabels: LabelMap<ReportStatus> = {
   running: "gerando",
   ready: "pronto",
   failed: "falhou"
+};
+
+const reportFailureCodeLabels: Record<string, string> = {
+  analytics_calculation_failed: "Falha no cálculo das análises.",
+  "analytics.calculation_failed": "Falha no cálculo das análises.",
+  delivery_timeout: "Tempo limite na entrega.",
+  generation_failed: "Falha na geração do relatório.",
+  report_generation_failed: "Falha na geração do relatório.",
+  storage_unavailable: "Arquivo indisponível no armazenamento."
 };
 
 const reportPackageStatusLabels: LabelMap<ReportPackageStatus> = {
@@ -230,7 +250,7 @@ const auditActionLabels: Record<string, string> = {
   "client.archived": "Cliente arquivado",
   "client.created": "Cliente criado",
   "client.updated": "Cliente atualizado",
-  "delivery.report.failed": "Entrega de relatório falhou",
+  "delivery.report.failed": "Falha na entrega do relatório",
   "household.created": "Grupo familiar criado",
   "household.updated": "Grupo familiar atualizado",
   "ledger.position_projection.updated": "Projeção de posições atualizada",
@@ -397,17 +417,19 @@ export function formatPortfolioWarning(message: string) {
     /^Market data refresh failed \((.+)\); last known good data was preserved\.$/
   );
   if (marketDataFailure) {
-    return `A atualização dos dados de mercado falhou (${marketDataFailure[1]}); os últimos dados válidos foram preservados.`;
+    return `A atualização dos dados de mercado falhou (${formatFailureReason(marketDataFailure[1])}); os últimos dados válidos foram preservados.`;
   }
 
   const analyticsFailure = message.match(
     /^Analytics recomputation failed \((.+)\); last successful snapshot remains available\.$/
   );
   if (analyticsFailure) {
-    return `O recálculo das análises falhou (${analyticsFailure[1]}); o último retrato de risco bem-sucedido permanece disponível.`;
+    return `O recálculo das análises falhou (${formatFailureReason(analyticsFailure[1])}); o último retrato de risco bem-sucedido permanece disponível.`;
   }
 
-  return message;
+  return hasUntranslatedEnglish(message)
+    ? "Aviso operacional registrado pela plataforma."
+    : message;
 }
 
 export function labelUserRole(value: UserRole | string) {
@@ -458,6 +480,10 @@ export function labelDataQualitySeverity(value: string) {
   return labelFromMap(dataQualitySeverityLabels, value);
 }
 
+export function labelDataQualityIssueCode(value: string) {
+  return dataQualityIssueCodeLabels[value] ?? "Qualidade de dados pendente";
+}
+
 export function labelInsightSeverity(value: RiskInsightSeverity | string) {
   return labelFromMap(insightSeverityLabels, value);
 }
@@ -468,6 +494,10 @@ export function labelRealtimeStatus(value: string) {
 
 export function labelReportStatus(value: ReportStatus | string) {
   return labelFromMap(reportStatusLabels, value);
+}
+
+export function labelReportFailureCode(value: string) {
+  return reportFailureCodeLabels[value] ?? "Falha operacional registrada.";
 }
 
 export function labelReportPackageStatus(value: ReportPackageStatus | string) {
@@ -507,7 +537,7 @@ export function labelAuditSeverity(value: string) {
 }
 
 export function labelResourceType(value: string) {
-  return labelFromMap(resourceTypeLabels, value);
+  return resourceTypeLabels[value as keyof typeof resourceTypeLabels] ?? "recurso";
 }
 
 export function labelReviewStatus(value: string) {
@@ -531,7 +561,7 @@ export function labelPermission(value: string) {
 }
 
 export function labelAuditAction(value: string) {
-  return auditActionLabels[value] ?? humanizeIdentifier(value);
+  return auditActionLabels[value] ?? "Evento auditável registrado";
 }
 
 export function formatResourceReference(
@@ -715,4 +745,23 @@ function humanizeIdentifier(value: string) {
     .trim()
     .replace(/\s+/g, " ")
     .toLowerCase();
+}
+
+function formatFailureReason(value: string) {
+  const sentence = reportFailureCodeLabels[value];
+  if (sentence) {
+    return sentence.replace(/\.$/, "").toLowerCase();
+  }
+
+  return looksTechnical(value) || hasUntranslatedEnglish(value) ? "motivo técnico registrado" : value;
+}
+
+function looksTechnical(value: string) {
+  return /^[a-z]+[a-z0-9]*[_:.][a-z0-9_.:-]+$/i.test(value);
+}
+
+function hasUntranslatedEnglish(value: string) {
+  return /\b(analytics|ledger|market data|snapshot|provider|failed|pending|portfolio|quote|refresh|unavailable|warning|stale)\b/i.test(
+    value
+  );
 }

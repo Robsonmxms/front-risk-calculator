@@ -67,14 +67,14 @@ const ASSIGNABLE_PERMISSIONS: PermissionKey[] = [
 ];
 
 const RESOURCE_OPTIONS: Record<AssignmentResourceType, Array<{ id: string; label: string }>> = {
-  account: [{ id: "acct_main", label: "Conta Principal de Portfólio" }],
+  account: [{ id: "acct_main", label: "Conta principal de portfólio" }],
   client: [
-    { id: "client_founder", label: "Alice Founder" },
+    { id: "client_founder", label: "Alice Fundadora" },
     { id: "client_main", label: "Marina Silva" },
     { id: "client_spouse", label: "Renato Silva" }
   ],
   household: [{ id: "hh_main_silva", label: "Família Silva" }],
-  portfolio: [{ id: "prt_main", label: "Core Growth" }]
+  portfolio: [{ id: "prt_main", label: "Carteira Crescimento" }]
 };
 
 export default function OfficeSettingsPage() {

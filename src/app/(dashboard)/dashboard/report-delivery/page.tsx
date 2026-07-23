@@ -61,7 +61,7 @@ export default function ReportDeliveryPage() {
   const [packages, setPackages] = useState<ReportPackage[]>([]);
   const [statusFilter, setStatusFilter] = useState<ReportPackageStatus | "">("");
   const [title, setTitle] = useState("Pacote de revisão do cliente");
-  const [summaryNotes, setSummaryNotes] = useState("Resumo somente leitura preparado para a revisão do cliente.");
+  const [summaryNotes, setSummaryNotes] = useState("Resumo preparado para consulta do cliente no portal.");
   const [internalNotes, setInternalNotes] = useState("");
   const [portfolioId, setPortfolioId] = useState("");
   const [loading, setLoading] = useState(true);

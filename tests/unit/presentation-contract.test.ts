@@ -26,6 +26,7 @@ import type { ReviewItemStatus, ReviewResourceType } from "../../src/features/wo
 import type { RealtimeConnectionStatus } from "../../src/lib/realtime/client";
 import { ApiError } from "../../src/lib/api/client";
 import {
+  formatPortfolioWarning,
   getApiErrorMessage,
   labelAccountRole,
   labelAlertSeverity,
@@ -33,8 +34,10 @@ import {
   labelAnalyticsMetricKey,
   labelAnalyticsMetricStatus,
   labelAnalyticsStatus,
+  labelAuditAction,
   labelAuditOutcome,
   labelAuditSeverity,
+  labelDataQualityIssueCode,
   labelClientStatus,
   labelDataQualitySeverity,
   labelInsightSeverity,
@@ -47,6 +50,7 @@ import {
   labelPortfolioStatus,
   labelProcessingState,
   labelRealtimeStatus,
+  labelReportFailureCode,
   labelReportPackageItemStatus,
   labelReportPackageItemType,
   labelReportPackageStatus,
@@ -89,9 +93,11 @@ describe("presentation contract", () => {
       labelAnalyticsMetricKey
     );
     expectLocalized(["info", "warning", "blocking"], labelDataQualitySeverity);
+    expect(labelDataQualityIssueCode("market_data.stale")).toBe("Dados de mercado desatualizados");
     expectLocalized(["info", "watch", "high"] satisfies RiskInsightSeverity[], labelInsightSeverity);
     expectLocalized(["connected", "connecting", "disconnected"] satisfies RealtimeConnectionStatus[], labelRealtimeStatus);
     expectLocalized(["pending", "running", "ready", "failed"] satisfies ReportStatus[], labelReportStatus);
+    expect(labelReportFailureCode("generation_failed")).toBe("Falha na geração do relatório.");
     expectLocalized(
       ["draft", "pending_approval", "approved", "delivered", "viewed", "revoked"] satisfies ReportPackageStatus[],
       labelReportPackageStatus
@@ -107,6 +113,7 @@ describe("presentation contract", () => {
     expectLocalized(["info", "low", "medium", "high"], labelNotificationSeverity);
     expectLocalized(["success", "failure"] satisfies AuditOutcome[], labelAuditOutcome);
     expectLocalized(["info", "warning", "critical"] satisfies AuditSeverity[], labelAuditSeverity);
+    expect(labelAuditAction("delivery.report.failed")).toBe("Falha na entrega do relatório");
     expectLocalized(
       [
         "auth",
@@ -166,6 +173,15 @@ describe("presentation contract", () => {
       expect(message, code).not.toBe("fallback");
       expect(message, code).not.toContain("Backend English message");
     }
+  });
+
+  it("uses localized safe fallbacks for unknown technical diagnostics", () => {
+    expect(labelDataQualityIssueCode("market_data.provider_failed")).toBe("Qualidade de dados pendente");
+    expect(labelReportFailureCode("provider_failed")).toBe("Falha operacional registrada.");
+    expect(labelAuditAction("delivery.provider_failed")).toBe("Evento auditável registrado");
+    expect(formatPortfolioWarning("Provider failed while refreshing market data.")).toBe(
+      "Aviso operacional registrado pela plataforma."
+    );
   });
 });
 
