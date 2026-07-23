@@ -3,7 +3,7 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { AppHeader } from "../../../../components/layout/AppHeader";
 import { Alert } from "../../../../components/ui/alert";
-import { Badge, BadgeVariant } from "../../../../components/ui/badge";
+import { Badge } from "../../../../components/ui/badge";
 import { Button } from "../../../../components/ui/button";
 import { Card } from "../../../../components/ui/card";
 import { Label } from "../../../../components/ui/form";
@@ -21,7 +21,7 @@ import { Textarea } from "../../../../components/ui/textarea";
 import { useAuth } from "../../../../features/auth/AuthProvider";
 import { LogoutButton } from "../../../../features/auth/LogoutButton";
 import { ProtectedRoute } from "../../../../features/auth/ProtectedRoute";
-import { listClients } from "../../../../features/client/clientApi";
+import { getClient, listClients } from "../../../../features/client/clientApi";
 import { ClientSummary } from "../../../../features/client/types";
 import {
   approveReportPackage,
@@ -31,7 +31,14 @@ import {
   revokeReportPackage
 } from "../../../../features/delivery/deliveryApi";
 import { ReportPackage, ReportPackageStatus } from "../../../../features/delivery/types";
-import { ApiError } from "../../../../lib/api/client";
+import { PortfolioListItem } from "../../../../features/portfolio/types";
+import {
+  formatDateTime,
+  getApiErrorMessage,
+  labelOfficeRole,
+  labelReportPackageStatus,
+  reportPackageStatusVariant
+} from "../../../../lib/presentation";
 
 const STATUSES: Array<ReportPackageStatus | ""> = [
   "",
@@ -50,12 +57,13 @@ export default function ReportDeliveryPage() {
   const canApprove = actor?.role === "admin" || activeOffice?.role === "office_admin";
   const [clients, setClients] = useState<ClientSummary[]>([]);
   const [selectedClientId, setSelectedClientId] = useState("");
+  const [availablePortfolios, setAvailablePortfolios] = useState<PortfolioListItem[]>([]);
   const [packages, setPackages] = useState<ReportPackage[]>([]);
   const [statusFilter, setStatusFilter] = useState<ReportPackageStatus | "">("");
-  const [title, setTitle] = useState("Client review package");
-  const [summaryNotes, setSummaryNotes] = useState("Read-only summary prepared for client review.");
+  const [title, setTitle] = useState("Pacote de revisão do cliente");
+  const [summaryNotes, setSummaryNotes] = useState("Resumo somente leitura preparado para a revisão do cliente.");
   const [internalNotes, setInternalNotes] = useState("");
-  const [portfolioId, setPortfolioId] = useState("prt_main");
+  const [portfolioId, setPortfolioId] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -64,6 +72,10 @@ export default function ReportDeliveryPage() {
   const selectedClient = useMemo(
     () => clients.find((client) => client.id === selectedClientId),
     [clients, selectedClientId]
+  );
+  const selectedPortfolio = useMemo(
+    () => availablePortfolios.find((portfolio) => portfolio.id === portfolioId),
+    [availablePortfolios, portfolioId]
   );
 
   useEffect(() => {
@@ -87,7 +99,7 @@ export default function ReportDeliveryPage() {
       })
       .catch((caught) => {
         if (isActive) {
-          setError(getMessage(caught, "Não foi possível carregar clientes."));
+          setError(getApiErrorMessage(caught, "Não foi possível carregar clientes."));
         }
       })
       .finally(() => {
@@ -104,20 +116,28 @@ export default function ReportDeliveryPage() {
   useEffect(() => {
     if (!selectedClientId || !canUseDelivery) {
       setPackages([]);
+      setAvailablePortfolios([]);
+      setPortfolioId("");
       return;
     }
 
     let isActive = true;
     setError(null);
-    listClientReportPackages(selectedClientId, { status: statusFilter })
-      .then((data) => {
+    Promise.all([listClientReportPackages(selectedClientId, { status: statusFilter }), getClient(selectedClientId)])
+      .then(([packageData, clientDetail]) => {
         if (isActive) {
-          setPackages(data.reportPackages);
+          setPackages(packageData.reportPackages);
+          setAvailablePortfolios(clientDetail.portfolios);
+          setPortfolioId((current) =>
+            clientDetail.portfolios.some((portfolio) => portfolio.id === current)
+              ? current
+              : clientDetail.portfolios[0]?.id ?? ""
+          );
         }
       })
       .catch((caught) => {
         if (isActive) {
-          setError(getMessage(caught, "Não foi possível carregar pacotes."));
+          setError(getApiErrorMessage(caught, "Não foi possível carregar pacotes."));
         }
       });
 
@@ -135,26 +155,26 @@ export default function ReportDeliveryPage() {
     setSaving(true);
     setError(null);
     setNotice(null);
-    try {
-      const created = await createReportPackage(selectedClientId, {
-        title,
-        summaryNotes,
-        internalNotes: internalNotes || undefined,
-        submitForApproval: true,
-        items: [
-          {
-            type: "portfolio_summary",
-            title: `${portfolioId} overview`,
-            portfolioId,
-            status: "ready"
-          }
-        ]
+	    try {
+	      const created = await createReportPackage(selectedClientId, {
+	        title,
+	        summaryNotes,
+	        internalNotes: internalNotes || undefined,
+	        submitForApproval: true,
+	        items: [
+	          {
+	            type: "portfolio_summary",
+	            title: `Resumo do portfólio ${selectedPortfolio?.name ?? "selecionado"}`,
+	            portfolioId,
+	            status: "ready"
+	          }
+	        ]
       });
       setPackages((current) => [created, ...current]);
       setNotice("Pacote enviado para aprovação.");
       setInternalNotes("");
     } catch (caught) {
-      setError(getMessage(caught, "Não foi possível criar o pacote."));
+      setError(getApiErrorMessage(caught, "Não foi possível criar o pacote."));
     } finally {
       setSaving(false);
     }
@@ -177,9 +197,9 @@ export default function ReportDeliveryPage() {
       setPackages((current) =>
         current.map((entry) => (entry.id === updated.id ? updated : entry))
       );
-      setNotice(`Pacote ${updated.status}.`);
+      setNotice(`Pacote ${labelReportPackageStatus(updated.status)}.`);
     } catch (caught) {
-      setError(getMessage(caught, "Não foi possível atualizar o pacote."));
+      setError(getApiErrorMessage(caught, "Não foi possível atualizar o pacote."));
     } finally {
       setSaving(false);
     }
@@ -189,23 +209,23 @@ export default function ReportDeliveryPage() {
     <ProtectedRoute roles={["admin", "analyst", "user"]}>
       <main className="mx-auto flex min-h-screen max-w-7xl flex-col gap-6 px-4 py-5 lg:px-6">
         <AppHeader
-          title="Report delivery"
+          title="Entrega de relatórios"
           active="reportDelivery"
           showAdmin={actor?.role === "admin"}
           actions={
             <>
-              {activeOffice ? <Badge variant="outline">{activeOffice.role}</Badge> : null}
+              {activeOffice ? <Badge variant="outline">{labelOfficeRole(activeOffice.role)}</Badge> : null}
               <LogoutButton />
             </>
           }
         />
 
         {!officeId ? (
-          <Alert variant="warning">Selecione um office para abrir delivery.</Alert>
+          <Alert variant="warning">Selecione um escritório para abrir a entrega de relatórios.</Alert>
         ) : !canUseDelivery ? (
-          <Alert variant="failure">Delivery center indisponível para este perfil.</Alert>
+          <Alert variant="failure">Entrega de relatórios indisponível para este perfil.</Alert>
         ) : loading ? (
-          <Alert variant="info">Carregando delivery center.</Alert>
+          <Alert variant="info">Carregando entrega de relatórios.</Alert>
         ) : (
           <section className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
             <div className="grid gap-4">
@@ -252,7 +272,7 @@ export default function ReportDeliveryPage() {
                     >
                       {STATUSES.map((status) => (
                         <option key={status || "all"} value={status}>
-                          {status || "todos"}
+                          {status ? labelReportPackageStatus(status) : "todos"}
                         </option>
                       ))}
                     </Select>
@@ -294,7 +314,7 @@ export default function ReportDeliveryPage() {
                             </TableCell>
                             <TableCell>{statusBadge(reportPackage.status)}</TableCell>
                             <TableCell>{reportPackage.items.length}</TableCell>
-                            <TableCell>{formatDate(reportPackage.updatedAt)}</TableCell>
+                          <TableCell>{formatDateTime(reportPackage.updatedAt)}</TableCell>
                             <TableCell>
                               <div className="flex flex-wrap gap-2">
                                 {canApprove && reportPackage.status === "pending_approval" ? (
@@ -374,19 +394,31 @@ export default function ReportDeliveryPage() {
                     onChange={(event) => setInternalNotes(event.target.value)}
                   />
                 </div>
-                <div>
-                  <Label htmlFor="portfolioId">Portfolio</Label>
-                  <Input
-                    id="portfolioId"
-                    className="mt-2"
-                    value={portfolioId}
-                    onChange={(event) => setPortfolioId(event.target.value)}
-                    required
-                  />
-                </div>
-                <Button type="submit" disabled={saving || !selectedClientId || !title.trim()}>
-                  Enviar para aprovação
-                </Button>
+	                <div>
+	                  <Label htmlFor="portfolioId">Portfólio</Label>
+	                  {availablePortfolios.length > 0 ? (
+	                    <Select
+	                      id="portfolioId"
+	                      className="mt-2"
+	                      value={portfolioId}
+	                      onChange={(event) => setPortfolioId(event.target.value)}
+	                      required
+	                    >
+	                      {availablePortfolios.map((portfolio) => (
+	                        <option key={portfolio.id} value={portfolio.id}>
+	                          {portfolio.name}
+	                        </option>
+	                      ))}
+	                    </Select>
+	                  ) : (
+	                    <Alert variant="info" className="mt-2">
+	                      Cliente sem portfólios disponíveis para entrega.
+	                    </Alert>
+	                  )}
+	                </div>
+	                <Button type="submit" disabled={saving || !selectedClientId || !portfolioId || !title.trim()}>
+	                  Enviar para aprovação
+	                </Button>
               </form>
             </Card>
           </section>
@@ -406,29 +438,5 @@ function MetricCard({ label, value }: { label: string; value: number }) {
 }
 
 function statusBadge(status: ReportPackageStatus) {
-  const variant: BadgeVariant =
-    status === "revoked"
-      ? "failure"
-      : status === "delivered" || status === "viewed"
-        ? "success"
-        : status === "approved"
-          ? "info"
-          : status === "pending_approval"
-            ? "warning"
-            : "outline";
-  return <Badge variant={variant}>{status}</Badge>;
-}
-
-function formatDate(value: string) {
-  return new Intl.DateTimeFormat("pt-BR", {
-    dateStyle: "short",
-    timeStyle: "short"
-  }).format(new Date(value));
-}
-
-function getMessage(error: unknown, fallback: string) {
-  if (error instanceof ApiError) {
-    return error.message;
-  }
-  return fallback;
+  return <Badge variant={reportPackageStatusVariant(status)}>{labelReportPackageStatus(status)}</Badge>;
 }

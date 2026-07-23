@@ -14,6 +14,7 @@ const authApiMocks = vi.hoisted(() => ({
 }));
 
 const clientApiMocks = vi.hoisted(() => ({
+  getClient: vi.fn(),
   listClients: vi.fn()
 }));
 
@@ -103,20 +104,39 @@ const client = {
   updatedAt: "2026-07-09T00:00:00.000Z"
 };
 
+const clientPortfolio = {
+  id: "prt_main",
+  officeId: "ofc_main",
+  accountId: "acct_main",
+  accountName: "Main Portfolio Account",
+  clientId: "client_main",
+  clientName: "Marina Silva",
+  name: "Core Growth",
+  baseCurrency: "USD",
+  membershipRole: "viewer",
+  holdingsCount: 4,
+  transactionCount: 3,
+  totalCostBasis: 218100,
+  freshness: "fresh",
+  status: "ready",
+  analyticsState: "ready",
+  marketDataState: "ready"
+};
+
 const deliveredPackage = {
   id: "rpkg_delivered_main",
   officeId: "ofc_main",
   clientId: "client_main",
   householdId: "hh_main_silva",
-  title: "July risk summary",
-  summaryNotes: "Portfolio summary prepared for the July review cycle.",
-  internalNotes: "Staff-only follow-up.",
+  title: "Resumo de risco de julho",
+  summaryNotes: "Resumo do portfólio preparado para o ciclo de revisão de julho.",
+  internalNotes: "Acompanhamento restrito à equipe.",
   status: "delivered",
   items: [
     {
       id: "rpkg_item_main_summary",
       type: "portfolio_summary",
-      title: "Core Growth overview",
+      title: "Visão geral Core Growth",
       portfolioId: "prt_main",
       status: "ready"
     }
@@ -133,9 +153,9 @@ const deliveredPackage = {
 const pendingPackage = {
   ...deliveredPackage,
   id: "rpkg_pending_main",
-  title: "Pending allocation review",
+  title: "Revisão de alocação pendente",
   status: "pending_approval",
-  internalNotes: "Pending final report generation."
+  internalNotes: "Aguardando geração final do relatório."
 };
 
 describe("report delivery pages", () => {
@@ -153,13 +173,18 @@ describe("report delivery pages", () => {
     authApiMocks.getCurrentUser.mockResolvedValue({ actor: staffActor, user: staffUser });
     authApiMocks.logout.mockResolvedValue(undefined);
     clientApiMocks.listClients.mockResolvedValue({ clients: [client] });
+    clientApiMocks.getClient.mockResolvedValue({
+      ...client,
+      accounts: [],
+      portfolios: [clientPortfolio]
+    });
     deliveryApiMocks.listClientReportPackages.mockResolvedValue({
       reportPackages: [pendingPackage, deliveredPackage]
     });
     deliveryApiMocks.createReportPackage.mockResolvedValue({
       ...pendingPackage,
       id: "rpkg_created",
-      title: "Client review package"
+      title: "Pacote de revisão do cliente"
     });
     deliveryApiMocks.approveReportPackage.mockResolvedValue({
       ...pendingPackage,
@@ -187,22 +212,7 @@ describe("report delivery pages", () => {
           status: "viewed",
           portfolios: [
             {
-              id: "prt_main",
-              officeId: "ofc_main",
-              accountId: "acct_main",
-              accountName: "Main Portfolio Account",
-              clientId: "client_main",
-              clientName: "Marina Silva",
-              name: "Core Growth",
-              baseCurrency: "USD",
-              membershipRole: "viewer",
-              holdingsCount: 4,
-              transactionCount: 3,
-              totalCostBasis: 218100,
-              freshness: "fresh",
-              status: "ready",
-              analyticsState: "ready",
-              marketDataState: "ready"
+              ...clientPortfolio
             }
           ]
         }
@@ -222,23 +232,25 @@ describe("report delivery pages", () => {
       </AuthProvider>
     );
 
-    expect(await screen.findByText("Pending allocation review")).toBeInTheDocument();
+    expect(await screen.findByText("Revisão de alocação pendente")).toBeInTheDocument();
     expect(clientApiMocks.listClients).toHaveBeenCalledWith("ofc_main", { status: "active" });
     expect(deliveryApiMocks.listClientReportPackages).toHaveBeenCalledWith("client_main", {
       status: ""
     });
+    expect(clientApiMocks.getClient).toHaveBeenCalledWith("client_main");
+    expect(await screen.findByDisplayValue("Core Growth")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Enviar para aprovação" }));
     await waitFor(() => {
       expect(deliveryApiMocks.createReportPackage).toHaveBeenCalledWith("client_main", {
-        title: "Client review package",
-        summaryNotes: "Read-only summary prepared for client review.",
+        title: "Pacote de revisão do cliente",
+        summaryNotes: "Resumo somente leitura preparado para a revisão do cliente.",
         internalNotes: undefined,
         submitForApproval: true,
         items: [
           {
             type: "portfolio_summary",
-            title: "prt_main overview",
+            title: "Resumo do portfólio Core Growth",
             portfolioId: "prt_main",
             status: "ready"
           }
@@ -274,13 +286,11 @@ describe("report delivery pages", () => {
       </AuthProvider>
     );
 
-    expect(await screen.findByText("July risk summary")).toBeInTheDocument();
-    expect(screen.getByText("Portfolio summary prepared for the July review cycle.")).toBeInTheDocument();
-    expect(screen.queryByText("Staff-only follow-up.")).not.toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /Core Growth/i })).toHaveAttribute(
-      "href",
-      "/dashboard/portfolios/prt_main"
-    );
+    expect(await screen.findByText("Resumo de risco de julho")).toBeInTheDocument();
+    expect(screen.getByText("Resumo do portfólio preparado para o ciclo de revisão de julho.")).toBeInTheDocument();
+    expect(screen.queryByText("Acompanhamento restrito à equipe.")).not.toBeInTheDocument();
+    expect(screen.getByText("Core Growth")).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /Core Growth/i })).not.toBeInTheDocument();
     expect(deliveryApiMocks.getClientPortal).toHaveBeenCalled();
   });
 });

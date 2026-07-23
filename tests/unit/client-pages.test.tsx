@@ -66,6 +66,27 @@ const safeUser: SafeUser = {
   status: "active"
 };
 
+const clientActor: Actor = {
+  ...actor,
+  id: "usr_client",
+  email: "client@example.com",
+  name: "Cliente Principal",
+  officeMemberships: [
+    {
+      officeId: "ofc_main",
+      officeName: "Orion Advisory",
+      role: "client"
+    }
+  ]
+};
+
+const clientUser: SafeUser = {
+  ...safeUser,
+  id: clientActor.id,
+  email: clientActor.email,
+  name: clientActor.name
+};
+
 const household = {
   id: "hh_main",
   officeId: "ofc_main",
@@ -211,6 +232,32 @@ describe("client pages", () => {
       });
     });
     expect(await screen.findByText("Cliente criado.")).toBeInTheDocument();
+  });
+
+  it("keeps the client directory read-only for client office members", async () => {
+    window.sessionStorage.clear();
+    clearSession();
+    saveSession({
+      accessToken: "access-token",
+      refreshToken: "refresh-token",
+      actor: clientActor
+    });
+    authApiMocks.getCurrentUser.mockResolvedValue({ actor: clientActor, user: clientUser });
+    clientApiMocks.listClients.mockClear();
+    clientApiMocks.listHouseholds.mockClear();
+
+    render(
+      <AuthProvider>
+        <ClientDirectoryPage />
+      </AuthProvider>
+    );
+
+    expect(
+      await screen.findByText(/A carteira de clientes é uma área da equipe/i)
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Criar cliente" })).not.toBeInTheDocument();
+    expect(clientApiMocks.listClients).not.toHaveBeenCalled();
+    expect(clientApiMocks.listHouseholds).not.toHaveBeenCalled();
   });
 
   it("renders client detail and archives the client", async () => {

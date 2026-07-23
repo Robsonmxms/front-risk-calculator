@@ -57,10 +57,31 @@ const safeUser: SafeUser = {
   status: "active"
 };
 
+const clientActor: Actor = {
+  ...actor,
+  id: "usr_client",
+  email: "client@example.com",
+  name: "Cliente Principal",
+  officeMemberships: [
+    {
+      officeId: "ofc_main",
+      officeName: "Orion Advisory",
+      role: "client"
+    }
+  ]
+};
+
+const clientUser: SafeUser = {
+  ...safeUser,
+  id: clientActor.id,
+  email: clientActor.email,
+  name: clientActor.name
+};
+
 const reviewItem = {
   id: "rev_main_report",
   officeId: "ofc_main",
-  title: "Review monthly risk pack",
+  title: "Revisar pacote mensal de risco",
   severity: "medium",
   status: "open",
   resourceType: "client",
@@ -121,7 +142,7 @@ describe("workbench page", () => {
     workbenchApiMocks.createReviewItem.mockResolvedValue({
       ...reviewItem,
       id: "rev_new",
-      title: "Check analytics assumptions",
+      title: "Revisar premissas das análises",
       severity: "high"
     });
     workbenchApiMocks.updateReviewItem.mockResolvedValue({
@@ -143,8 +164,13 @@ describe("workbench page", () => {
       </AuthProvider>
     );
 
-    expect(await screen.findByText("Review monthly risk pack")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /Marina Silva/i })).toHaveAttribute(
+    expect(await screen.findByText("Revisar pacote mensal de risco")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "cliente: Marina Silva" })).toHaveAttribute(
+      "href",
+      "/dashboard/clients/client_main"
+    );
+    expect(screen.queryByText("cliente: client_main")).not.toBeInTheDocument();
+    expect(screen.getByText("Silva Family").closest("a")).toHaveAttribute(
       "href",
       "/dashboard/clients/client_main"
     );
@@ -160,12 +186,12 @@ describe("workbench page", () => {
     });
 
     fireEvent.change(screen.getByLabelText("Título"), {
-      target: { value: "Check analytics assumptions" }
+      target: { value: "Revisar premissas das análises" }
     });
-    fireEvent.click(screen.getByRole("button", { name: "Criar review item" }));
+    fireEvent.click(screen.getByRole("button", { name: "Criar item" }));
     await waitFor(() => {
       expect(workbenchApiMocks.createReviewItem).toHaveBeenCalledWith("ofc_main", {
-        title: "Check analytics assumptions",
+        title: "Revisar premissas das análises",
         severity: "medium",
         resourceType: "client",
         resourceId: "client_main",
@@ -176,9 +202,9 @@ describe("workbench page", () => {
         notes: undefined
       });
     });
-    expect(await screen.findByText("Review item criado.")).toBeInTheDocument();
+    expect(await screen.findByText("Item de acompanhamento criado.")).toBeInTheDocument();
 
-    fireEvent.change(screen.getByLabelText("Status Review monthly risk pack"), {
+    fireEvent.change(screen.getByLabelText("Status Revisar pacote mensal de risco"), {
       target: { value: "closed" }
     });
     await waitFor(() => {
@@ -186,5 +212,32 @@ describe("workbench page", () => {
         status: "closed"
       });
     });
+  });
+
+  it("renders client office workbench as read-only business labels", async () => {
+    window.sessionStorage.clear();
+    clearSession();
+    saveSession({
+      accessToken: "access-token",
+      refreshToken: "refresh-token",
+      actor: clientActor
+    });
+    authApiMocks.getCurrentUser.mockResolvedValue({ actor: clientActor, user: clientUser });
+
+    render(
+      <AuthProvider>
+        <WorkbenchPage />
+      </AuthProvider>
+    );
+
+    expect(await screen.findByText("Revisar pacote mensal de risco")).toBeInTheDocument();
+    expect(screen.getByText("cliente: Marina Silva")).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "cliente: Marina Silva" })).not.toBeInTheDocument();
+    expect(screen.queryByText("cliente: client_main")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Criar item" })).not.toBeInTheDocument();
+    expect(
+      screen.queryByLabelText("Status Revisar pacote mensal de risco")
+    ).not.toBeInTheDocument();
+    expect(workbenchApiMocks.updateReviewItem).not.toHaveBeenCalled();
   });
 });

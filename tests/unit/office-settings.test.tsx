@@ -246,15 +246,17 @@ describe("office settings", () => {
     );
 
     expect(await screen.findByRole("heading", { name: "Orion Advisory" })).toBeInTheDocument();
-    expect(screen.getByLabelText("Selecionar office")).toBeInTheDocument();
+    expect(screen.getByLabelText("Selecionar escritório")).toBeInTheDocument();
     expect(screen.getAllByText("Portfolio User").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Core Advisory Team").length).toBeGreaterThan(0);
-    expect(screen.getByText("client:client_main")).toBeInTheDocument();
+    expect(screen.getByText("cliente: Marina Silva")).toBeInTheDocument();
+    expect(screen.queryByText("cliente: client_main")).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Referência")).toHaveDisplayValue("Core Growth");
 
     fireEvent.change(screen.getByLabelText("Nome"), {
       target: { value: "Orion Advisory Group" }
     });
-    fireEvent.click(screen.getByRole("button", { name: "Salvar office" }));
+    fireEvent.click(screen.getByRole("button", { name: "Salvar escritório" }));
 
     await waitFor(() => {
       expect(officeApiMocks.updateOffice).toHaveBeenCalledWith("ofc_main", {
@@ -262,7 +264,7 @@ describe("office settings", () => {
         status: "active"
       });
     });
-    expect(await screen.findByText("Office atualizado.")).toBeInTheDocument();
+    expect(await screen.findByText("Escritório atualizado.")).toBeInTheDocument();
 
     fireEvent.change(screen.getByLabelText("Nome do time"), {
       target: { value: "Planning Desk" }
@@ -282,7 +284,7 @@ describe("office settings", () => {
     fireEvent.change(screen.getByLabelText("Usuário"), {
       target: { value: "usr_advisor" }
     });
-    fireEvent.click(screen.getByRole("button", { name: "Criar assignment" }));
+    fireEvent.click(screen.getByRole("button", { name: "Criar permissão" }));
 
     await waitFor(() => {
       expect(officeApiMocks.createAssignment).toHaveBeenCalledWith({
@@ -294,13 +296,13 @@ describe("office settings", () => {
         permissions: ["ledger.write"]
       });
     });
-    expect(await screen.findByText("Assignment criado.")).toBeInTheDocument();
+    expect(await screen.findByText("Permissão por recurso criada.")).toBeInTheDocument();
 
     fireEvent.click(screen.getAllByRole("button", { name: "Revogar" })[0]);
     await waitFor(() => {
       expect(officeApiMocks.deleteAssignment).toHaveBeenCalledWith("asn_ledger_write");
     });
-    expect(await screen.findByText("Assignment revogado.")).toBeInTheDocument();
+    expect(await screen.findByText("Permissão por recurso revogada.")).toBeInTheDocument();
   });
 
   it("shows a denied state without loading administrative team endpoints", async () => {
@@ -334,8 +336,10 @@ describe("office settings", () => {
       </AuthProvider>
     );
 
-    expect(await screen.findByText("Ações de equipe indisponíveis para seu papel neste office.")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Salvar office" })).toBeDisabled();
+    expect(
+      await screen.findByText("Ações de equipe indisponíveis para seu perfil neste escritório.")
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Salvar escritório" })).toBeDisabled();
     expect(screen.queryByRole("button", { name: "Criar time" })).not.toBeInTheDocument();
     expect(officeApiMocks.listOfficeMembers).not.toHaveBeenCalled();
     expect(officeApiMocks.listAdvisoryTeams).not.toHaveBeenCalled();

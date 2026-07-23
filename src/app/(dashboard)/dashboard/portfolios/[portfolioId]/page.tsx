@@ -62,6 +62,40 @@ import {
 } from "../../../../../features/portfolio/types";
 import { ApiError } from "../../../../../lib/api/client";
 import {
+  alertSeverityVariant,
+  alertStatusVariant,
+  analyticsStatusVariant,
+  dataQualitySeverityVariant,
+  formatCurrency,
+  formatDateTime,
+  formatDecimal,
+  formatInputDecimal,
+  formatPortfolioWarning,
+  getApiErrorMessage,
+  insightSeverityVariant,
+  labelAccountRole,
+  labelAlertSeverity,
+  labelAlertStatus,
+  labelAnalyticsMetricKey,
+  labelAnalyticsMetricStatus,
+  labelAnalyticsStatus,
+  labelDataQualitySeverity,
+  labelInsightSeverity,
+  labelNotificationSeverity,
+  labelNotificationStatus,
+  labelPortfolioFreshness,
+  labelPortfolioStatus,
+  labelProcessingState,
+  labelRealtimeStatus,
+  labelReportStatus,
+  labelTransactionType,
+  notificationSeverityVariant,
+  portfolioFreshnessVariant,
+  portfolioStatusVariant,
+  realtimeStatusVariant,
+  reportStatusVariant
+} from "../../../../../lib/presentation";
+import {
   connectRealtime,
   RealtimeConnectionStatus
 } from "../../../../../lib/realtime/client";
@@ -113,7 +147,7 @@ export default function PortfolioDetailPage() {
   const [realtimeStatus, setRealtimeStatus] = useState<RealtimeConnectionStatus>("disconnected");
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [reportFormat, setReportFormat] = useState<ReportFormat>("pdf");
-  const [alertTitle, setAlertTitle] = useState("Analytics atualizou métricas monitoradas");
+  const [alertTitle, setAlertTitle] = useState("Análises atualizaram métricas monitoradas");
   const [alertSeverity, setAlertSeverity] = useState<AlertSeverity>("medium");
   const [assetSearchStatus, setAssetSearchStatus] = useState<AssetSearchStatus>("idle");
   const [assetSearchResults, setAssetSearchResults] = useState<MarketAsset[]>([]);
@@ -171,7 +205,7 @@ export default function PortfolioDetailPage() {
       const response = await getPortfolioAnalytics(portfolioId);
       setAnalytics(response.data);
     } catch (requestError) {
-      setAnalyticsError(getMessage(requestError, "Não foi possível carregar analytics."));
+      setAnalyticsError(getApiErrorMessage(requestError, "Não foi possível carregar as análises."));
     } finally {
       setIsAnalyticsLoading(false);
     }
@@ -187,7 +221,7 @@ export default function PortfolioDetailPage() {
       const response = await listPortfolioReports(portfolioId);
       setReports(response.reports);
     } catch (requestError) {
-      setReportsError(getMessage(requestError, "Não foi possível carregar relatórios."));
+      setReportsError(getApiErrorMessage(requestError, "Não foi possível carregar relatórios."));
     }
   }, [portfolioId]);
 
@@ -201,7 +235,7 @@ export default function PortfolioDetailPage() {
       const response = await listPortfolioAlerts(portfolioId);
       setAlerts(response.alerts);
     } catch (requestError) {
-      setAlertsError(getMessage(requestError, "Não foi possível carregar alertas."));
+      setAlertsError(getApiErrorMessage(requestError, "Não foi possível carregar alertas."));
     }
   }, [portfolioId]);
 
@@ -211,7 +245,7 @@ export default function PortfolioDetailPage() {
       const response = await listNotifications();
       setNotifications(response.notifications);
     } catch (requestError) {
-      setNotificationsError(getMessage(requestError, "Não foi possível carregar notificações."));
+      setNotificationsError(getApiErrorMessage(requestError, "Não foi possível carregar notificações."));
     }
   }, []);
 
@@ -259,7 +293,7 @@ export default function PortfolioDetailPage() {
       })
       .catch((requestError: unknown) => {
         if (isActive) {
-          setError(getMessage(requestError, "Não foi possível carregar o detalhe do portfolio."));
+          setError(getApiErrorMessage(requestError, "Não foi possível carregar o detalhe do portfólio."));
         }
       })
       .finally(() => {
@@ -399,7 +433,7 @@ export default function PortfolioDetailPage() {
           setAssetSearchStatus(response.data.assets.length > 0 ? "success" : "empty");
           setAssetSearchMessage(
             response.meta?.providerStatus === "degraded"
-              ? "Provider indisponível; exibindo dados conhecidos pelo backend."
+              ? "Dados de mercado indisponíveis; exibindo registros já conhecidos pela plataforma."
               : null
           );
         })
@@ -411,7 +445,7 @@ export default function PortfolioDetailPage() {
           setAssetSearchResults([]);
           setAssetSearchStatus("error");
           setAssetSearchMessage(
-            getMessage(requestError, "Provider indisponível. Informe o ativo manualmente.")
+            getApiErrorMessage(requestError, "Dados de mercado indisponíveis. Informe o ativo manualmente.")
           );
         });
     }, 250);
@@ -457,7 +491,7 @@ export default function PortfolioDetailPage() {
           });
           setForm((current) => ({
             ...current,
-            unitPrice: String(calculatedPrice.unitPrice),
+            unitPrice: formatInputDecimal(calculatedPrice.unitPrice, 2),
             currency: calculatedPrice.currency
           }));
         })
@@ -469,7 +503,7 @@ export default function PortfolioDetailPage() {
           setTradePrice(null);
           setTradePriceStatus("error");
           setTradePriceError(
-            getMessage(requestError, "Não foi possível calcular o preço pelo Yahoo.")
+            getApiErrorMessage(requestError, "Não foi possível calcular o preço pelos dados de mercado.")
           );
         });
     }, 250);
@@ -492,9 +526,9 @@ export default function PortfolioDetailPage() {
 
     if (!selectedAssetId) {
       setFormErrors({
-        assetSymbol: "Selecione um ativo retornado pelo Yahoo antes de registrar."
+        assetSymbol: "Selecione um ativo retornado pelos dados de mercado antes de registrar."
       });
-      setSubmitError("Selecione um ativo retornado pelo Yahoo antes de registrar.");
+      setSubmitError("Selecione um ativo retornado pelos dados de mercado antes de registrar.");
       return;
     }
 
@@ -507,9 +541,9 @@ export default function PortfolioDetailPage() {
 
     if (!hasCurrentTradePrice || !tradePrice) {
       setFormErrors({
-        unitPrice: "Aguarde o cálculo do preço pelo Yahoo."
+        unitPrice: "Aguarde o cálculo do preço pelos dados de mercado."
       });
-      setSubmitError("Aguarde o cálculo do preço pelo Yahoo antes de registrar.");
+      setSubmitError("Aguarde o cálculo do preço pelos dados de mercado antes de registrar.");
       return;
     }
 
@@ -539,8 +573,8 @@ export default function PortfolioDetailPage() {
       setSnapshots(snapshotsData.snapshots);
       setSubmissionNotice(
         portfolioData.marketDataState === "pending"
-          ? "Transacao registrada. O backend enfileirou o enriquecimento de market data para este ativo."
-          : null
+            ? "Transação registrada. Os dados de mercado deste ativo serão atualizados na fila de acompanhamento."
+            : null
       );
       await reloadAnalytics();
       setForm({
@@ -560,7 +594,7 @@ export default function PortfolioDetailPage() {
       setTradePriceError(null);
     } catch (requestError) {
       setFormErrors(getFieldErrors(requestError));
-      setSubmitError(getMessage(requestError, "Não foi possível registrar a transação."));
+      setSubmitError(getApiErrorMessage(requestError, "Não foi possível registrar a transação."));
     } finally {
       setIsSubmitting(false);
     }
@@ -576,10 +610,10 @@ export default function PortfolioDetailPage() {
     setRecomputeNotice(null);
     try {
       await requestPortfolioAnalyticsRecompute(portfolioId);
-      setRecomputeNotice("Recalculo de analytics enfileirado pelo backend.");
+      setRecomputeNotice("Recálculo das análises solicitado à plataforma.");
       await reloadAnalytics();
     } catch (requestError) {
-      setAnalyticsError(getMessage(requestError, "Não foi possível solicitar recálculo."));
+      setAnalyticsError(getApiErrorMessage(requestError, "Não foi possível solicitar recálculo."));
     } finally {
       setIsRecomputing(false);
     }
@@ -604,10 +638,10 @@ export default function PortfolioDetailPage() {
     setReportNotice(null);
     try {
       await requestPortfolioReport(portfolioId, format);
-      setReportNotice("Relatório enfileirado. O status será atualizado pelo stream ou polling.");
+      setReportNotice("Relatório solicitado. O status será atualizado automaticamente.");
       await reloadReports();
     } catch (requestError) {
-      setReportsError(getMessage(requestError, "Não foi possível solicitar relatório."));
+      setReportsError(getApiErrorMessage(requestError, "Não foi possível solicitar relatório."));
     } finally {
       setIsRequestingReport(false);
     }
@@ -624,7 +658,7 @@ export default function PortfolioDetailPage() {
       anchor.click();
       URL.revokeObjectURL(objectUrl);
     } catch (requestError) {
-      setReportsError(getMessage(requestError, "Não foi possível baixar o relatório."));
+      setReportsError(getApiErrorMessage(requestError, "Não foi possível baixar o relatório."));
     }
   }
 
@@ -643,12 +677,12 @@ export default function PortfolioDetailPage() {
         severity: alertSeverity,
         condition: { eventType: "analytics.updated" }
       });
-      setAlertNotice("Alerta criado para novas atualizações de analytics.");
-      setAlertTitle("Analytics atualizou métricas monitoradas");
+      setAlertNotice("Alerta criado para novas atualizações de análises.");
+      setAlertTitle("Análises atualizaram métricas monitoradas");
       setAlertSeverity("medium");
       await reloadAlerts();
     } catch (requestError) {
-      setAlertsError(getMessage(requestError, "Não foi possível criar o alerta."));
+      setAlertsError(getApiErrorMessage(requestError, "Não foi possível criar o alerta."));
     } finally {
       setIsCreatingAlert(false);
     }
@@ -663,36 +697,48 @@ export default function PortfolioDetailPage() {
       const message =
         requestError instanceof ApiError && [403, 404].includes(requestError.status)
           ? "Notificação indisponível para esta sessão."
-          : getMessage(requestError, "Não foi possível atualizar a notificação.");
+          : getApiErrorMessage(requestError, "Não foi possível atualizar a notificação.");
       setNotificationsError(message);
     }
   }
+
+  const transactionSubmitBlocked =
+    isSubmitting || !selectedAssetId || tradePriceStatus !== "success";
+  const transactionSubmitHelp = !selectedAssetId
+    ? "Selecione um ativo retornado pelos dados de mercado para liberar o registro."
+    : tradePriceStatus === "loading"
+      ? "Aguardando o cálculo do preço pelos dados de mercado."
+      : tradePriceStatus === "error"
+        ? "Corrija o ativo, a data ou a quantidade para recalcular o preço."
+        : tradePriceStatus !== "success"
+          ? "Informe data e quantidade para calcular o preço antes de registrar."
+          : null;
 
   return (
     <ProtectedRoute roles={["admin", "analyst", "user"]}>
       <main className="mx-auto flex min-h-screen max-w-7xl flex-col gap-6 px-4 py-5 lg:px-6">
         <AppHeader
-          title="Portfolio ledger"
+          title="Histórico do portfólio"
           active="dashboard"
           showAdmin={actor?.role === "admin"}
           actions={<LogoutButton />}
         />
 
         <LinkButton href="/dashboard" variant="outline" className="w-fit">
-          Voltar para portfolios
+          Voltar para portfólios
         </LinkButton>
 
         {isLoading ? (
-          <Alert variant="info">Montando portfolio, posições, transações e snapshots.</Alert>
+          <Alert variant="info">Montando portfólio, posições, transações e históricos.</Alert>
         ) : error || !portfolio ? (
-          <Alert variant="failure">{error ?? "Portfolio não encontrado."}</Alert>
+          <Alert variant="failure">{error ?? "Portfólio não encontrado."}</Alert>
         ) : (
           <>
             {portfolio.warnings.length > 0 ? (
               <Alert variant={portfolio.freshness === "partial" ? "warning" : "failure"}>
                 <div className="space-y-1">
                   {portfolio.warnings.map((warning) => (
-                    <p key={warning}>{warning}</p>
+                    <p key={warning}>{formatPortfolioWarning(warning)}</p>
                   ))}
                 </div>
               </Alert>
@@ -703,11 +749,11 @@ export default function PortfolioDetailPage() {
               <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                 <div className="space-y-1">
                   <p className="text-xs font-semibold uppercase text-moss">
-                    Portfolio detail
+                    Detalhe do portfólio
                   </p>
                   <h1 className="text-3xl font-semibold text-stone-900">{portfolio.name}</h1>
                   <p className="text-stone-600">
-                    {portfolio.accountName} · papel {portfolio.membershipRole}
+                    {portfolio.accountName} · perfil {labelAccountRole(portfolio.membershipRole)}
                   </p>
                   {portfolio.clientId ? (
                     <Link
@@ -720,8 +766,12 @@ export default function PortfolioDetailPage() {
                   ) : null}
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  <Badge variant={badgeColorForFreshness(portfolio.freshness)}>{portfolio.freshness}</Badge>
-                  <Badge variant={badgeColorForStatus(portfolio.status)}>{portfolio.status}</Badge>
+                  <Badge variant={portfolioFreshnessVariant(portfolio.freshness)}>
+                    {labelPortfolioFreshness(portfolio.freshness)}
+                  </Badge>
+                  <Badge variant={portfolioStatusVariant(portfolio.status)}>
+                    {labelPortfolioStatus(portfolio.status)}
+                  </Badge>
                 </div>
               </div>
             </Card>
@@ -732,14 +782,14 @@ export default function PortfolioDetailPage() {
                   Posições
                 </span>
                 <strong className="text-3xl text-stone-900">{portfolio.holdingsCount}</strong>
-                <p className="text-sm text-stone-600">ativas nesta view</p>
+                <p className="text-sm text-stone-600">ativas nesta visão</p>
               </Card>
               <Card>
                 <span className="text-xs font-semibold uppercase text-stone-500">
                   Transações
                 </span>
                 <strong className="text-3xl text-stone-900">{portfolio.transactionCount}</strong>
-                <p className="text-sm text-stone-600">registradas no ledger</p>
+                <p className="text-sm text-stone-600">registradas no histórico</p>
               </Card>
               <Card>
                 <span className="text-xs font-semibold uppercase text-stone-500">
@@ -755,9 +805,9 @@ export default function PortfolioDetailPage() {
                   Estado
                 </span>
                 <strong className="text-lg text-stone-900">
-                  {portfolio.analyticsState}/{portfolio.marketDataState}
+                  {labelProcessingState(portfolio.analyticsState)} / {labelProcessingState(portfolio.marketDataState)}
                 </strong>
-                <p className="text-sm text-stone-600">analytics e market data</p>
+                <p className="text-sm text-stone-600">análises e dados de mercado</p>
               </Card>
             </section>
 
@@ -801,7 +851,7 @@ export default function PortfolioDetailPage() {
               <Card>
                 <div className="space-y-1">
                   <h2 className="text-xl font-semibold text-stone-900">Registrar transação</h2>
-                  <p className="text-sm text-stone-600">Somente compra e venda nesta primeira versão do ledger.</p>
+                  <p className="text-sm text-stone-600">Somente compra e venda nesta primeira versão do histórico.</p>
                 </div>
 
                 <form className="space-y-4" onSubmit={handleSubmit}>
@@ -1009,10 +1059,15 @@ export default function PortfolioDetailPage() {
 
                   <Button
                     type="submit"
-                    disabled={isSubmitting || tradePriceStatus === "loading"}
+                    disabled={transactionSubmitBlocked}
                   >
                     {isSubmitting ? "Registrando..." : "Registrar transação"}
                   </Button>
+                  {transactionSubmitHelp ? (
+                    <p className="text-sm text-stone-600" role="status">
+                      {transactionSubmitHelp}
+                    </p>
+                  ) : null}
                 </form>
               </Card>
 
@@ -1021,7 +1076,7 @@ export default function PortfolioDetailPage() {
                   <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
                     <div>
                       <h2 className="text-xl font-semibold text-stone-900">Posições</h2>
-                      <p className="text-sm text-stone-600">Reconstrução atual ou por data do ledger.</p>
+                      <p className="text-sm text-stone-600">Reconstrução atual ou por data do histórico.</p>
                     </div>
                     <div className="w-full md:max-w-52">
                       <Label htmlFor="asOf">Data base</Label>
@@ -1059,7 +1114,7 @@ export default function PortfolioDetailPage() {
                                 {position.assetSymbol}
                               </TableCell>
                               <TableCell>{position.assetName}</TableCell>
-                              <TableCell>{position.quantity}</TableCell>
+                              <TableCell>{formatDecimal(position.quantity)}</TableCell>
                               <TableCell>
                                 {formatCurrency(position.averageCost, position.currency)}
                               </TableCell>
@@ -1079,7 +1134,7 @@ export default function PortfolioDetailPage() {
                   <Card>
                     <div>
                       <h2 className="text-xl font-semibold text-stone-900">Transações</h2>
-                      <p className="text-sm text-stone-600">Histórico append-friendly do portfolio.</p>
+                      <p className="text-sm text-stone-600">Histórico de movimentações do portfólio.</p>
                     </div>
 
                     {transactions.length === 0 ? (
@@ -1092,7 +1147,7 @@ export default function PortfolioDetailPage() {
                           <div key={transaction.id} className="flex items-start justify-between gap-3 p-4">
                             <div>
                               <strong className="text-stone-900">
-                                {transaction.type} {transaction.assetSymbol}
+                                {labelTransactionType(transaction.type)} {transaction.assetSymbol}
                               </strong>
                               <p className="text-sm text-stone-600">
                                 {transaction.assetName} · {transaction.tradeDate}
@@ -1102,7 +1157,7 @@ export default function PortfolioDetailPage() {
                               ) : null}
                             </div>
                             <div className="text-right text-sm text-stone-700">
-                              <div>{transaction.quantity}</div>
+                              <div>{formatDecimal(transaction.quantity)}</div>
                               <div>{formatCurrency(transaction.totalAmount, transaction.currency)}</div>
                             </div>
                           </div>
@@ -1113,13 +1168,13 @@ export default function PortfolioDetailPage() {
 
                   <Card>
                     <div>
-                      <h2 className="text-xl font-semibold text-stone-900">Snapshots</h2>
+                      <h2 className="text-xl font-semibold text-stone-900">Históricos</h2>
                       <p className="text-sm text-stone-600">Estados históricos reconstruídos por data.</p>
                     </div>
 
                     {snapshots.length === 0 ? (
                       <Alert variant="warning">
-                        Snapshots serão gerados conforme o ledger evoluir.
+                        Registros históricos serão gerados conforme as movimentações evoluírem.
                       </Alert>
                     ) : (
                       <div className="divide-y divide-border rounded-lg border border-border">
@@ -1205,9 +1260,11 @@ function ReportsAlertsNotificationsPanel({
           <div className="flex items-start justify-between gap-3">
             <div>
               <h2 className="text-xl font-semibold text-stone-900">Relatórios</h2>
-              <p className="text-sm text-stone-600">Arquivos gerados no backend.</p>
+            <p className="text-sm text-stone-600">Arquivos gerados pela plataforma.</p>
             </div>
-            <Badge variant={badgeColorForRealtime(realtimeStatus)}>{realtimeStatus}</Badge>
+            <Badge variant={realtimeStatusVariant(realtimeStatus)}>
+              {labelRealtimeStatus(realtimeStatus)}
+            </Badge>
           </div>
 
           <form className="grid gap-3 sm:grid-cols-[1fr_auto]" onSubmit={onRequestReport}>
@@ -1232,7 +1289,7 @@ function ReportsAlertsNotificationsPanel({
           {reportNotice ? <Alert variant="info">{reportNotice}</Alert> : null}
 
           {reports.length === 0 ? (
-            <Alert variant="warning">Nenhum relatório solicitado para este portfolio.</Alert>
+            <Alert variant="warning">Nenhum relatório solicitado para este portfólio.</Alert>
           ) : (
             <div className="divide-y divide-border rounded-lg border border-border">
               {reports.map((report) => (
@@ -1240,7 +1297,9 @@ function ReportsAlertsNotificationsPanel({
                   <div>
                     <div className="flex flex-wrap items-center gap-2">
                       <strong className="text-sm uppercase text-stone-900">{report.format}</strong>
-                      <Badge variant={badgeColorForReport(report.status)}>{report.status}</Badge>
+                      <Badge variant={reportStatusVariant(report.status)}>
+                        {labelReportStatus(report.status)}
+                      </Badge>
                     </div>
                     <p className="mt-1 text-sm text-stone-600">
                       {report.completedAt
@@ -1321,10 +1380,12 @@ function ReportsAlertsNotificationsPanel({
               {alerts.map((alert) => (
                 <div key={alert.id} className="p-4">
                   <div className="flex flex-wrap items-center gap-2">
-                    <Badge variant={badgeColorForAlertSeverity(alert.severity)}>
-                      {alert.severity}
+                    <Badge variant={alertSeverityVariant(alert.severity)}>
+                      {labelAlertSeverity(alert.severity)}
                     </Badge>
-                    <Badge variant={badgeColorForAlertStatus(alert.status)}>{alert.status}</Badge>
+                    <Badge variant={alertStatusVariant(alert.status)}>
+                      {labelAlertStatus(alert.status)}
+                    </Badge>
                   </div>
                   <strong className="mt-2 block text-stone-900">{alert.title}</strong>
                   <p className="mt-1 text-sm text-stone-600">
@@ -1346,7 +1407,7 @@ function ReportsAlertsNotificationsPanel({
         <div className="flex items-start justify-between gap-3">
           <div>
             <h2 className="text-xl font-semibold text-stone-900">Notificações</h2>
-            <p className="text-sm text-stone-600">Eventos persistidos pelo backend.</p>
+            <p className="text-sm text-stone-600">Eventos registrados pela plataforma.</p>
           </div>
           <Badge variant={unreadCount > 0 ? "warning" : "success"}>{unreadCount} novas</Badge>
         </div>
@@ -1354,17 +1415,17 @@ function ReportsAlertsNotificationsPanel({
         {notificationsError ? <Alert variant="failure">{notificationsError}</Alert> : null}
 
         {notifications.length === 0 ? (
-          <Alert variant="info">Sem notificações para este portfolio.</Alert>
+          <Alert variant="info">Sem notificações para este portfólio.</Alert>
         ) : (
           <div className="divide-y divide-border rounded-lg border border-border">
             {notifications.slice(0, 8).map((notification) => (
               <div key={notification.id} className="space-y-2 p-4">
                 <div className="flex flex-wrap items-center gap-2">
-                  <Badge variant={badgeColorForNotification(notification.severity)}>
-                    {notification.severity}
+                  <Badge variant={notificationSeverityVariant(notification.severity)}>
+                    {labelNotificationSeverity(notification.severity)}
                   </Badge>
                   <Badge variant={notification.status === "unread" ? "warning" : "success"}>
-                    {notification.status}
+                    {labelNotificationStatus(notification.status)}
                   </Badge>
                 </div>
                 <strong className="block text-sm text-stone-900">{notification.title}</strong>
@@ -1415,17 +1476,17 @@ function AnalyticsDashboard({
       <Card>
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div className="space-y-1">
-            <p className="text-xs font-semibold uppercase text-moss">Analytics</p>
-            <h2 className="text-2xl font-semibold text-stone-900">Risk engine</h2>
+            <p className="text-xs font-semibold uppercase text-moss">Análises</p>
+            <h2 className="text-2xl font-semibold text-stone-900">Motor de risco</h2>
             <p className="text-sm text-stone-600">
               {snapshot
-                ? `Snapshot ${snapshot.asOfDate} · ${formatDateTime(snapshot.generatedAt)}`
-                : "Snapshot pendente"}
+                ? `Retrato de risco ${snapshot.asOfDate} · ${formatDateTime(snapshot.generatedAt)}`
+                : "Retrato de risco pendente"}
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <Badge variant={badgeColorForAnalyticsStatus(analytics?.status ?? "pending")}>
-              {analytics?.status ?? "pending"}
+            <Badge variant={analyticsStatusVariant(analytics?.status ?? "pending")}>
+              {labelAnalyticsStatus(analytics?.status ?? "pending")}
             </Badge>
             <Badge variant="info">USD</Badge>
             <Button onClick={onRecompute} disabled={isRecomputing}>
@@ -1437,19 +1498,19 @@ function AnalyticsDashboard({
 
       {error ? <Alert variant="failure">{error}</Alert> : null}
       {recomputeNotice ? <Alert variant="info">{recomputeNotice}</Alert> : null}
-      {isLoading && !snapshot ? <Alert variant="info">Carregando analytics.</Alert> : null}
+      {isLoading && !snapshot ? <Alert variant="info">Carregando análises.</Alert> : null}
       {isShowingLastSuccessful ? (
         <Alert variant="warning">
-          O último snapshot bem-sucedido continua visível após a falha mais recente.
+          O último retrato de risco bem-sucedido continua visível após a falha mais recente.
         </Alert>
       ) : null}
       {snapshot?.status === "partial" ? (
         <Alert variant="warning">
-          Snapshot parcial com {snapshot.dataQuality.unavailableMetricCount} métricas indisponíveis.
+          Retrato de risco parcial com {snapshot.dataQuality.unavailableMetricCount} métricas indisponíveis.
         </Alert>
       ) : null}
       {!snapshot && !isLoading ? (
-        <Alert variant="warning">Analytics ainda não possui snapshot calculado.</Alert>
+        <Alert variant="warning">As análises ainda não possuem retrato de risco calculado.</Alert>
       ) : null}
 
       {snapshot ? (
@@ -1472,7 +1533,7 @@ function AnalyticsDashboard({
             />
             <BarPanel
               title="Setores"
-              emptyLabel="Sem exposicao setorial calculada."
+              emptyLabel="Sem exposição setorial calculada."
               rows={snapshot.sectorExposure.map((point) => ({
                 label: point.sector,
                 detail: formatCurrency(point.marketValueUsd, "USD"),
@@ -1498,12 +1559,14 @@ function AnalyticsDashboard({
                 {snapshot.dataQuality.issues.slice(0, 6).map((issue, index) => (
                   <div key={`${issue.code}-${index}`} className="p-3">
                     <div className="flex flex-wrap items-center gap-2">
-                      <Badge variant={issue.severity === "blocking" ? "failure" : "warning"}>
-                        {issue.severity}
+                      <Badge variant={dataQualitySeverityVariant(issue.severity)}>
+                        {labelDataQualitySeverity(issue.severity)}
                       </Badge>
                       <strong className="text-sm text-stone-900">{issue.code}</strong>
                     </div>
-                    <p className="mt-1 text-sm text-stone-600">{issue.message}</p>
+                    <p className="mt-1 text-sm text-stone-600">
+                      {formatAnalyticsMessage(issue.message)}
+                    </p>
                   </div>
                 ))}
               </div>
@@ -1531,13 +1594,17 @@ function MetricCard({ metric }: { metric: AnalyticsMetric }) {
   return (
     <Card>
       <div className="flex items-start justify-between gap-3">
-        <span className="text-xs font-semibold uppercase text-stone-500">{metric.label}</span>
+        <span className="text-xs font-semibold uppercase text-stone-500">
+          {labelAnalyticsMetricKey(metric.key)}
+        </span>
         <Badge variant={metric.status === "available" ? "success" : "warning"}>
-          {metric.status}
+          {labelAnalyticsMetricStatus(metric.status)}
         </Badge>
       </div>
       <strong className="text-2xl text-stone-900">{formatMetricValue(metric)}</strong>
-      {metric.reason ? <p className="text-sm text-stone-600">{metric.reason}</p> : null}
+      {metric.reason ? (
+        <p className="text-sm text-stone-600">{formatAnalyticsMessage(metric.reason)}</p>
+      ) : null}
     </Card>
   );
 }
@@ -1678,13 +1745,15 @@ function InsightPanel({ snapshot }: { snapshot: PortfolioAnalyticsSnapshot }) {
     <Card>
       <h3 className="text-lg font-semibold text-stone-900">Insights explicativos</h3>
       {snapshot.insights.length === 0 ? (
-        <Alert variant="info">Nenhum insight gerado para este snapshot.</Alert>
+        <Alert variant="info">Nenhuma observação gerada para este retrato de risco.</Alert>
       ) : (
         <div className="space-y-3">
           {snapshot.insights.map((insight) => (
             <div key={insight.id} className="rounded-lg border border-border p-3">
               <div className="flex flex-wrap items-center gap-2">
-                <Badge variant={badgeColorForInsight(insight.severity)}>{insight.severity}</Badge>
+                <Badge variant={insightSeverityVariant(insight.severity)}>
+                  {labelInsightSeverity(insight.severity)}
+                </Badge>
                 <strong className="text-sm text-stone-900">{insight.title}</strong>
               </div>
               <p className="mt-2 text-sm text-stone-600">{insight.explanation}</p>
@@ -1716,7 +1785,7 @@ function AssetSearchState({
   if (status === "loading") {
     return (
       <p className="mt-2 text-sm text-stone-600" role="status">
-        Consultando Yahoo para {selectedExchange?.code ?? "a bolsa selecionada"}...
+        Consultando dados de mercado para {selectedExchange?.code ?? "a bolsa selecionada"}...
       </p>
     );
   }
@@ -1724,7 +1793,7 @@ function AssetSearchState({
   if (status === "error") {
     return (
       <Alert variant="failure" className="mt-3">
-        {message ?? "Provider indisponível. Informe o ativo manualmente."}
+        {message ?? "Dados de mercado indisponíveis. Informe o ativo manualmente."}
       </Alert>
     );
   }
@@ -1732,7 +1801,7 @@ function AssetSearchState({
   if (status === "empty") {
     return (
       <Alert variant="warning" className="mt-3">
-        Nenhum ativo encontrado no Yahoo para a bolsa selecionada.
+        Nenhum ativo encontrado nos dados de mercado para a bolsa selecionada.
       </Alert>
     );
   }
@@ -1782,7 +1851,7 @@ function TradePriceState({
   if (status === "loading") {
     return (
       <p className="mt-2 text-sm text-stone-600" role="status">
-        Calculando preço pelo Yahoo...
+        Calculando preço pelos dados de mercado...
       </p>
     );
   }
@@ -1803,20 +1872,8 @@ function TradePriceState({
   );
 }
 
-function formatCurrency(value: number, currency: string) {
-  return new Intl.NumberFormat("pt-BR", {
-    style: "currency",
-    currency,
-    maximumFractionDigits: 2
-  }).format(value);
-}
-
 function formatPriceSource(source: TradePriceQuote["priceSource"]) {
   return source === "latest_quote" ? "cotação atual" : "fechamento histórico";
-}
-
-function formatDateTime(value: string) {
-  return new Date(value).toLocaleString("pt-BR");
 }
 
 function formatMetricValue(metric: AnalyticsMetric) {
@@ -1836,16 +1893,69 @@ function formatMetricValue(metric: AnalyticsMetric) {
   }
 }
 
-function barWidth(percent: number) {
-  return Math.max(2, Math.min(100, percent));
-}
-
-function getMessage(error: unknown, fallback: string) {
-  if (error instanceof ApiError) {
-    return error.message;
+function formatAnalyticsMessage(message: string) {
+  const latestProviderQuote = message.match(/^Latest provider quote unavailable for (.+); stored quote was used\.$/);
+  if (latestProviderQuote) {
+    return `Cotação atual indisponível para ${latestProviderQuote[1]}; foi usada a cotação armazenada.`;
   }
 
-  return fallback;
+  const latestQuote = message.match(/^Latest quote unavailable for (.+)\.$/);
+  if (latestQuote) {
+    return `Cotação atual indisponível para ${latestQuote[1]}.`;
+  }
+
+  const historicalProviderPrices = message.match(
+    /^Historical provider prices unavailable for (.+); stored history was used\.$/
+  );
+  if (historicalProviderPrices) {
+    return `Histórico de preços indisponível para ${historicalProviderPrices[1]}; foi usado o histórico armazenado.`;
+  }
+
+  const historicalPrices = message.match(/^Historical prices unavailable for (.+)\.$/);
+  if (historicalPrices) {
+    return `Histórico de preços indisponível para ${historicalPrices[1]}.`;
+  }
+
+  const conversionRate = message.match(/^USD conversion rate unavailable for (.+)\.$/);
+  if (conversionRate) {
+    return `Taxa de conversão para USD indisponível para ${conversionRate[1]}.`;
+  }
+
+  if (message === "Requires current market value and USD cost basis.") {
+    return "Exige valor de mercado atual e base de custo em USD.";
+  }
+  if (message === "Requires at least two historical portfolio value points.") {
+    return "Exige ao menos dois pontos históricos de valor do portfólio.";
+  }
+  if (message === "Requires at least two portfolio return observations.") {
+    return "Exige ao menos duas observações de retorno do portfólio.";
+  }
+  if (message === "Requires annualized return and volatility.") {
+    return "Exige retorno anualizado e volatilidade.";
+  }
+  if (message === "Requires current USD market values.") {
+    return "Exige valores de mercado atuais em USD.";
+  }
+  if (message === "Requires at least one position with current market value.") {
+    return "Exige ao menos uma posição com valor de mercado atual.";
+  }
+  if (message === "Requires at least two assets with historical return observations.") {
+    return "Exige ao menos dois ativos com observações históricas de retorno.";
+  }
+
+  return message
+    .replace(/\bstale\b/gi, "desatualizada")
+    .replace(/\bprovider\b/gi, "provedor")
+    .replace(/\bbenchmark history unavailable; beta cannot be calculated\b/gi, "histórico do índice de referência indisponível; o beta não pode ser calculado")
+    .replace(/\blatest quotes\b/gi, "cotações atuais")
+    .replace(/\bhistorical prices\b/gi, "preços históricos")
+    .replace(/\bposition cost basis\b/gi, "base de custo da posição")
+    .replace(/\bUSD conversion rates\b/gi, "taxas de conversão para USD")
+    .replace(/\basset metadata\b/gi, "metadados do ativo");
+}
+
+function barWidth(percent: number) {
+  return Math.max(2, Math.min(100, percent));
 }
 
 interface ValidationDetails {
@@ -1870,108 +1980,6 @@ function getFieldErrors(error: unknown): Record<string, string> {
   }, {});
 }
 
-function badgeColorForFreshness(freshness: PortfolioDetail["freshness"]) {
-  switch (freshness) {
-    case "fresh":
-      return "success";
-    case "partial":
-      return "warning";
-    default:
-      return "failure";
-  }
-}
-
-function badgeColorForStatus(status: PortfolioDetail["status"]) {
-  switch (status) {
-    case "ready":
-      return "success";
-    case "syncing":
-      return "warning";
-    default:
-      return "failure";
-  }
-}
-
-function badgeColorForAnalyticsStatus(status: PortfolioAnalyticsReadModel["status"]) {
-  switch (status) {
-    case "complete":
-      return "success";
-    case "partial":
-    case "pending":
-      return "warning";
-    default:
-      return "failure";
-  }
-}
-
-function badgeColorForInsight(severity: "info" | "watch" | "high") {
-  switch (severity) {
-    case "info":
-      return "info";
-    case "watch":
-      return "warning";
-    default:
-      return "failure";
-  }
-}
-
-function badgeColorForRealtime(status: RealtimeConnectionStatus) {
-  switch (status) {
-    case "connected":
-      return "success";
-    case "connecting":
-      return "warning";
-    default:
-      return "failure";
-  }
-}
-
-function badgeColorForReport(status: PortfolioReport["status"]) {
-  switch (status) {
-    case "ready":
-      return "success";
-    case "pending":
-    case "running":
-      return "warning";
-    default:
-      return "failure";
-  }
-}
-
-function badgeColorForAlertSeverity(severity: AlertSeverity) {
-  switch (severity) {
-    case "low":
-      return "info";
-    case "medium":
-      return "warning";
-    default:
-      return "failure";
-  }
-}
-
-function badgeColorForAlertStatus(status: PortfolioAlert["status"]) {
-  switch (status) {
-    case "monitoring":
-      return "info";
-    case "open":
-      return "warning";
-    default:
-      return "failure";
-  }
-}
-
-function badgeColorForNotification(severity: NotificationRecord["severity"]) {
-  switch (severity) {
-    case "info":
-    case "low":
-      return "info";
-    case "medium":
-      return "warning";
-    default:
-      return "failure";
-  }
-}
-
 function formatAlertCondition(condition: PortfolioAlert["condition"]) {
   if (condition.eventType === "metric_threshold") {
     const operator = condition.operator === "lte" ? "menor ou igual" : "maior ou igual";
@@ -1980,9 +1988,9 @@ function formatAlertCondition(condition: PortfolioAlert["condition"]) {
 
   switch (condition.eventType) {
     case "analytics.updated":
-      return "Dispara quando analytics é atualizado.";
+      return "Dispara quando as análises são atualizadas.";
     case "market_data.updated":
-      return "Dispara quando market data é atualizado.";
+      return "Dispara quando os dados de mercado são atualizados.";
     default:
       return "Dispara quando relatório é gerado.";
   }

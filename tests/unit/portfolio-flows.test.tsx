@@ -261,7 +261,7 @@ describe("dashboard portfolio creation flow", () => {
     fireEvent.change(screen.getByLabelText("Moeda base"), {
       target: { value: "BRL" }
     });
-    fireEvent.click(screen.getByRole("button", { name: "Criar portfolio" }));
+    fireEvent.click(screen.getByRole("button", { name: "Criar portfólio" }));
 
     await waitFor(() => {
       expect(portfolioApiMocks.createPortfolio).toHaveBeenCalledWith({
@@ -272,7 +272,7 @@ describe("dashboard portfolio creation flow", () => {
       });
     });
     expect(await screen.findByRole("heading", { name: "Dividendos Brasil" })).toBeInTheDocument();
-    expect(screen.getByText("Conta Principal · papel owner")).toBeInTheDocument();
+    expect(screen.getByText("Conta Principal · perfil titular")).toBeInTheDocument();
   });
 
   it("blocks invalid FX converter amounts before calling the backend", async () => {
@@ -300,6 +300,11 @@ describe("dashboard portfolio creation flow", () => {
 describe("portfolio detail ledger and market-data flow", () => {
   it("searches a backend market asset, uses backend trade price, records a transaction, and reloads ledger data", async () => {
     let transactionRecorded = false;
+    const preciseTradePrice = {
+      ...tradePrice,
+      unitPrice: 420.4350036621094,
+      totalAmount: 1261.3050109863282
+    };
 
     mockPortfolioDetailApi({
       getPortfolio: () =>
@@ -308,7 +313,13 @@ describe("portfolio detail ledger and market-data flow", () => {
           transactionCount: transactionRecorded ? 1 : 0,
           totalCostBasis: transactionRecorded ? 1261.32 : 0,
           analyticsState: transactionRecorded ? "pending" : "ready",
-          marketDataState: transactionRecorded ? "pending" : "ready"
+          marketDataState: transactionRecorded ? "pending" : "ready",
+          warnings: transactionRecorded
+            ? [
+                "Analytics recomputation pending after the latest ledger change.",
+                "Market data refresh pending for affected assets."
+              ]
+            : []
         }),
       listPositions: (_portfolioId, asOf) => ({
         positions: asOf || transactionRecorded ? [currentPosition] : []
@@ -327,6 +338,14 @@ describe("portfolio detail ledger and market-data flow", () => {
             ]
           : []
       })
+    });
+    portfolioApiMocks.getTradePrice.mockResolvedValue({
+      data: { tradePrice: preciseTradePrice },
+      meta: {
+        providerName: "yahoo",
+        priceSource: preciseTradePrice.priceSource,
+        asOf: preciseTradePrice.asOf
+      }
     });
     portfolioApiMocks.createPortfolioTransaction.mockImplementation(async () => {
       transactionRecorded = true;
@@ -373,6 +392,7 @@ describe("portfolio detail ledger and market-data flow", () => {
       });
     });
     expect(await screen.findByText(/Total calculado/i)).toHaveTextContent("fechamento histórico");
+    expect(screen.getByLabelText("Preço unitário")).toHaveValue(420.44);
 
     fireEvent.change(screen.getByLabelText("Notas"), {
       target: { value: "Entrada inicial" }
@@ -387,13 +407,23 @@ describe("portfolio detail ledger and market-data flow", () => {
         tradeDate: "2026-07-15",
         type: "buy",
         quantity: 3,
-        unitPrice: 420.44,
+        unitPrice: preciseTradePrice.unitPrice,
         currency: "USD",
         notes: "Entrada inicial"
       });
     });
-    expect(await screen.findByText(/Transacao registrada/i)).toBeInTheDocument();
-    expect(screen.getByText("buy MSFT")).toBeInTheDocument();
+    expect(await screen.findByText(/Transação registrada/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "O recálculo das análises está pendente após a última movimentação registrada."
+      )
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("A atualização dos dados de mercado está pendente para os ativos afetados.")
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/Analytics recomputation pending/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Market data refresh pending/i)).not.toBeInTheDocument();
+    expect(screen.getByText("compra MSFT")).toBeInTheDocument();
     expect(screen.getByText("Microsoft Corporation · 2026-07-15")).toBeInTheDocument();
   });
 
@@ -414,8 +444,11 @@ describe("portfolio detail ledger and market-data flow", () => {
     fireEvent.submit(submitButton.closest("form") as HTMLFormElement);
 
     expect(
-      await screen.findAllByText("Selecione um ativo retornado pelo Yahoo antes de registrar.")
+      await screen.findAllByText("Selecione um ativo retornado pelos dados de mercado antes de registrar.")
     ).toHaveLength(2);
+    expect(
+      screen.getByText("Selecione um ativo retornado pelos dados de mercado para liberar o registro.")
+    ).toBeInTheDocument();
     expect(portfolioApiMocks.createPortfolioTransaction).not.toHaveBeenCalled();
   });
 });
@@ -428,7 +461,7 @@ describe("portfolio analytics states", () => {
 
     renderWithAuth(<PortfolioDetailPage />);
 
-    expect(await screen.findByText("complete")).toBeInTheDocument();
+    expect(await screen.findByText("completo")).toBeInTheDocument();
     expect(screen.getByText("Retorno total")).toBeInTheDocument();
     expect(screen.getByText("12.00%")).toBeInTheDocument();
     expect(screen.getByText("Concentração elevada")).toBeInTheDocument();
@@ -441,8 +474,8 @@ describe("portfolio analytics states", () => {
 
     renderWithAuth(<PortfolioDetailPage />);
 
-    expect(await screen.findByText("pending")).toBeInTheDocument();
-    expect(screen.getByText("Analytics ainda não possui snapshot calculado.")).toBeInTheDocument();
+    expect(await screen.findByText("pendente")).toBeInTheDocument();
+    expect(screen.getByText("As análises ainda não possuem retrato de risco calculado.")).toBeInTheDocument();
   });
 
   it("renders partial analytics with unavailable metrics and stale data-quality issues", async () => {
@@ -476,11 +509,11 @@ describe("portfolio analytics states", () => {
 
     renderWithAuth(<PortfolioDetailPage />);
 
-    expect(await screen.findByText("partial")).toBeInTheDocument();
-    expect(screen.getByText("Snapshot parcial com 1 métricas indisponíveis.")).toBeInTheDocument();
+    expect(await screen.findByText("parcial")).toBeInTheDocument();
+    expect(screen.getByText("Retrato de risco parcial com 1 métricas indisponíveis.")).toBeInTheDocument();
     expect(screen.getByText("Indisponível")).toBeInTheDocument();
     expect(screen.getByText("market_data.stale")).toBeInTheDocument();
-    expect(screen.getByText("Cotação stale para MSFT.")).toBeInTheDocument();
+    expect(screen.getByText("Cotação desatualizada para MSFT.")).toBeInTheDocument();
   });
 
   it("renders failed analytics while keeping the last successful snapshot visible", async () => {
@@ -498,9 +531,9 @@ describe("portfolio analytics states", () => {
 
     renderWithAuth(<PortfolioDetailPage />);
 
-    expect(await screen.findByText("failed")).toBeInTheDocument();
+    expect(await screen.findByText("falhou")).toBeInTheDocument();
     expect(
-      screen.getByText("O último snapshot bem-sucedido continua visível após a falha mais recente.")
+      screen.getByText("O último retrato de risco bem-sucedido continua visível após a falha mais recente.")
     ).toBeInTheDocument();
     expect(screen.getByText("Retorno total")).toBeInTheDocument();
   });

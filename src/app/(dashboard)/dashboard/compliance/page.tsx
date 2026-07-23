@@ -35,7 +35,22 @@ import {
   AuditSeverity,
   SupervisionReview
 } from "../../../../features/compliance/types";
-import { ApiError } from "../../../../lib/api/client";
+import {
+  auditOutcomeVariant,
+  auditSeverityVariant,
+  formatDateTime,
+  formatResourceReference,
+  getApiErrorMessage,
+  labelAuditAction,
+  labelAuditOutcome,
+  labelAuditSeverity,
+  labelOnboardingStatus,
+  labelOfficeRole,
+  labelReportPackageStatus,
+  labelResourceType,
+  labelReviewStatus,
+  labelTransactionType
+} from "../../../../lib/presentation";
 
 const SEVERITIES: Array<AuditSeverity | ""> = ["", "info", "warning", "critical"];
 const OUTCOMES: Array<AuditOutcome | ""> = ["", "success", "failure"];
@@ -84,6 +99,10 @@ export default function CompliancePage() {
     }),
     [actionFilter, clientFilter, outcomeFilter, resourceTypeFilter, severityFilter]
   );
+  const auditEventsById = useMemo(
+    () => new Map(auditEvents.map((event) => [event.id, event])),
+    [auditEvents]
+  );
 
   useEffect(() => {
     if (!officeId || !canReadAudit) {
@@ -112,7 +131,7 @@ export default function CompliancePage() {
       })
       .catch((caught) => {
         if (isActive) {
-          setError(getMessage(caught, "Não foi possível carregar compliance."));
+          setError(getApiErrorMessage(caught, "Não foi possível carregar compliance."));
         }
       })
       .finally(() => {
@@ -136,9 +155,9 @@ export default function CompliancePage() {
     setNotice(null);
     try {
       const exportJob = await requestAuditExport(officeId, { format, filters });
-      setNotice(`Export ${exportJob.format.toUpperCase()} pronto com ${exportJob.eventCount} eventos.`);
+      setNotice(`Exportação ${exportJob.format.toUpperCase()} pronta com ${exportJob.eventCount} eventos.`);
     } catch (caught) {
-      setError(getMessage(caught, "Não foi possível solicitar o export."));
+      setError(getApiErrorMessage(caught, "Não foi possível solicitar a exportação."));
     } finally {
       setSaving(false);
     }
@@ -154,9 +173,9 @@ export default function CompliancePage() {
         resolutionComment: "Revisado no dashboard de compliance."
       });
       setReviews((current) => current.map((entry) => (entry.id === updated.id ? updated : entry)));
-      setNotice("Review de supervisão resolvido.");
+      setNotice("Revisão de supervisão resolvida.");
     } catch (caught) {
-      setError(getMessage(caught, "Não foi possível atualizar o review."));
+      setError(getApiErrorMessage(caught, "Não foi possível atualizar a revisão."));
     } finally {
       setSaving(false);
     }
@@ -171,14 +190,14 @@ export default function CompliancePage() {
           showAdmin={actor?.role === "admin"}
           actions={
             <>
-              {activeOffice ? <Badge variant="outline">{activeOffice.role}</Badge> : null}
+              {activeOffice ? <Badge variant="outline">{labelOfficeRole(activeOffice.role)}</Badge> : null}
               <LogoutButton />
             </>
           }
         />
 
         {!officeId ? (
-          <Alert variant="warning">Selecione um office para abrir compliance.</Alert>
+          <Alert variant="warning">Selecione um escritório para abrir compliance.</Alert>
         ) : !canReadAudit ? (
           <Alert variant="failure">Acesso de auditoria indisponível para este perfil.</Alert>
         ) : loading ? (
@@ -212,10 +231,10 @@ export default function CompliancePage() {
                     <Label htmlFor="auditAction">Ação</Label>
                     <Input
                       id="auditAction"
-                      className="mt-2"
-                      value={actionFilter}
-                      onChange={(event) => setActionFilter(event.target.value)}
-                      placeholder="client.created"
+	                      className="mt-2"
+	                      value={actionFilter}
+	                      onChange={(event) => setActionFilter(event.target.value)}
+	                      placeholder="Buscar por ação"
                     />
                   </div>
                   <div>
@@ -228,7 +247,7 @@ export default function CompliancePage() {
                     >
                       {SEVERITIES.map((entry) => (
                         <option key={entry || "all"} value={entry}>
-                          {entry || "todas"}
+                          {entry ? labelAuditSeverity(entry) : "todas"}
                         </option>
                       ))}
                     </Select>
@@ -243,7 +262,7 @@ export default function CompliancePage() {
                     >
                       {OUTCOMES.map((entry) => (
                         <option key={entry || "all"} value={entry}>
-                          {entry || "todos"}
+                          {entry ? labelAuditOutcome(entry) : "todos"}
                         </option>
                       ))}
                     </Select>
@@ -260,7 +279,7 @@ export default function CompliancePage() {
                     >
                       {RESOURCE_TYPES.map((entry) => (
                         <option key={entry || "all"} value={entry}>
-                          {entry || "todos"}
+                          {entry ? labelResourceType(entry) : "todos"}
                         </option>
                       ))}
                     </Select>
@@ -272,7 +291,7 @@ export default function CompliancePage() {
                       className="mt-2"
                       value={clientFilter}
                       onChange={(event) => setClientFilter(event.target.value)}
-                      placeholder="client_main"
+                      placeholder="Filtrar por cliente"
                     />
                   </div>
                 </div>
@@ -289,7 +308,7 @@ export default function CompliancePage() {
               <Card>
                 <div className="flex items-start justify-between gap-3">
                   <div>
-                    <p className="text-xs font-semibold uppercase text-moss">Audit trail</p>
+                    <p className="text-xs font-semibold uppercase text-moss">Trilha de auditoria</p>
                     <h1 className="text-2xl font-semibold text-stone-900">Eventos auditáveis</h1>
                   </div>
                   <Badge variant="outline">{total} eventos</Badge>
@@ -314,13 +333,13 @@ export default function CompliancePage() {
                         {auditEvents.map((event) => (
                           <TableRow key={event.id}>
                             <TableCell className="font-medium text-stone-900">
-                              {event.action}
+                              {labelAuditAction(event.action)}
                             </TableCell>
                             <TableCell>{resourceLink(event)}</TableCell>
-                            <TableCell>{event.actorName ?? event.actorId ?? "system"}</TableCell>
+                            <TableCell>{event.actorName ?? event.actorId ?? "sistema"}</TableCell>
                             <TableCell>
-                              <Badge variant={event.outcome === "failure" ? "failure" : "outline"}>
-                                {event.outcome}
+                              <Badge variant={auditOutcomeVariant(event.outcome)}>
+                                {labelAuditOutcome(event.outcome)}
                               </Badge>
                             </TableCell>
                             <TableCell className="max-w-[260px] text-xs text-stone-600">
@@ -347,31 +366,40 @@ export default function CompliancePage() {
 
               <div className="mt-5 grid gap-3">
                 {reviews.length === 0 ? (
-                  <Alert variant="info">Sem reviews abertos.</Alert>
+                  <Alert variant="info">Sem revisões abertas.</Alert>
                 ) : (
-                  reviews.map((review) => (
-                    <div key={review.id} className="rounded-md border border-border p-3">
-                      <div className="flex items-start justify-between gap-3">
-                        <div>
-                          <p className="font-medium text-stone-900">{review.auditEventId}</p>
-                          <p className="text-sm text-stone-500">
-                            {review.severity} · {review.status}
-                          </p>
+                  reviews.map((review) => {
+                    const auditEvent = auditEventsById.get(review.auditEventId);
+
+                    return (
+                      <div key={review.id} className="rounded-md border border-border p-3">
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <p className="font-medium text-stone-900">
+                              {auditEvent ? labelAuditAction(auditEvent.action) : "Evento de auditoria"}
+                            </p>
+                            <p className="text-sm text-stone-500">
+	                              {auditEvent
+	                                ? `${formatAuditResourceReference(auditEvent)} · `
+	                                : ""}
+                              {labelAuditSeverity(review.severity)} · {labelReviewStatus(review.status)}
+                            </p>
+                          </div>
+                          <Badge variant={auditSeverityVariant(review.severity)}>
+                            {labelAuditSeverity(review.severity)}
+                          </Badge>
                         </div>
-                        <Badge variant={review.severity === "critical" ? "failure" : "outline"}>
-                          {review.severity}
-                        </Badge>
+                        <Button
+                          className="mt-3 w-full"
+                          variant="secondary"
+                          disabled={saving || review.status === "resolved"}
+                          onClick={() => handleResolveReview(review)}
+                        >
+                          Resolver revisão
+                        </Button>
                       </div>
-                      <Button
-                        className="mt-3 w-full"
-                        variant="secondary"
-                        disabled={saving || review.status === "resolved"}
-                        onClick={() => handleResolveReview(review)}
-                      >
-                        Resolver {review.auditEventId}
-                      </Button>
-                    </div>
-                  ))
+                    );
+                  })
                 )}
               </div>
             </Card>
@@ -395,18 +423,18 @@ function resourceLink(event: AuditEvent) {
   if (event.clientId) {
     return (
       <Link href={`/dashboard/clients/${event.clientId}`} className="font-medium text-moss">
-        {event.resourceType}:{event.resourceId}
+        {formatAuditResourceReference(event)}
       </Link>
     );
   }
   if (event.portfolioId) {
     return (
       <Link href={`/dashboard/portfolios/${event.portfolioId}`} className="font-medium text-moss">
-        {event.resourceType}:{event.resourceId}
+        {formatAuditResourceReference(event)}
       </Link>
     );
   }
-  return `${event.resourceType}:${event.resourceId}`;
+  return formatAuditResourceReference(event);
 }
 
 function metadataSummary(event: AuditEvent) {
@@ -414,19 +442,166 @@ function metadataSummary(event: AuditEvent) {
   if (entries.length === 0) {
     return "Sem metadados";
   }
-  return entries.map(([key, value]) => `${key}: ${String(value)}`).join(" · ");
+  return entries
+    .map(([key, value]) => `${metadataKeyLabel(key)}: ${metadataValueLabel(event, key, value)}`)
+    .join(" · ");
 }
 
 function formatDate(value: string) {
-  return new Intl.DateTimeFormat("pt-BR", {
-    dateStyle: "short",
-    timeStyle: "short"
-  }).format(new Date(value));
+  return formatDateTime(value);
 }
 
-function getMessage(error: unknown, fallback: string) {
-  if (error instanceof ApiError) {
-    return error.message;
+function metadataKeyLabel(key: string) {
+  const labels: Record<string, string> = {
+    assetSymbol: "ativo",
+    channel: "canal",
+    failureCode: "falha",
+    householdId: "grupo familiar",
+    itemCount: "itens",
+    onboardingStatus: "cadastro",
+    permissionCount: "permissões",
+    resourceId: "recurso",
+    resourceType: "tipo de recurso",
+    status: "status",
+    transactionType: "tipo"
+  };
+
+	  return labels[key] ?? key;
+	}
+	
+function metadataValueLabel(event: AuditEvent, key: string, value: unknown) {
+  if (value === null || value === undefined) {
+    return "não informado";
   }
-  return fallback;
+  if (typeof value === "boolean") {
+    return value ? "sim" : "não";
+  }
+  if (typeof value === "number") {
+    return String(value);
+  }
+  if (typeof value !== "string") {
+    return String(value);
+  }
+
+  if (key === "resourceType") {
+    return labelResourceType(value);
+  }
+  if (key === "resourceId") {
+    const metadataResourceType =
+      typeof event.metadata.resourceType === "string" ? event.metadata.resourceType : event.resourceType;
+    return formatResourceReference(metadataResourceType, undefined, businessResourceName(value, event));
+  }
+  if (key === "householdId") {
+    return businessResourceName(value, event);
+  }
+  if (key === "failureCode") {
+    return failureCodeLabel(value);
+  }
+  if (key === "channel") {
+    return channelLabel(value);
+  }
+  if (key === "onboardingStatus") {
+    return labelOnboardingStatus(value);
+  }
+  if (key === "transactionType") {
+    return labelTransactionType(value);
+  }
+  if (key === "status" || key === "previousStatus") {
+    return labelReportPackageStatus(value);
+  }
+
+  return businessResourceName(value, event);
 }
+
+function formatAuditResourceReference(event: AuditEvent) {
+  return formatResourceReference(event.resourceType, undefined, auditResourceDisplayName(event));
+}
+
+function auditResourceDisplayName(event: AuditEvent) {
+  const knownName = businessResourceName(event.resourceId, event);
+  if (knownName !== "referência interna") {
+    return knownName;
+  }
+
+  if (event.resourceType === "delivery") {
+    return event.action.startsWith("report_package.") ? "Pacote de relatório" : "Entrega de relatório";
+  }
+  if (event.resourceType === "ledger") {
+    const assetSymbol = event.metadata.assetSymbol;
+    return typeof assetSymbol === "string" ? `Movimentação de ${assetSymbol}` : "Movimentação registrada";
+  }
+  if (event.resourceType === "permission") {
+    return "Permissão do cliente";
+  }
+  if (event.resourceType === "client") {
+    return "Cliente acompanhado";
+  }
+
+  return labelResourceType(event.resourceType);
+}
+
+function businessResourceName(value: string, event: AuditEvent) {
+  const knownNames: Record<string, string> = {
+    asn_core_client_main: "Permissão para Marina Silva",
+    client_founder: "Alice Founder",
+    client_main: "Marina Silva",
+    client_spouse: "Renato Silva",
+    hh_main_silva: "Família Silva",
+    pltxn_001: "Movimentação de MSFT",
+    prt_main: "Core Growth",
+    rpkg_delivered_main: "Pacote mensal de risco",
+    rpt_001: "Relatório mensal de risco"
+  };
+  const knownName = knownNames[value];
+  if (knownName) {
+    return knownName;
+  }
+
+  if (!looksTechnical(value)) {
+    return value;
+  }
+
+  if (event.resourceType === "delivery") {
+    return event.action.startsWith("report_package.") ? "Pacote de relatório" : "Entrega de relatório";
+  }
+  if (event.resourceType === "ledger") {
+    const assetSymbol = event.metadata.assetSymbol;
+    return typeof assetSymbol === "string" ? `Movimentação de ${assetSymbol}` : "Movimentação registrada";
+  }
+
+  return "referência interna";
+}
+
+function failureCodeLabel(value: string) {
+  const labels: Record<string, string> = {
+    delivery_timeout: "tempo limite na entrega"
+  };
+
+  return labels[value] ?? businessResourceName(value, emptyAuditEvent);
+}
+
+function channelLabel(value: string) {
+  const labels: Record<string, string> = {
+    email: "e-mail",
+    portal: "portal"
+  };
+
+  return labels[value] ?? businessResourceName(value, emptyAuditEvent);
+}
+
+function looksTechnical(value: string) {
+  return /^[a-z]+[a-z0-9]*[_:.][a-z0-9_.:-]+$/i.test(value);
+}
+
+const emptyAuditEvent: AuditEvent = {
+  id: "",
+  officeId: "",
+  action: "",
+  resourceType: "review",
+  resourceId: "",
+  outcome: "success",
+  severity: "info",
+  reviewRequired: false,
+  metadata: {},
+  createdAt: ""
+};

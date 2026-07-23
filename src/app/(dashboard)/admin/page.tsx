@@ -17,6 +17,11 @@ import { useAuth } from "../../../features/auth/AuthProvider";
 import { LogoutButton } from "../../../features/auth/LogoutButton";
 import { SafeUser, UserRole } from "../../../features/auth/types";
 import { ApiError, apiFetch } from "../../../lib/api/client";
+import {
+  getApiErrorMessage,
+  labelUserRole,
+  labelUserStatus
+} from "../../../lib/presentation";
 
 const ADMIN_ROLES: UserRole[] = ["admin"];
 
@@ -51,7 +56,7 @@ export default function AdminPage() {
         }
 
         if (caught instanceof ApiError) {
-          setError(`${caught.message} (${caught.code})`);
+          setError(getApiErrorMessage(caught, "Não foi possível carregar os usuários."));
           return;
         }
 
@@ -72,12 +77,12 @@ export default function AdminPage() {
     <ProtectedRoute roles={ADMIN_ROLES}>
       <main className="mx-auto flex min-h-screen max-w-7xl flex-col gap-6 px-4 py-5 lg:px-6">
         <AppHeader
-          title="Admin console"
+          title="Administração"
           active="admin"
           showAdmin
           actions={
             <>
-              {actor ? <Badge variant="outline">{actor.role}</Badge> : null}
+              {actor ? <Badge variant="outline">{labelUserRole(actor.role)}</Badge> : null}
               <LogoutButton />
             </>
           }
@@ -87,16 +92,16 @@ export default function AdminPage() {
           <div>
             <p className="text-xs font-semibold uppercase text-moss">Administração</p>
             <h1 className="text-2xl font-semibold text-stone-900">Usuários</h1>
-            <p className="text-stone-600">Operação disponível apenas para admin.</p>
+            <p className="text-stone-600">Operação disponível apenas para administradores.</p>
           </div>
 
           {loading ? (
-            <Alert variant="info">Buscando o cadastro seguro retornado pelo backend.</Alert>
+            <Alert variant="info">Buscando o cadastro seguro retornado pela plataforma.</Alert>
           ) : error ? (
             <Alert variant="failure">{error}</Alert>
           ) : users.length === 0 ? (
             <Alert variant="warning">
-              O backend não retornou registros para esta consulta administrativa.
+              A plataforma não retornou registros para esta consulta administrativa.
             </Alert>
           ) : (
             <div className="overflow-x-auto">
@@ -114,8 +119,8 @@ export default function AdminPage() {
                     <TableRow key={user.id}>
                       <TableCell className="font-medium text-stone-900">{user.name}</TableCell>
                       <TableCell>{user.email}</TableCell>
-                      <TableCell>{user.role}</TableCell>
-                      <TableCell>{user.status}</TableCell>
+                      <TableCell>{labelUserRole(user.role)}</TableCell>
+                      <TableCell>{labelUserStatus(user.status)}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
