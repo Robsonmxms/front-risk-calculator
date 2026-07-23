@@ -3,7 +3,7 @@ import { AuthProvider } from "../features/auth/AuthProvider";
 
 export const metadata = {
   title: "Risk Calculator",
-  description: "Investment portfolio analytics platform"
+  description: "Plataforma de análises de risco para portfólios de investimento"
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

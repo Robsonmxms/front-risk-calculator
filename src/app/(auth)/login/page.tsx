@@ -13,11 +13,11 @@ export default function LoginPage() {
           </div>
           <div className="border-b border-border pb-4">
             <p className="text-xs font-semibold uppercase text-stone-500">Sessão</p>
-            <strong className="mt-2 block text-xl text-stone-900">Refresh rotativo</strong>
+            <strong className="mt-2 block text-xl text-stone-900">Renovação segura</strong>
           </div>
           <div>
             <p className="text-xs font-semibold uppercase text-stone-500">Papéis</p>
-            <strong className="mt-2 block text-xl text-stone-900">Admin, analyst, user</strong>
+            <strong className="mt-2 block text-xl text-stone-900">Administrador, analista, cliente</strong>
           </div>
         </div>
       </Card>

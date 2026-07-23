@@ -23,6 +23,18 @@ import {
   PortfolioListItem
 } from "../../../features/portfolio/types";
 import { ApiError } from "../../../lib/api/client";
+import {
+  formatCurrency,
+  getApiErrorMessage,
+  labelAccountRole,
+  labelPortfolioFreshness,
+  labelPortfolioStatus,
+  labelProcessingState,
+  labelUserRole,
+  portfolioFreshnessVariant,
+  portfolioStatusVariant,
+  processingStateVariant
+} from "../../../lib/presentation";
 import { UserRole } from "../../../features/auth/types";
 
 interface CreatePortfolioFormState {
@@ -91,7 +103,7 @@ export default function DashboardPage() {
       })
       .catch((requestError: unknown) => {
         if (isActive) {
-          setError(getMessage(requestError, "Não foi possível carregar os portfolios."));
+          setError(getApiErrorMessage(requestError, "Não foi possível carregar os portfólios."));
         }
       })
       .finally(() => {
@@ -126,7 +138,7 @@ export default function DashboardPage() {
       }));
     } catch (requestError) {
       setFormErrors(getFieldErrors(requestError));
-      setSubmitError(getMessage(requestError, "Não foi possível criar o portfolio."));
+      setSubmitError(getApiErrorMessage(requestError, "Não foi possível criar o portfólio."));
     } finally {
       setIsSubmitting(false);
     }
@@ -136,7 +148,7 @@ export default function DashboardPage() {
     <ProtectedRoute roles={DASHBOARD_ROLES}>
       <main className="mx-auto flex min-h-screen max-w-7xl flex-col gap-6 px-4 py-5 lg:px-6">
         <AppHeader
-          title="Portfolio analytics"
+          title="Análises de portfólio"
           active="dashboard"
           showAdmin={actor?.role === "admin"}
           actions={<LogoutButton />}
@@ -147,17 +159,17 @@ export default function DashboardPage() {
             <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
               <div className="space-y-1">
                 <p className="text-xs font-semibold uppercase text-moss">
-                  Portfolio ledger
+                  Portfólios
                 </p>
                 <h1 className="text-3xl font-semibold text-stone-900">{actor?.name}</h1>
                 <p className="text-stone-600">
-                  {actor?.email} · papel {actor?.role}
+                  {actor?.email} · perfil {actor ? labelUserRole(actor.role) : "não informado"}
                 </p>
               </div>
               <div className="grid gap-3 sm:grid-cols-2">
                 <div className="rounded-lg border border-border bg-muted/40 p-4">
                   <span className="text-xs font-semibold uppercase text-stone-500">
-                    Portfolios
+                    Portfólios
                   </span>
                   <strong className="text-3xl text-stone-900">{portfolios.length}</strong>
                   <p className="text-sm text-stone-600">visíveis nesta sessão</p>
@@ -177,15 +189,15 @@ export default function DashboardPage() {
 
           <Card>
             <div className="space-y-1">
-              <h2 className="text-xl font-semibold text-stone-900">Criar portfolio</h2>
+              <h2 className="text-xl font-semibold text-stone-900">Criar portfólio</h2>
               <p className="text-sm text-stone-600">
-                Novos portfolios entram com ledger vazio e snapshots prontos.
+                Novos portfólios entram com histórico vazio e aguardam as primeiras posições.
               </p>
             </div>
 
             {memberships.length === 0 ? (
               <Alert variant="info">
-                A sessão atual não possui memberships para provisionar um portfolio.
+                Sua sessão não possui conta vinculada para criar portfólios.
               </Alert>
             ) : (
               <form className="space-y-4" onSubmit={handleSubmit}>
@@ -202,7 +214,7 @@ export default function DashboardPage() {
                   >
                     {memberships.map((membership) => (
                       <option key={membership.accountId} value={membership.accountId}>
-                        {membership.accountName} · {membership.role}
+                        {membership.accountName} · {labelAccountRole(membership.role)}
                       </option>
                     ))}
                   </Select>
@@ -270,7 +282,7 @@ export default function DashboardPage() {
                 {submitError ? <Alert variant="failure">{submitError}</Alert> : null}
 
                 <Button type="submit" disabled={isSubmitting}>
-                  {isSubmitting ? "Criando..." : "Criar portfolio"}
+                  {isSubmitting ? "Criando..." : "Criar portfólio"}
                 </Button>
               </form>
             )}
@@ -278,12 +290,14 @@ export default function DashboardPage() {
         </section>
 
         {isLoading ? (
-          <Alert variant="info">Buscando ledger, estados de analytics e histórico de transações.</Alert>
+          <Alert variant="info">Buscando histórico, estados de análise e transações.</Alert>
         ) : error ? (
           <Alert variant="failure">{error}</Alert>
         ) : portfolios.length === 0 ? (
           <Alert variant="warning">
-            Crie o primeiro portfolio para iniciar o ledger e as projeções de posições.
+            {memberships.length === 0
+              ? "Nenhum portfólio está disponível porque sua sessão não possui contas vinculadas."
+              : "Crie o primeiro portfólio para iniciar o histórico e as projeções de posições."}
           </Alert>
         ) : (
           <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -297,10 +311,12 @@ export default function DashboardPage() {
                     <div>
                       <h2 className="text-xl font-semibold text-stone-900">{portfolio.name}</h2>
                       <p className="text-sm text-stone-600">
-                        {portfolio.accountName} · papel {portfolio.membershipRole}
+                        {portfolio.accountName} · perfil {labelAccountRole(portfolio.membershipRole)}
                       </p>
                     </div>
-                    <Badge variant={badgeColorForFreshness(portfolio.freshness)}>{portfolio.freshness}</Badge>
+                    <Badge variant={portfolioFreshnessVariant(portfolio.freshness)}>
+                      {labelPortfolioFreshness(portfolio.freshness)}
+                    </Badge>
                   </div>
 
                   {portfolio.description ? (
@@ -330,24 +346,28 @@ export default function DashboardPage() {
                     </div>
                     <div>
                       <dt className="text-xs font-semibold uppercase text-stone-500">
-                        Ultimo trade
+                        Última transação
                       </dt>
-                      <dd className="mt-1 text-stone-900">{portfolio.lastTransactionDate ?? "sem trades"}</dd>
+                      <dd className="mt-1 text-stone-900">
+                        {portfolio.lastTransactionDate ?? "sem transações"}
+                      </dd>
                     </div>
                   </dl>
 
                   <div className="flex flex-wrap items-center gap-2">
-                    <Badge variant={badgeColorForStatus(portfolio.status)}>{portfolio.status}</Badge>
-                    <Badge variant={portfolio.analyticsState === "pending" ? "warning" : "success"}>
-                      analytics {portfolio.analyticsState}
+                    <Badge variant={portfolioStatusVariant(portfolio.status)}>
+                      {labelPortfolioStatus(portfolio.status)}
                     </Badge>
-                    <Badge variant={portfolio.marketDataState === "pending" ? "warning" : "success"}>
-                      market data {portfolio.marketDataState}
+                    <Badge variant={processingStateVariant(portfolio.analyticsState)}>
+                      análises {labelProcessingState(portfolio.analyticsState)}
+                    </Badge>
+                    <Badge variant={processingStateVariant(portfolio.marketDataState)}>
+                      dados de mercado {labelProcessingState(portfolio.marketDataState)}
                     </Badge>
                   </div>
 
                   <LinkButton href={`/dashboard/portfolios/${portfolio.id}`} className="w-fit">
-                    Abrir portfolio
+                    Abrir portfólio
                   </LinkButton>
                 </div>
               </Card>
@@ -404,7 +424,7 @@ function CurrencyConverterCard() {
 
           setConversion(null);
           setStatus("error");
-          setError(getMessage(requestError, "Não foi possível converter a moeda."));
+          setError(getApiErrorMessage(requestError, "Não foi possível converter a moeda."));
         });
     }, 250);
 
@@ -427,7 +447,7 @@ function CurrencyConverterCard() {
           {status === "loading"
             ? "Atualizando..."
             : conversion
-              ? `${formatCurrency(conversion.amount, "USD")} via ${conversion.providerName}`
+              ? `${formatCurrency(conversion.amount, "USD")} via dados de mercado da plataforma`
               : "USD"}
         </p>
       </div>
@@ -472,22 +492,6 @@ function CurrencyConverterCard() {
   );
 }
 
-function formatCurrency(value: number, currency: string) {
-  return new Intl.NumberFormat("pt-BR", {
-    style: "currency",
-    currency,
-    maximumFractionDigits: 2
-  }).format(value);
-}
-
-function getMessage(error: unknown, fallback: string) {
-  if (error instanceof ApiError) {
-    return error.message;
-  }
-
-  return fallback;
-}
-
 interface ValidationDetails {
   fields?: Array<{
     path?: string;
@@ -508,26 +512,4 @@ function getFieldErrors(error: unknown): Record<string, string> {
 
     return fields;
   }, {});
-}
-
-function badgeColorForFreshness(freshness: PortfolioListItem["freshness"]) {
-  switch (freshness) {
-    case "fresh":
-      return "success";
-    case "partial":
-      return "warning";
-    default:
-      return "failure";
-  }
-}
-
-function badgeColorForStatus(status: PortfolioListItem["status"]) {
-  switch (status) {
-    case "ready":
-      return "success";
-    case "syncing":
-      return "warning";
-    default:
-      return "failure";
-  }
 }

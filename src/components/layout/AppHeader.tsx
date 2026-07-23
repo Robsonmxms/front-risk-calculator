@@ -27,10 +27,12 @@ export function AppHeader({
   actions?: ReactNode;
 }) {
   const { actor, activeOffice, officeMemberships, selectOffice } = useAuth();
+  const isClientOffice = activeOffice?.role === "client";
   const canOpenOfficeSettings =
     actor?.role === "admin" || activeOffice?.role === "office_admin";
   const canOpenCompliance = actor?.role === "admin" || activeOffice?.role === "office_admin";
-  const canOpenReportDelivery = Boolean(activeOffice && activeOffice.role !== "client");
+  const canOpenReportDelivery = Boolean(activeOffice && !isClientOffice);
+  const canOpenTeamAreas = Boolean(activeOffice && !isClientOffice);
 
   return (
     <header className="rounded-lg border border-border bg-card/95 px-4 py-3 shadow-sm">
@@ -42,19 +44,19 @@ export function AppHeader({
           <span className="block text-lg font-semibold text-foreground">{title}</span>
         </Link>
 
-        <div className="flex flex-wrap items-center gap-3">
-          <nav className="flex items-center gap-1" aria-label="Navegacao principal">
+        <div className="flex min-w-0 flex-wrap items-center gap-3 md:justify-end">
+          <nav className="flex max-w-full flex-wrap items-center gap-1" aria-label="Navegação principal">
             <HeaderLink href="/dashboard" active={active === "dashboard"}>
-              Dashboard
+              Painel
             </HeaderLink>
             {showAdmin ? (
               <HeaderLink href="/admin" active={active === "admin"}>
-                Admin
+                Administração
               </HeaderLink>
             ) : null}
-            {activeOffice ? (
+            {canOpenTeamAreas ? (
               <HeaderLink href="/dashboard/workbench" active={active === "workbench"}>
-                Workbench
+                Mesa
               </HeaderLink>
             ) : null}
             {activeOffice && canOpenCompliance ? (
@@ -67,7 +69,7 @@ export function AppHeader({
                 href="/dashboard/report-delivery"
                 active={active === "reportDelivery"}
               >
-                Delivery
+                Relatórios
               </HeaderLink>
             ) : null}
             {activeOffice ? (
@@ -75,9 +77,9 @@ export function AppHeader({
                 Portal
               </HeaderLink>
             ) : null}
-            {activeOffice ? (
+            {canOpenTeamAreas ? (
               <HeaderLink href="/dashboard/clients" active={active === "clients"}>
-                Clients
+                Clientes
               </HeaderLink>
             ) : null}
             {activeOffice && canOpenOfficeSettings ? (
@@ -85,14 +87,15 @@ export function AppHeader({
                 href={`/dashboard/offices/${activeOffice.officeId}/settings`}
                 active={active === "office"}
               >
-                Office
+                Escritório
               </HeaderLink>
             ) : null}
           </nav>
           {officeMemberships.length > 1 ? (
             <select
-              aria-label="Selecionar office"
-              className="h-9 rounded-md border border-border bg-background px-3 text-sm text-foreground shadow-sm"
+              aria-label="Selecionar escritório"
+              name="selectedOfficeId"
+              className="h-9 max-w-full rounded-md border border-border bg-background px-3 text-sm text-foreground shadow-sm"
               value={activeOffice?.officeId ?? ""}
               onChange={(event) => selectOffice(event.target.value)}
             >
@@ -103,7 +106,7 @@ export function AppHeader({
               ))}
             </select>
           ) : activeOffice ? (
-            <span className="rounded-md border border-border bg-muted px-3 py-2 text-sm font-medium text-foreground">
+            <span className="max-w-full truncate rounded-md border border-border bg-muted px-3 py-2 text-sm font-medium text-foreground">
               {activeOffice.officeName}
             </span>
           ) : null}
@@ -127,7 +130,7 @@ function HeaderLink({
     <Link
       href={href}
       className={cn(
-        "rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition-colors",
+        "rounded-md px-2.5 py-2 text-sm font-medium text-muted-foreground transition-colors sm:px-3",
         "hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-moss/25",
         active && "bg-muted text-foreground"
       )}

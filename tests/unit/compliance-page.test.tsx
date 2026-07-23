@@ -143,11 +143,15 @@ describe("compliance page", () => {
       </AuthProvider>
     );
 
-    expect(await screen.findByText("delivery.report.failed")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "delivery:rpt_001" })).toHaveAttribute(
+    expect(await screen.findAllByText("Entrega de relatório falhou")).toHaveLength(2);
+    expect(screen.queryByText("delivery.report.failed")).not.toBeInTheDocument();
+    expect(screen.queryByText("entrega: rpt_001")).not.toBeInTheDocument();
+    expect(screen.queryByText(/delivery_timeout/)).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "entrega: Relatório mensal de risco" })).toHaveAttribute(
       "href",
       "/dashboard/clients/client_main"
     );
+    expect(screen.getByText(/falha: tempo limite na entrega/)).toBeInTheDocument();
 
     fireEvent.change(screen.getByLabelText("Severidade"), {
       target: { value: "critical" }
@@ -166,9 +170,9 @@ describe("compliance page", () => {
         filters: expect.objectContaining({ severity: "critical" })
       });
     });
-    expect(await screen.findByText("Export CSV pronto com 1 eventos.")).toBeInTheDocument();
+    expect(await screen.findByText("Exportação CSV pronta com 1 eventos.")).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: "Resolver aud_report_delivery_failed" }));
+    fireEvent.click(screen.getByRole("button", { name: "Resolver revisão" }));
     await waitFor(() => {
       expect(complianceApiMocks.updateSupervisionReview).toHaveBeenCalledWith(
         "sv_aud_report_delivery_failed",
@@ -178,6 +182,6 @@ describe("compliance page", () => {
         }
       );
     });
-    expect(await screen.findByText("Review de supervisão resolvido.")).toBeInTheDocument();
+    expect(await screen.findByText("Revisão de supervisão resolvida.")).toBeInTheDocument();
   });
 });

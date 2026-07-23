@@ -28,8 +28,8 @@ declare global {
 export function LoginForm() {
   const router = useRouter();
   const { login, loginWithGoogleCredential } = useAuth();
-  const [email, setEmail] = useState("user@example.com");
-  const [password, setPassword] = useState("Password123!");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [fieldError, setFieldError] = useState<string | null>(null);
   const [safeError, setSafeError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -93,7 +93,7 @@ export function LoginForm() {
           </p>
           <h1 className="text-3xl font-semibold text-stone-900">Acessar plataforma</h1>
           <p className="text-sm text-muted-foreground">
-            Entre para acompanhar portfolios, ledger e analytics de risco.
+            Entre para acompanhar portfólios, movimentações e análises de risco.
           </p>
         </div>
 

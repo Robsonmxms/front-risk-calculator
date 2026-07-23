@@ -21,7 +21,14 @@ import { LogoutButton } from "../../../../../features/auth/LogoutButton";
 import { ProtectedRoute } from "../../../../../features/auth/ProtectedRoute";
 import { getClient, updateClient } from "../../../../../features/client/clientApi";
 import { ClientDetail } from "../../../../../features/client/types";
-import { ApiError } from "../../../../../lib/api/client";
+import {
+  clientStatusVariant,
+  getApiErrorMessage,
+  labelClientStatus,
+  labelOnboardingStatus,
+  labelPortfolioStatus,
+  labelProcessingState
+} from "../../../../../lib/presentation";
 
 export default function ClientDetailPage() {
   const { actor, activeOffice } = useAuth();
@@ -46,7 +53,7 @@ export default function ClientDetailPage() {
       })
       .catch((caught) => {
         if (isActive) {
-          setError(getMessage(caught, "Não foi possível carregar o cliente."));
+          setError(getApiErrorMessage(caught, "Não foi possível carregar o cliente."));
         }
       })
       .finally(() => {
@@ -69,7 +76,7 @@ export default function ClientDetailPage() {
       setClient(updated);
       setNotice("Cliente arquivado.");
     } catch (caught) {
-      setError(getMessage(caught, "Não foi possível arquivar o cliente."));
+      setError(getApiErrorMessage(caught, "Não foi possível arquivar o cliente."));
     } finally {
       setSaving(false);
     }
@@ -79,7 +86,7 @@ export default function ClientDetailPage() {
     <ProtectedRoute roles={["admin", "analyst", "user"]}>
       <main className="mx-auto flex min-h-screen max-w-7xl flex-col gap-6 px-4 py-5 lg:px-6">
         <AppHeader
-          title="Client detail"
+          title="Detalhe do cliente"
           active="clients"
           showAdmin={actor?.role === "admin"}
           actions={
@@ -104,21 +111,21 @@ export default function ClientDetailPage() {
                 <h1 className="text-3xl font-semibold text-stone-900">{client.name}</h1>
                 <p className="text-sm text-stone-600">{client.email}</p>
                 <div className="flex flex-wrap gap-2">
-                  <Badge variant={client.status === "archived" ? "outline" : "default"}>
-                    {client.status}
+                  <Badge variant={clientStatusVariant(client.status)}>
+                    {labelClientStatus(client.status)}
                   </Badge>
-                  <Badge variant="outline">{client.onboardingStatus}</Badge>
+                  <Badge variant="outline">{labelOnboardingStatus(client.onboardingStatus)}</Badge>
                 </div>
               </div>
 
               <div className="mt-5 space-y-3 text-sm text-stone-700">
                 <p>
-                  <span className="font-medium text-stone-900">Household:</span>{" "}
-                  {client.householdName ?? "Sem household"}
+                  <span className="font-medium text-stone-900">Grupo familiar:</span>{" "}
+                  {client.householdName ?? "Sem grupo familiar"}
                 </p>
                 <p>
-                  <span className="font-medium text-stone-900">Advisor:</span>{" "}
-                  {client.advisorName ?? "Sem advisor"}
+                  <span className="font-medium text-stone-900">Assessor:</span>{" "}
+                  {client.advisorName ?? "Sem assessor"}
                 </p>
                 <p>
                   <span className="font-medium text-stone-900">Documento:</span>{" "}
@@ -126,7 +133,7 @@ export default function ClientDetailPage() {
                 </p>
                 <p>
                   <span className="font-medium text-stone-900">Perfil:</span>{" "}
-                  {client.riskProfileDescriptor}
+                  {client.riskProfileDescriptor || "Não informado"}
                 </p>
                 {client.notes ? <p>{client.notes}</p> : null}
               </div>
@@ -153,21 +160,21 @@ export default function ClientDetailPage() {
               <Card>
                 <div className="flex items-start justify-between gap-3">
                   <div>
-                    <p className="text-xs font-semibold uppercase text-moss">Portfolios</p>
+                    <p className="text-xs font-semibold uppercase text-moss">Portfólios</p>
                     <h2 className="text-xl font-semibold text-stone-900">Vínculos do cliente</h2>
                   </div>
-                  <Badge variant="outline">{client.portfolios.length} portfolios</Badge>
+                  <Badge variant="outline">{client.portfolios.length} portfólios</Badge>
                 </div>
 
                 <div className="mt-5 overflow-x-auto">
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Portfolio</TableHead>
+                        <TableHead>Portfólio</TableHead>
                         <TableHead>Status</TableHead>
-                        <TableHead>Analytics</TableHead>
-                        <TableHead>Market data</TableHead>
-                        <TableHead>Transactions</TableHead>
+                        <TableHead>Análises</TableHead>
+                        <TableHead>Dados de mercado</TableHead>
+                        <TableHead>Transações</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -179,9 +186,9 @@ export default function ClientDetailPage() {
                             </Link>
                             <p className="text-xs text-stone-500">{portfolio.accountName}</p>
                           </TableCell>
-                          <TableCell>{portfolio.status}</TableCell>
-                          <TableCell>{portfolio.analyticsState}</TableCell>
-                          <TableCell>{portfolio.marketDataState}</TableCell>
+                          <TableCell>{labelPortfolioStatus(portfolio.status)}</TableCell>
+                          <TableCell>{labelProcessingState(portfolio.analyticsState)}</TableCell>
+                          <TableCell>{labelProcessingState(portfolio.marketDataState)}</TableCell>
                           <TableCell>{portfolio.transactionCount}</TableCell>
                         </TableRow>
                       ))}
@@ -193,7 +200,7 @@ export default function ClientDetailPage() {
               <Card>
                 <div className="flex items-start justify-between gap-3">
                   <div>
-                    <p className="text-xs font-semibold uppercase text-moss">Accounts</p>
+                    <p className="text-xs font-semibold uppercase text-moss">Contas</p>
                     <h2 className="text-xl font-semibold text-stone-900">Contas vinculadas</h2>
                   </div>
                   <Badge variant="outline">{client.accounts.length} contas</Badge>
@@ -203,7 +210,7 @@ export default function ClientDetailPage() {
                     <TableHeader>
                       <TableRow>
                         <TableHead>Conta</TableHead>
-                        <TableHead>Portfolios</TableHead>
+                        <TableHead>Portfólios</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -223,11 +230,4 @@ export default function ClientDetailPage() {
       </main>
     </ProtectedRoute>
   );
-}
-
-function getMessage(error: unknown, fallback: string) {
-  if (error instanceof ApiError) {
-    return error.message;
-  }
-  return fallback;
 }

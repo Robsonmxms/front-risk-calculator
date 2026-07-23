@@ -42,7 +42,15 @@ import {
   PermissionEvaluation,
   PermissionKey
 } from "../../../../../../features/office/types";
-import { ApiError } from "../../../../../../lib/api/client";
+import {
+  formatResourceReference,
+  getApiErrorMessage,
+  labelOfficeRole,
+  labelOfficeStatus,
+  labelPermission,
+  labelResourceType,
+  officeStatusVariant
+} from "../../../../../../lib/presentation";
 
 const ASSIGNABLE_PERMISSIONS: PermissionKey[] = [
   "client.read",
@@ -57,6 +65,17 @@ const ASSIGNABLE_PERMISSIONS: PermissionKey[] = [
   "notifications.read",
   "audit.read"
 ];
+
+const RESOURCE_OPTIONS: Record<AssignmentResourceType, Array<{ id: string; label: string }>> = {
+  account: [{ id: "acct_main", label: "Conta Principal de Portfólio" }],
+  client: [
+    { id: "client_founder", label: "Alice Founder" },
+    { id: "client_main", label: "Marina Silva" },
+    { id: "client_spouse", label: "Renato Silva" }
+  ],
+  household: [{ id: "hh_main_silva", label: "Família Silva" }],
+  portfolio: [{ id: "prt_main", label: "Core Growth" }]
+};
 
 export default function OfficeSettingsPage() {
   const { actor, activeOffice } = useAuth();
@@ -89,6 +108,7 @@ export default function OfficeSettingsPage() {
     () => assignments.filter((assignment) => !assignment.revokedAt),
     [assignments]
   );
+  const assignmentResourceOptions = RESOURCE_OPTIONS[assignmentResourceType];
 
   useEffect(() => {
     let isActive = true;
@@ -128,7 +148,7 @@ export default function OfficeSettingsPage() {
       })
       .catch((caught: unknown) => {
         if (isActive) {
-          setError(getMessage(caught, "Não foi possível carregar o office."));
+          setError(getApiErrorMessage(caught, "Não foi possível carregar o escritório."));
         }
       })
       .finally(() => {
@@ -151,9 +171,9 @@ export default function OfficeSettingsPage() {
     try {
       const updated = await updateOffice(officeId, { name, status });
       setOffice(updated);
-      setNotice("Office atualizado.");
+      setNotice("Escritório atualizado.");
     } catch (caught) {
-      setError(getMessage(caught, "Não foi possível atualizar o office."));
+      setError(getApiErrorMessage(caught, "Não foi possível atualizar o escritório."));
     } finally {
       setSaving(false);
     }
@@ -177,7 +197,7 @@ export default function OfficeSettingsPage() {
       setTeamMemberIds([]);
       setNotice("Time criado.");
     } catch (caught) {
-      setError(getMessage(caught, "Não foi possível criar o time."));
+      setError(getApiErrorMessage(caught, "Não foi possível criar o time."));
     } finally {
       setSaving(false);
     }
@@ -199,9 +219,9 @@ export default function OfficeSettingsPage() {
         permissions: [assignmentPermission]
       });
       setAssignments((current) => [assignment, ...current]);
-      setNotice("Assignment criado.");
+      setNotice("Permissão por recurso criada.");
     } catch (caught) {
-      setError(getMessage(caught, "Não foi possível criar o assignment."));
+      setError(getApiErrorMessage(caught, "Não foi possível criar a permissão por recurso."));
     } finally {
       setSaving(false);
     }
@@ -217,9 +237,9 @@ export default function OfficeSettingsPage() {
       setAssignments((current) =>
         current.map((assignment) => (assignment.id === revoked.id ? revoked : assignment))
       );
-      setNotice("Assignment revogado.");
+      setNotice("Permissão por recurso revogada.");
     } catch (caught) {
-      setError(getMessage(caught, "Não foi possível revogar o assignment."));
+      setError(getApiErrorMessage(caught, "Não foi possível revogar a permissão por recurso."));
     } finally {
       setSaving(false);
     }
@@ -233,47 +253,52 @@ export default function OfficeSettingsPage() {
     );
   }
 
+  function handleAssignmentResourceTypeChange(resourceType: AssignmentResourceType) {
+    setAssignmentResourceType(resourceType);
+    setAssignmentResourceId(RESOURCE_OPTIONS[resourceType][0]?.id ?? "");
+  }
+
   return (
     <ProtectedRoute roles={["admin", "analyst", "user"]}>
       <main className="mx-auto flex min-h-screen max-w-7xl flex-col gap-6 px-4 py-5 lg:px-6">
         <AppHeader
-          title="Office settings"
+          title="Configurações do escritório"
           active="office"
           showAdmin={actor?.role === "admin"}
           actions={
             <>
-              {activeOffice ? <Badge variant="outline">{activeOffice.role}</Badge> : null}
+              {activeOffice ? <Badge variant="outline">{labelOfficeRole(activeOffice.role)}</Badge> : null}
               <LogoutButton />
             </>
           }
         />
 
         {loading ? (
-          <Alert variant="info">Carregando contexto do office.</Alert>
+          <Alert variant="info">Carregando contexto do escritório.</Alert>
         ) : error ? (
           <Alert variant="failure">{error}</Alert>
         ) : !office ? (
-          <Alert variant="warning">Office não encontrado.</Alert>
+          <Alert variant="warning">Escritório não encontrado.</Alert>
         ) : (
           <section className="grid gap-4 xl:grid-cols-[380px_1fr]">
             <Card>
               <div className="space-y-1">
-                <p className="text-xs font-semibold uppercase text-moss">Office</p>
+                <p className="text-xs font-semibold uppercase text-moss">Escritório</p>
                 <h1 className="text-2xl font-semibold text-stone-900">{office.name}</h1>
-                <p className="text-sm text-stone-600">Tenant, papel ativo e permissões carregadas.</p>
+                <p className="text-sm text-stone-600">Perfil ativo e permissões carregadas.</p>
               </div>
 
               <div className="mt-4 flex flex-wrap gap-2">
                 {permissions?.permissions.slice(0, 8).map((permission) => (
                   <Badge key={permission} variant="outline">
-                    {permission}
+                    {labelPermission(permission)}
                   </Badge>
                 ))}
               </div>
 
               {!canManageMembers ? (
                 <Alert variant="warning" className="mt-5">
-                  Ações de equipe indisponíveis para seu papel neste office.
+                  Ações de equipe indisponíveis para seu perfil neste escritório.
                 </Alert>
               ) : null}
 
@@ -297,13 +322,13 @@ export default function OfficeSettingsPage() {
                     disabled={!canManageMembers}
                     onChange={(event) => setStatus(event.target.value as OfficeStatus)}
                   >
-                    <option value="active">active</option>
-                    <option value="disabled">disabled</option>
+                    <option value="active">{labelOfficeStatus("active")}</option>
+                    <option value="disabled">{labelOfficeStatus("disabled")}</option>
                   </Select>
                 </div>
                 {notice ? <Alert variant="info">{notice}</Alert> : null}
                 <Button type="submit" disabled={saving || !canManageMembers}>
-                  {saving ? "Salvando..." : "Salvar office"}
+                  {saving ? "Salvando..." : "Salvar escritório"}
                 </Button>
               </form>
             </Card>
@@ -314,8 +339,8 @@ export default function OfficeSettingsPage() {
                   <Card>
                     <div className="flex items-start justify-between gap-3">
                       <div>
-                        <p className="text-xs font-semibold uppercase text-moss">Memberships</p>
-                        <h2 className="text-xl font-semibold text-stone-900">Equipe do office</h2>
+                        <p className="text-xs font-semibold uppercase text-moss">Membros</p>
+                        <h2 className="text-xl font-semibold text-stone-900">Equipe do escritório</h2>
                       </div>
                       <Badge variant="outline">{members.length} membros</Badge>
                     </div>
@@ -336,7 +361,7 @@ export default function OfficeSettingsPage() {
                                 {member.userName}
                               </TableCell>
                               <TableCell>{member.userEmail}</TableCell>
-                              <TableCell>{member.role}</TableCell>
+                              <TableCell>{labelOfficeRole(member.role)}</TableCell>
                             </TableRow>
                           ))}
                         </TableBody>
@@ -348,7 +373,7 @@ export default function OfficeSettingsPage() {
                     <div className="flex items-start justify-between gap-3">
                       <div>
                         <p className="text-xs font-semibold uppercase text-moss">Times</p>
-                        <h2 className="text-xl font-semibold text-stone-900">Advisory teams</h2>
+                        <h2 className="text-xl font-semibold text-stone-900">Times de assessoria</h2>
                       </div>
                       <Badge variant="outline">{teams.length} times</Badge>
                     </div>
@@ -385,11 +410,13 @@ export default function OfficeSettingsPage() {
                               key={member.id}
                               className="flex items-center gap-2 rounded-md border border-border px-3 py-2 text-sm text-stone-700"
                             >
-                              <input
-                                type="checkbox"
-                                checked={teamMemberIds.includes(member.userId)}
-                                onChange={() => toggleTeamMember(member.userId)}
-                              />
+	                              <input
+	                                type="checkbox"
+	                                name="teamMemberIds"
+	                                value={member.userId}
+	                                checked={teamMemberIds.includes(member.userId)}
+	                                onChange={() => toggleTeamMember(member.userId)}
+	                              />
                               {member.userName}
                             </label>
                           ))}
@@ -410,7 +437,11 @@ export default function OfficeSettingsPage() {
                           {teams.map((team) => (
                             <TableRow key={team.id}>
                               <TableCell className="font-medium text-stone-900">{team.name}</TableCell>
-                              <TableCell>{team.status}</TableCell>
+                              <TableCell>
+                                <Badge variant={officeStatusVariant(team.status)}>
+                                  {labelOfficeStatus(team.status)}
+                                </Badge>
+                              </TableCell>
                               <TableCell>{team.members.map((member) => member.userName).join(", ")}</TableCell>
                             </TableRow>
                           ))}
@@ -422,7 +453,7 @@ export default function OfficeSettingsPage() {
                   <Card>
                     <div className="flex items-start justify-between gap-3">
                       <div>
-                        <p className="text-xs font-semibold uppercase text-moss">Assignments</p>
+                        <p className="text-xs font-semibold uppercase text-moss">Permissões por recurso</p>
                         <h2 className="text-xl font-semibold text-stone-900">Permissões por recurso</h2>
                       </div>
                       <Badge variant="outline">{activeAssignments.length} ativos</Badge>
@@ -472,26 +503,38 @@ export default function OfficeSettingsPage() {
                         <Select
                           id="assignmentResourceType"
                           className="mt-2"
-                          value={assignmentResourceType}
-                          onChange={(event) =>
-                            setAssignmentResourceType(event.target.value as AssignmentResourceType)
-                          }
+	                          value={assignmentResourceType}
+	                          onChange={(event) =>
+	                            handleAssignmentResourceTypeChange(event.target.value as AssignmentResourceType)
+	                          }
                         >
-                          <option value="client">client</option>
-                          <option value="household">household</option>
-                          <option value="account">account</option>
-                          <option value="portfolio">portfolio</option>
+                          <option value="client">{labelResourceType("client")}</option>
+                          <option value="household">{labelResourceType("household")}</option>
+                          <option value="account">{labelResourceType("account")}</option>
+                          <option value="portfolio">{labelResourceType("portfolio")}</option>
                         </Select>
-                      </div>
-                      <div>
-                        <Label htmlFor="assignmentResourceId">ID do recurso</Label>
-                        <Input
-                          id="assignmentResourceId"
-                          className="mt-2"
-                          value={assignmentResourceId}
-                          onChange={(event) => setAssignmentResourceId(event.target.value)}
-                        />
-                      </div>
+	                      </div>
+	                      <div>
+	                        <Label htmlFor="assignmentResourceId">Referência</Label>
+	                        {assignmentResourceOptions.length > 0 ? (
+	                          <Select
+	                            id="assignmentResourceId"
+	                            className="mt-2"
+	                            value={assignmentResourceId}
+	                            onChange={(event) => setAssignmentResourceId(event.target.value)}
+	                          >
+	                            {assignmentResourceOptions.map((option) => (
+	                              <option key={option.id} value={option.id}>
+	                                {option.label}
+	                              </option>
+	                            ))}
+	                          </Select>
+	                        ) : (
+	                          <Alert variant="info" className="mt-2">
+	                            Nenhuma referência disponível para este tipo.
+	                          </Alert>
+	                        )}
+	                      </div>
                       <div>
                         <Label htmlFor="assignmentPermission">Permissão</Label>
                         <Select
@@ -502,7 +545,7 @@ export default function OfficeSettingsPage() {
                         >
                           {ASSIGNABLE_PERMISSIONS.map((permission) => (
                             <option key={permission} value={permission}>
-                              {permission}
+                              {labelPermission(permission)}
                             </option>
                           ))}
                         </Select>
@@ -516,7 +559,7 @@ export default function OfficeSettingsPage() {
                             (!assignmentUserId && !assignmentTeamId)
                           }
                         >
-                          Criar assignment
+                          Criar permissão
                         </Button>
                       </div>
                     </form>
@@ -534,14 +577,16 @@ export default function OfficeSettingsPage() {
                         </TableHeader>
                         <TableBody>
                           {assignments.map((assignment) => (
-                            <TableRow key={assignment.id}>
-                              <TableCell>
-                                {assignment.resourceType}:{assignment.resourceId}
-                              </TableCell>
+	                            <TableRow key={assignment.id}>
+	                              <TableCell>
+	                                {formatAssignmentResource(assignment)}
+	                              </TableCell>
                               <TableCell>
                                 {getAssignmentTarget(assignment, members, teams)}
                               </TableCell>
-                              <TableCell>{assignment.permissions.join(", ")}</TableCell>
+                              <TableCell>
+                                {assignment.permissions.map((permission) => labelPermission(permission)).join(", ")}
+                              </TableCell>
                               <TableCell>{assignment.revokedAt ? "revogado" : "ativo"}</TableCell>
                               <TableCell>
                                 <Button
@@ -583,9 +628,10 @@ function getAssignmentTarget(
   return "Sem alvo";
 }
 
-function getMessage(error: unknown, fallback: string) {
-  if (error instanceof ApiError) {
-    return error.message;
-  }
-  return fallback;
+function formatAssignmentResource(assignment: AdvisoryAssignment) {
+  const displayName =
+    RESOURCE_OPTIONS[assignment.resourceType].find((option) => option.id === assignment.resourceId)?.label ??
+    "referência interna";
+
+  return formatResourceReference(assignment.resourceType, undefined, displayName);
 }

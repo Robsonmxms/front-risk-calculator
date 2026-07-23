@@ -33,7 +33,12 @@ import {
   ClientSummary,
   Household
 } from "../../../../features/client/types";
-import { ApiError } from "../../../../lib/api/client";
+import {
+  clientStatusVariant,
+  getApiErrorMessage,
+  labelClientStatus,
+  labelOnboardingStatus
+} from "../../../../lib/presentation";
 
 const CLIENT_STATUSES: Array<ClientStatus | ""> = ["", "active", "inactive", "archived"];
 const ONBOARDING_STATUSES: Array<ClientOnboardingStatus | ""> = [
@@ -63,16 +68,18 @@ export default function ClientDirectoryPage() {
   const [notice, setNotice] = useState<string | null>(null);
 
   const officeId = activeOffice?.officeId;
+  const isClientOffice = activeOffice?.role === "client";
   const activeClients = useMemo(
     () => clients.filter((client) => client.status === "active").length,
     [clients]
   );
 
   useEffect(() => {
-    if (!officeId) {
+    if (!officeId || isClientOffice) {
       setClients([]);
       setHouseholds([]);
       setLoading(false);
+      setError(null);
       return;
     }
 
@@ -98,7 +105,7 @@ export default function ClientDirectoryPage() {
       })
       .catch((caught) => {
         if (isActive) {
-          setError(getMessage(caught, "Não foi possível carregar clientes."));
+          setError(getApiErrorMessage(caught, "Não foi possível carregar clientes."));
         }
       })
       .finally(() => {
@@ -110,7 +117,7 @@ export default function ClientDirectoryPage() {
     return () => {
       isActive = false;
     };
-  }, [householdFilter, officeId, onboardingFilter, search, statusFilter]);
+  }, [householdFilter, isClientOffice, officeId, onboardingFilter, search, statusFilter]);
 
   async function handleCreateClient(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -139,7 +146,7 @@ export default function ClientDirectoryPage() {
       setNotes("");
       setNotice("Cliente criado.");
     } catch (caught) {
-      setError(getMessage(caught, "Não foi possível criar o cliente."));
+      setError(getApiErrorMessage(caught, "Não foi possível criar o cliente."));
     } finally {
       setSaving(false);
     }
@@ -149,7 +156,7 @@ export default function ClientDirectoryPage() {
     <ProtectedRoute roles={["admin", "analyst", "user"]}>
       <main className="mx-auto flex min-h-screen max-w-7xl flex-col gap-6 px-4 py-5 lg:px-6">
         <AppHeader
-          title="Client book"
+          title="Carteira de clientes"
           active="clients"
           showAdmin={actor?.role === "admin"}
           actions={
@@ -161,7 +168,12 @@ export default function ClientDirectoryPage() {
         />
 
         {!officeId ? (
-          <Alert variant="warning">Selecione um office para ver clientes.</Alert>
+          <Alert variant="warning">Selecione um escritório para ver clientes.</Alert>
+        ) : isClientOffice ? (
+          <Alert variant="info">
+            A carteira de clientes é uma área da equipe. Use o portal do cliente para acompanhar
+            pacotes e informações compartilhadas.
+          </Alert>
         ) : (
           <section className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
             <div className="grid gap-4">
@@ -190,7 +202,7 @@ export default function ClientDirectoryPage() {
                     >
                       {CLIENT_STATUSES.map((status) => (
                         <option key={status || "all"} value={status}>
-                          {status || "todos"}
+                          {status ? labelClientStatus(status) : "todos"}
                         </option>
                       ))}
                     </Select>
@@ -203,16 +215,16 @@ export default function ClientDirectoryPage() {
                     >
                       {ONBOARDING_STATUSES.map((status) => (
                         <option key={status || "all"} value={status}>
-                          {status || "onboarding"}
+                          {status ? labelOnboardingStatus(status) : "todos os cadastros"}
                         </option>
                       ))}
                     </Select>
                     <Select
-                      aria-label="Filtrar household"
+                      aria-label="Filtrar grupo familiar"
                       value={householdFilter}
                       onChange={(event) => setHouseholdFilter(event.target.value)}
                     >
-                      <option value="">households</option>
+                      <option value="">grupos familiares</option>
                       {households.map((household) => (
                         <option key={household.id} value={household.id}>
                           {household.name}
@@ -227,7 +239,7 @@ export default function ClientDirectoryPage() {
               {loading ? <Alert variant="info">Carregando clientes.</Alert> : null}
 
               {!loading && clients.length === 0 ? (
-                <Alert variant="info">Nenhum cliente encontrado para este office.</Alert>
+                <Alert variant="info">Nenhum cliente encontrado para este escritório.</Alert>
               ) : (
                 <Card>
                   <div className="overflow-x-auto">
@@ -235,11 +247,11 @@ export default function ClientDirectoryPage() {
                       <TableHeader>
                         <TableRow>
                           <TableHead>Cliente</TableHead>
-                          <TableHead>Household</TableHead>
-                          <TableHead>Advisor</TableHead>
+                          <TableHead>Grupo familiar</TableHead>
+                          <TableHead>Assessor</TableHead>
                           <TableHead>Status</TableHead>
-                          <TableHead>Onboarding</TableHead>
-                          <TableHead>Portfolios</TableHead>
+                          <TableHead>Cadastro</TableHead>
+                          <TableHead>Portfólios</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -251,14 +263,14 @@ export default function ClientDirectoryPage() {
                               </Link>
                               <p className="text-xs text-stone-500">{client.email}</p>
                             </TableCell>
-                            <TableCell>{client.householdName ?? "Sem household"}</TableCell>
-                            <TableCell>{client.advisorName ?? "Sem advisor"}</TableCell>
+                            <TableCell>{client.householdName ?? "Sem grupo familiar"}</TableCell>
+                            <TableCell>{client.advisorName ?? "Sem assessor"}</TableCell>
                             <TableCell>
-                              <Badge variant={client.status === "archived" ? "outline" : "default"}>
-                                {client.status}
+                              <Badge variant={clientStatusVariant(client.status)}>
+                                {labelClientStatus(client.status)}
                               </Badge>
                             </TableCell>
-                            <TableCell>{client.onboardingStatus}</TableCell>
+                            <TableCell>{labelOnboardingStatus(client.onboardingStatus)}</TableCell>
                             <TableCell>{client.portfolioCount}</TableCell>
                           </TableRow>
                         ))}
@@ -298,14 +310,14 @@ export default function ClientDirectoryPage() {
                   />
                 </div>
                 <div>
-                  <Label htmlFor="clientHousehold">Household</Label>
+                  <Label htmlFor="clientHousehold">Grupo familiar</Label>
                   <Select
                     id="clientHousehold"
                     className="mt-2"
                     value={householdId}
                     onChange={(event) => setHouseholdId(event.target.value)}
                   >
-                    <option value="">Sem household</option>
+                    <option value="">Sem grupo familiar</option>
                     {households.map((household) => (
                       <option key={household.id} value={household.id}>
                         {household.name}
@@ -320,7 +332,7 @@ export default function ClientDirectoryPage() {
                     className="mt-2"
                     value={riskProfileDescriptor}
                     onChange={(event) => setRiskProfileDescriptor(event.target.value)}
-                    placeholder="Ex.: Balanced growth profile"
+                    placeholder="Ex.: perfil moderado com controle de risco"
                   />
                 </div>
                 <div>
@@ -343,11 +355,4 @@ export default function ClientDirectoryPage() {
       </main>
     </ProtectedRoute>
   );
-}
-
-function getMessage(error: unknown, fallback: string) {
-  if (error instanceof ApiError) {
-    return error.message;
-  }
-  return fallback;
 }

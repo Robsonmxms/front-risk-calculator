@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useState } from "react";
 import { AppHeader } from "../../../../components/layout/AppHeader";
 import { Alert } from "../../../../components/ui/alert";
@@ -11,7 +10,16 @@ import { LogoutButton } from "../../../../features/auth/LogoutButton";
 import { ProtectedRoute } from "../../../../features/auth/ProtectedRoute";
 import { getClientPortal } from "../../../../features/delivery/deliveryApi";
 import { ClientPortalReadModel } from "../../../../features/delivery/types";
-import { ApiError } from "../../../../lib/api/client";
+import {
+  getApiErrorMessage,
+  labelPortfolioFreshness,
+  labelPortfolioStatus,
+  labelReportPackageItemStatus,
+  labelReportPackageStatus,
+  portfolioFreshnessVariant,
+  portfolioStatusVariant,
+  reportPackageStatusVariant
+} from "../../../../lib/presentation";
 
 export default function ClientPortalPage() {
   const { actor, activeOffice } = useAuth();
@@ -31,7 +39,7 @@ export default function ClientPortalPage() {
       })
       .catch((caught) => {
         if (isActive) {
-          setError(getMessage(caught, "Não foi possível carregar o portal."));
+          setError(getApiErrorMessage(caught, "Não foi possível carregar o portal."));
         }
       })
       .finally(() => {
@@ -49,7 +57,7 @@ export default function ClientPortalPage() {
     <ProtectedRoute roles={["admin", "analyst", "user"]}>
       <main className="mx-auto flex min-h-screen max-w-7xl flex-col gap-6 px-4 py-5 lg:px-6">
         <AppHeader
-          title="Client portal"
+          title="Portal do cliente"
           active="clientPortal"
           showAdmin={actor?.role === "admin"}
           actions={
@@ -91,21 +99,28 @@ export default function ClientPortalPage() {
                         </h1>
                         <p className="mt-2 text-sm text-stone-600">{reportPackage.summaryNotes}</p>
                       </div>
-                      <Badge variant="success">{reportPackage.status}</Badge>
+                      <Badge variant={reportPackageStatusVariant(reportPackage.status)}>
+                        {labelReportPackageStatus(reportPackage.status)}
+                      </Badge>
                     </div>
 
                     <div className="mt-5 grid gap-3">
                       {reportPackage.portfolios.map((portfolio) => (
-                        <Link
+                        <div
                           key={portfolio.id}
-                          href={`/dashboard/portfolios/${portfolio.id}`}
-                          className="rounded-md border border-border p-3 text-sm hover:border-moss"
+                          className="rounded-md border border-border bg-muted/30 p-3 text-sm"
                         >
                           <span className="block font-medium text-stone-900">{portfolio.name}</span>
-                          <span className="text-stone-500">
-                            {portfolio.status} · {portfolio.freshness} · {portfolio.baseCurrency}
+                          <span className="mt-2 flex flex-wrap gap-2">
+                            <Badge variant={portfolioStatusVariant(portfolio.status)}>
+                              {labelPortfolioStatus(portfolio.status)}
+                            </Badge>
+                            <Badge variant={portfolioFreshnessVariant(portfolio.freshness)}>
+                              {labelPortfolioFreshness(portfolio.freshness)}
+                            </Badge>
+                            <Badge variant="outline">{portfolio.baseCurrency}</Badge>
                           </span>
-                        </Link>
+                        </div>
                       ))}
                     </div>
 
@@ -117,7 +132,7 @@ export default function ClientPortalPage() {
                         >
                           <span className="font-medium text-stone-800">{item.title}</span>
                           <Badge variant={item.status === "ready" ? "outline" : "warning"}>
-                            {item.status}
+                            {labelReportPackageItemStatus(item.status)}
                           </Badge>
                         </div>
                       ))}
@@ -140,11 +155,4 @@ function MetricCard({ label, value }: { label: string; value: number }) {
       <strong className="text-3xl text-stone-900">{value}</strong>
     </Card>
   );
-}
-
-function getMessage(error: unknown, fallback: string) {
-  if (error instanceof ApiError) {
-    return error.message;
-  }
-  return fallback;
 }
