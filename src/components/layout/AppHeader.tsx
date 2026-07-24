@@ -11,6 +11,7 @@ type ActiveRoute =
   | "office"
   | "clients"
   | "workbench"
+  | "analyticsDiagnostics"
   | "compliance"
   | "reportDelivery"
   | "clientPortal";
@@ -57,6 +58,14 @@ export function AppHeader({
             {canOpenTeamAreas ? (
               <HeaderLink href="/dashboard/workbench" active={active === "workbench"}>
                 Mesa
+              </HeaderLink>
+            ) : null}
+            {canOpenTeamAreas ? (
+              <HeaderLink
+                href="/dashboard/analytics-diagnostics"
+                active={active === "analyticsDiagnostics"}
+              >
+                Diagnósticos
               </HeaderLink>
             ) : null}
             {activeOffice && canOpenCompliance ? (

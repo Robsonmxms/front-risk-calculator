@@ -23,7 +23,9 @@
   "dependencies": {
     "next": "^16.2.10",
     "react": "^19.2.7",
-    "react-dom": "^19.2.7"
+    "react-dom": "^19.2.7",
+    "react-is": "19.2.8",
+    "recharts": "3.10.0"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
@@ -33,6 +35,7 @@
     "@types/node": "^26.1.1",
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
+    "@types/react-is": "^19",
     "autoprefixer": "^10.4.21",
     "eslint": "^10.6.0",
     "globals": "^17.7.0",

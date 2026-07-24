@@ -8,6 +8,12 @@ import { Alert } from "../../../../../components/ui/alert";
 import { Badge } from "../../../../../components/ui/badge";
 import { Button, LinkButton } from "../../../../../components/ui/button";
 import { Card } from "../../../../../components/ui/card";
+import {
+  chartPalette,
+  ThemedHeatmapChart,
+  ThemedHorizontalBarChart,
+  ThemedLineChart
+} from "../../../../../components/charts/risk-charts";
 import { FieldError, Label } from "../../../../../components/ui/form";
 import { Input } from "../../../../../components/ui/input";
 import { Select } from "../../../../../components/ui/select";
@@ -1809,10 +1815,15 @@ function LineChartCard({
         <Alert variant="warning">{emptyLabel}</Alert>
       ) : (
         <div className="mt-3">
-          <MiniLineChart
-            points={series}
-            title={title}
-            strokeClassName={strokeClassName}
+          <ThemedLineChart
+            data={series.map((point) => ({
+              name: point.date,
+              value: point.value
+            }))}
+            ariaLabel={title}
+            color={lineColor(strokeClassName)}
+            valueFormatter={valueLabel}
+            height={180}
           />
           <div className="mt-2 flex justify-between text-xs text-stone-500">
             <span>{series[0].date}</span>
@@ -1821,58 +1832,6 @@ function LineChartCard({
         </div>
       )}
     </Card>
-  );
-}
-
-function MiniLineChart({
-  points,
-  title,
-  strokeClassName
-}: {
-  points: Array<{ date: string; value: number }>;
-  title: string;
-  strokeClassName: string;
-}) {
-  const width = 640;
-  const height = 180;
-  const padding = 18;
-  const values = points.map((point) => point.value);
-  const min = Math.min(...values);
-  const max = Math.max(...values);
-  const range = max - min || 1;
-  const path = points
-    .map((point, index) => {
-      const x =
-        padding + (index / Math.max(1, points.length - 1)) * (width - padding * 2);
-      const y = height - padding - ((point.value - min) / range) * (height - padding * 2);
-      return `${index === 0 ? "M" : "L"} ${x.toFixed(2)} ${y.toFixed(2)}`;
-    })
-    .join(" ");
-
-  return (
-    <svg
-      viewBox={`0 0 ${width} ${height}`}
-      role="img"
-      aria-label={title}
-      className="h-44 w-full rounded-md border border-border bg-white"
-      preserveAspectRatio="none"
-    >
-      <line
-        x1={padding}
-        y1={height - padding}
-        x2={width - padding}
-        y2={height - padding}
-        className="stroke-stone-200"
-      />
-      <line
-        x1={padding}
-        y1={padding}
-        x2={padding}
-        y2={height - padding}
-        className="stroke-stone-200"
-      />
-      <path d={path} fill="none" strokeWidth="3" className={strokeClassName} />
-    </svg>
   );
 }
 
@@ -1886,66 +1845,22 @@ function CorrelationHeatmap({ charts }: { charts: PortfolioChartBundle }) {
       {symbols.length < 2 || cells.length === 0 ? (
         <Alert variant="warning">Sem amostras suficientes para matriz de correlação.</Alert>
       ) : (
-        <>
-          <div
-            className="hidden overflow-x-auto sm:block"
-            aria-label="Mapa de calor de correlação"
-          >
-            <div
-              className="grid min-w-[420px] gap-1 text-center text-xs"
-              style={{
-                gridTemplateColumns: `96px repeat(${symbols.length}, minmax(56px, 1fr))`
-              }}
-            >
-              <div />
-              {symbols.map((symbol) => (
-                <div key={symbol} className="font-semibold text-stone-700">
-                  {symbol}
-                </div>
-              ))}
-              {symbols.map((rowSymbol) => (
-                <div key={rowSymbol} className="contents">
-                  <div className="flex items-center font-semibold text-stone-700">
-                    {rowSymbol}
-                  </div>
-                  {symbols.map((columnSymbol) => {
-                    const value = correlationValue(rowSymbol, columnSymbol, cells);
-                    return (
-                      <div
-                        key={`${rowSymbol}-${columnSymbol}`}
-                        className="rounded-md px-2 py-3 font-medium text-stone-900"
-                        style={{ backgroundColor: correlationColor(value) }}
-                      >
-                        {value.toFixed(2)}
-                      </div>
-                    );
-                  })}
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="sm:hidden">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Par</TableHead>
-                  <TableHead>Coeficiente</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {cells.map((cell) => (
-                  <TableRow key={`${cell.leftSymbol}-${cell.rightSymbol}`}>
-                    <TableCell className="font-medium text-stone-900">
-                      {cell.leftSymbol}/{cell.rightSymbol}
-                    </TableCell>
-                    <TableCell>{cell.correlation.toFixed(2)}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-        </>
+        <ThemedHeatmapChart
+          ariaLabel="Mapa de calor de correlação"
+          valueLabel="coeficiente"
+          valueFormatter={(value) => value.toFixed(2)}
+          data={symbols.flatMap((rowSymbol) =>
+            symbols.map((columnSymbol) => {
+              const value = correlationValue(rowSymbol, columnSymbol, cells);
+              return {
+                x: columnSymbol,
+                y: rowSymbol,
+                value,
+                fill: correlationColor(value)
+              };
+            })
+          )}
+        />
       )}
     </Card>
   );
@@ -2158,24 +2073,16 @@ function BarPanel({
       {rows.length === 0 ? (
         <Alert variant="warning">{emptyLabel}</Alert>
       ) : (
-        <div className="space-y-3">
-          {rows.map((row) => (
-            <div key={row.label} className="space-y-1">
-              <div className="flex items-center justify-between gap-3 text-sm">
-                <span className="font-medium text-stone-900">{row.label}</span>
-                <span className="text-stone-600">
-                  {row.percent.toFixed(1)}% · {row.detail}
-                </span>
-              </div>
-              <div className="h-2 rounded-full bg-gray-100">
-                <div
-                  className="h-2 rounded-full bg-moss"
-                  style={{ width: `${barWidth(row.percent)}%` }}
-                />
-              </div>
-            </div>
-          ))}
-        </div>
+        <ThemedHorizontalBarChart
+          ariaLabel={title}
+          color={chartPalette.moss}
+          valueFormatter={(value) => `${value.toFixed(1)}%`}
+          data={rows.map((row) => ({
+            name: row.label,
+            value: row.percent,
+            detail: row.detail
+          }))}
+        />
       )}
     </Card>
   );
@@ -2197,18 +2104,15 @@ function PerformancePanel({ snapshot }: { snapshot: PortfolioAnalyticsSnapshot }
       {snapshot.performance.length === 0 ? (
         <Alert variant="warning">Sem série histórica calculada.</Alert>
       ) : (
-        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-          {snapshot.performance.slice(-6).map((point) => (
-            <div key={point.date} className="rounded-lg border border-border p-3">
-              <span className="text-xs font-semibold uppercase text-stone-500">
-                {point.date}
-              </span>
-              <div className="mt-1 font-semibold text-stone-900">
-                {formatCurrency(point.value, "USD")}
-              </div>
-            </div>
-          ))}
-        </div>
+        <ThemedLineChart
+          ariaLabel="Desempenho histórico do portfólio"
+          color={chartPalette.moss}
+          valueFormatter={(value) => formatCurrency(value, "USD")}
+          data={snapshot.performance.map((point) => ({
+            name: point.date,
+            value: point.value
+          }))}
+        />
       )}
     </Card>
   );
@@ -2221,22 +2125,16 @@ function DrawdownPanel({ snapshot }: { snapshot: PortfolioAnalyticsSnapshot }) {
       {snapshot.drawdown.length === 0 ? (
         <Alert variant="warning">Sem drawdown calculado.</Alert>
       ) : (
-        <div className="space-y-3">
-          {snapshot.drawdown.slice(-6).map((point) => (
-            <div key={point.date} className="space-y-1">
-              <div className="flex items-center justify-between gap-3 text-sm">
-                <span className="font-medium text-stone-900">{point.date}</span>
-                <span className="text-stone-600">{point.drawdownPercent.toFixed(2)}%</span>
-              </div>
-              <div className="h-2 rounded-full bg-gray-100">
-                <div
-                  className="h-2 rounded-full bg-rose-500"
-                  style={{ width: `${barWidth(Math.abs(point.drawdownPercent))}%` }}
-                />
-              </div>
-            </div>
-          ))}
-        </div>
+        <ThemedHorizontalBarChart
+          ariaLabel="Perda máxima no período"
+          color={chartPalette.rose}
+          valueFormatter={(value) => `${value.toFixed(2)}%`}
+          data={snapshot.drawdown.slice(-8).map((point) => ({
+            name: point.date,
+            value: Math.abs(point.drawdownPercent),
+            detail: `${point.drawdownPercent.toFixed(2)}%`
+          }))}
+        />
       )}
     </Card>
   );
@@ -2249,26 +2147,17 @@ function CorrelationPanel({ snapshot }: { snapshot: PortfolioAnalyticsSnapshot }
       {snapshot.correlation.length === 0 ? (
         <Alert variant="warning">Sem pares suficientes para correlação.</Alert>
       ) : (
-        <div className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Par</TableHead>
-                <TableHead>Coeficiente</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {snapshot.correlation.map((cell) => (
-                <TableRow key={`${cell.leftSymbol}-${cell.rightSymbol}`}>
-                  <TableCell className="font-medium text-stone-900">
-                    {cell.leftSymbol}/{cell.rightSymbol}
-                  </TableCell>
-                  <TableCell>{cell.correlation.toFixed(3)}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
+        <ThemedHeatmapChart
+          ariaLabel="Correlação entre ativos do retrato de risco"
+          valueLabel="coeficiente"
+          valueFormatter={(value) => value.toFixed(3)}
+          data={snapshot.correlation.map((cell) => ({
+            x: cell.rightSymbol,
+            y: cell.leftSymbol,
+            value: cell.correlation,
+            fill: correlationColor(cell.correlation)
+          }))}
+        />
       )}
     </Card>
   );
@@ -2492,8 +2381,16 @@ function formatAnalyticsMessage(message: string) {
     : localized;
 }
 
-function barWidth(percent: number) {
-  return Math.max(2, Math.min(100, percent));
+function lineColor(strokeClassName: string) {
+  const colors: Record<string, string> = {
+    "stroke-moss": chartPalette.moss,
+    "stroke-blue-600": chartPalette.blue,
+    "stroke-emerald-600": chartPalette.emerald,
+    "stroke-rose-600": chartPalette.rose,
+    "stroke-amber-600": chartPalette.amber,
+    "stroke-violet-600": chartPalette.violet
+  };
+  return colors[strokeClassName] ?? chartPalette.moss;
 }
 
 function labelUnavailableChartKeys(keys: string[]) {
