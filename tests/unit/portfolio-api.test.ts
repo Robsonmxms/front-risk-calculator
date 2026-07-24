@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   createPortfolioAlert,
+  getPortfolioCharts,
   getTradePrice,
   listNotifications,
   listPortfolioReports,
@@ -161,6 +162,64 @@ describe("portfolio api market data client", () => {
     });
     expect(fetchMock.mock.calls[0][0]).toBe(
       "http://localhost:8000/api/v1/market-data/assets/asset-msft/trade-price?tradeDate=2026-07-15&quantity=3"
+    );
+  });
+
+  it("requests portfolio chart bundles with range, interval, assets and benchmark", async () => {
+    const fetchMock = vi.fn().mockResolvedValueOnce(
+      jsonResponse(200, {
+        data: {
+          portfolioId: "prt_main",
+          asOfDate: "2026-07-15",
+          range: "1m",
+          interval: "weekly",
+          baseCurrency: "USD",
+          charts: {
+            assetPrices: [],
+            portfolioPerformance: [],
+            cumulativeReturn: [],
+            allocation: [],
+            sectorExposure: [],
+            drawdown: [],
+            rollingRisk: [],
+            correlation: { symbols: [], cells: [] },
+            benchmarkComparison: [],
+            annotations: []
+          },
+          dataQuality: {
+            status: "partial",
+            issues: [],
+            staleInputCount: 0,
+            unavailableChartKeys: ["assetPrices"]
+          }
+        },
+        meta: {
+          sourceSnapshotId: "ans_main",
+          generatedAt: "2026-07-16T10:00:00.000Z"
+        }
+      })
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(
+      getPortfolioCharts("prt_main", {
+        range: "1m",
+        interval: "weekly",
+        assetSymbols: ["MSFT", "VTI"],
+        benchmarkSymbol: "spy",
+        baseCurrency: "usd"
+      })
+    ).resolves.toMatchObject({
+      data: {
+        portfolioId: "prt_main",
+        dataQuality: { status: "partial" }
+      },
+      meta: {
+        sourceSnapshotId: "ans_main"
+      }
+    });
+    expect(fetchMock.mock.calls[0][0]).toBe(
+      "http://localhost:8000/api/v1/portfolios/prt_main/charts?range=1m&interval=weekly&assetSymbols=MSFT%2CVTI&benchmarkSymbol=SPY&baseCurrency=USD"
     );
   });
 

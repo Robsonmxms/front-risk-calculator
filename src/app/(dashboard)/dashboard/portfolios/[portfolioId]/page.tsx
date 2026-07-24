@@ -28,6 +28,7 @@ import {
   createPortfolioTransaction,
   downloadPortfolioReport,
   getTradePrice,
+  getPortfolioCharts,
   getPortfolioAnalytics,
   getPortfolio,
   listNotifications,
@@ -51,6 +52,9 @@ import {
   PortfolioAlert,
   PortfolioAnalyticsReadModel,
   PortfolioAnalyticsSnapshot,
+  PortfolioChartBundle,
+  PortfolioChartInterval,
+  PortfolioChartRange,
   PortfolioDetail,
   PortfolioPosition,
   PortfolioReport,
@@ -126,18 +130,25 @@ export default function PortfolioDetailPage() {
   const [transactions, setTransactions] = useState<PortfolioTransaction[]>([]);
   const [snapshots, setSnapshots] = useState<PortfolioSnapshot[]>([]);
   const [analytics, setAnalytics] = useState<PortfolioAnalyticsReadModel | null>(null);
+  const [charts, setCharts] = useState<PortfolioChartBundle | null>(null);
   const [reports, setReports] = useState<PortfolioReport[]>([]);
   const [alerts, setAlerts] = useState<PortfolioAlert[]>([]);
   const [notifications, setNotifications] = useState<NotificationRecord[]>([]);
   const [selectedAsOf, setSelectedAsOf] = useState<string>("");
+  const [chartRange, setChartRange] = useState<PortfolioChartRange>("1y");
+  const [chartInterval, setChartInterval] = useState<PortfolioChartInterval>("daily");
+  const [chartBenchmark, setChartBenchmark] = useState("");
+  const [selectedChartSymbols, setSelectedChartSymbols] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isAnalyticsLoading, setIsAnalyticsLoading] = useState(false);
+  const [isChartsLoading, setIsChartsLoading] = useState(false);
   const [isRecomputing, setIsRecomputing] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isRequestingReport, setIsRequestingReport] = useState(false);
   const [isCreatingAlert, setIsCreatingAlert] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [analyticsError, setAnalyticsError] = useState<string | null>(null);
+  const [chartsError, setChartsError] = useState<string | null>(null);
   const [reportsError, setReportsError] = useState<string | null>(null);
   const [alertsError, setAlertsError] = useState<string | null>(null);
   const [notificationsError, setNotificationsError] = useState<string | null>(null);
@@ -212,6 +223,36 @@ export default function PortfolioDetailPage() {
       setIsAnalyticsLoading(false);
     }
   }, [portfolioId]);
+
+  const reloadCharts = useCallback(async () => {
+    if (!portfolioId) {
+      return;
+    }
+
+    setIsChartsLoading(true);
+    setChartsError(null);
+    try {
+      const response = await getPortfolioCharts(portfolioId, {
+        range: chartRange,
+        interval: chartInterval,
+        benchmarkSymbol: chartBenchmark,
+        assetSymbols: selectedChartSymbols,
+        baseCurrency: portfolio?.baseCurrency
+      });
+      setCharts(response.data);
+    } catch (requestError) {
+      setChartsError(getApiErrorMessage(requestError, "Não foi possível carregar os gráficos."));
+    } finally {
+      setIsChartsLoading(false);
+    }
+  }, [
+    chartBenchmark,
+    chartInterval,
+    chartRange,
+    portfolio?.baseCurrency,
+    portfolioId,
+    selectedChartSymbols
+  ]);
 
   const reloadReports = useCallback(async () => {
     if (!portfolioId) {
@@ -310,6 +351,10 @@ export default function PortfolioDetailPage() {
   }, [portfolioId]);
 
   useEffect(() => {
+    void reloadCharts();
+  }, [reloadCharts]);
+
+  useEffect(() => {
     if (!portfolioId || !actor) {
       return;
     }
@@ -324,6 +369,7 @@ export default function PortfolioDetailPage() {
 
         if (message.type === "analytics.updated" || message.type === "analytics.failed") {
           void reloadAnalytics();
+          void reloadCharts();
         }
         if (message.type === "report.generated" || message.type === "report.failed") {
           void reloadReports();
@@ -333,6 +379,7 @@ export default function PortfolioDetailPage() {
         }
         if (message.type === "market_data.updated" || message.type === "portfolio.updated") {
           void getPortfolio(portfolioId).then(setPortfolio).catch(() => undefined);
+          void reloadCharts();
         }
       },
       onError: () => setRealtimeStatus("disconnected")
@@ -341,7 +388,7 @@ export default function PortfolioDetailPage() {
     return () => {
       connection.close();
     };
-  }, [actor, portfolioId, reloadAnalytics, reloadNotifications, reloadReports]);
+  }, [actor, portfolioId, reloadAnalytics, reloadCharts, reloadNotifications, reloadReports]);
 
   useEffect(() => {
     if (!portfolioId) {
@@ -364,6 +411,7 @@ export default function PortfolioDetailPage() {
       void reloadReports();
       void reloadNotifications();
       void reloadAnalytics();
+      void reloadCharts();
     }, 15000);
 
     return () => window.clearInterval(intervalId);
@@ -372,6 +420,7 @@ export default function PortfolioDetailPage() {
     portfolioId,
     realtimeStatus,
     reloadAnalytics,
+    reloadCharts,
     reloadNotifications,
     reloadReports,
     reports
@@ -382,6 +431,7 @@ export default function PortfolioDetailPage() {
       const detail = (event as CustomEvent<{ portfolioId?: string }>).detail;
       if (!detail?.portfolioId || detail.portfolioId === portfolioId) {
         void reloadAnalytics();
+        void reloadCharts();
       }
     }
 
@@ -389,7 +439,7 @@ export default function PortfolioDetailPage() {
     return () => {
       window.removeEventListener("analytics.updated", handleAnalyticsUpdated);
     };
-  }, [portfolioId, reloadAnalytics]);
+  }, [portfolioId, reloadAnalytics, reloadCharts]);
 
   useEffect(() => {
     if (!portfolioId) {
@@ -594,6 +644,7 @@ export default function PortfolioDetailPage() {
       setTradePrice(null);
       setTradePriceStatus("idle");
       setTradePriceError(null);
+      await reloadCharts();
     } catch (requestError) {
       setFormErrors(getFieldErrors(requestError));
       setSubmitError(getApiErrorMessage(requestError, "Não foi possível registrar a transação."));
@@ -614,6 +665,7 @@ export default function PortfolioDetailPage() {
       await requestPortfolioAnalyticsRecompute(portfolioId);
       setRecomputeNotice("Recálculo das análises solicitado à plataforma.");
       await reloadAnalytics();
+      await reloadCharts();
     } catch (requestError) {
       setAnalyticsError(getApiErrorMessage(requestError, "Não foi possível solicitar recálculo."));
     } finally {
@@ -812,6 +864,36 @@ export default function PortfolioDetailPage() {
                 <p className="text-sm text-stone-600">análises e dados de mercado</p>
               </Card>
             </section>
+
+            <PortfolioChartsDashboard
+              charts={charts}
+              positions={positions}
+              error={chartsError}
+              isLoading={isChartsLoading}
+              range={chartRange}
+              interval={chartInterval}
+              benchmark={chartBenchmark}
+              selectedSymbols={selectedChartSymbols}
+              onRangeChange={setChartRange}
+              onIntervalChange={setChartInterval}
+              onBenchmarkChange={setChartBenchmark}
+              onToggleSymbol={(symbol) =>
+                setSelectedChartSymbols((current) => {
+                  const allSymbols = Array.from(
+                    new Set(positions.map((position) => position.assetSymbol))
+                  ).sort((left, right) => left.localeCompare(right));
+                  const activeSymbols = current.length > 0 ? current : allSymbols;
+                  const nextSymbols = activeSymbols.includes(symbol)
+                    ? activeSymbols.filter((entry) => entry !== symbol)
+                    : [...activeSymbols, symbol].sort((left, right) =>
+                        left.localeCompare(right)
+                      );
+
+                  return nextSymbols.length === allSymbols.length ? [] : nextSymbols;
+                })
+              }
+              onClearSymbols={() => setSelectedChartSymbols([])}
+            />
 
             <AnalyticsDashboard
               analytics={analytics}
@@ -1457,6 +1539,452 @@ function ReportsAlertsNotificationsPanel({
   );
 }
 
+function PortfolioChartsDashboard({
+  charts,
+  positions,
+  error,
+  isLoading,
+  range,
+  interval,
+  benchmark,
+  selectedSymbols,
+  onRangeChange,
+  onIntervalChange,
+  onBenchmarkChange,
+  onToggleSymbol,
+  onClearSymbols
+}: {
+  charts: PortfolioChartBundle | null;
+  positions: PortfolioPosition[];
+  error: string | null;
+  isLoading: boolean;
+  range: PortfolioChartRange;
+  interval: PortfolioChartInterval;
+  benchmark: string;
+  selectedSymbols: string[];
+  onRangeChange: (range: PortfolioChartRange) => void;
+  onIntervalChange: (interval: PortfolioChartInterval) => void;
+  onBenchmarkChange: (benchmark: string) => void;
+  onToggleSymbol: (symbol: string) => void;
+  onClearSymbols: () => void;
+}) {
+  const availableSymbols = Array.from(
+    new Set([
+      ...positions.map((position) => position.assetSymbol),
+      ...(charts?.charts.assetPrices.map((series) => series.symbol) ?? [])
+    ])
+  ).sort((left, right) => left.localeCompare(right));
+  const firstAssetSeries = charts?.charts.assetPrices[0];
+
+  return (
+    <section className="grid gap-4">
+      <Card>
+        <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+          <div className="space-y-1">
+            <p className="text-xs font-semibold uppercase text-moss">Gráficos</p>
+            <h2 className="text-2xl font-semibold text-stone-900">Evolução e composição</h2>
+            <p className="text-sm text-stone-600">
+              {charts
+                ? `Dados até ${charts.asOfDate} · base ${charts.baseCurrency}`
+                : "Aguardando o pacote de gráficos da plataforma."}
+            </p>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-3 xl:min-w-[620px]">
+            <div>
+              <Label htmlFor="chartRange">Período</Label>
+              <Select
+                id="chartRange"
+                className="mt-2"
+                value={range}
+                onChange={(event) => onRangeChange(event.target.value as PortfolioChartRange)}
+              >
+                <option value="1m">1 mês</option>
+                <option value="3m">3 meses</option>
+                <option value="6m">6 meses</option>
+                <option value="ytd">Ano atual</option>
+                <option value="1y">1 ano</option>
+                <option value="3y">3 anos</option>
+                <option value="5y">5 anos</option>
+                <option value="all">Tudo</option>
+              </Select>
+            </div>
+            <div>
+              <Label htmlFor="chartInterval">Intervalo</Label>
+              <Select
+                id="chartInterval"
+                className="mt-2"
+                value={interval}
+                onChange={(event) =>
+                  onIntervalChange(event.target.value as PortfolioChartInterval)
+                }
+              >
+                <option value="daily">Diário</option>
+                <option value="weekly">Semanal</option>
+                <option value="monthly">Mensal</option>
+              </Select>
+            </div>
+            <div>
+              <Label htmlFor="chartBenchmark">Referência</Label>
+              <Input
+                id="chartBenchmark"
+                className="mt-2"
+                value={benchmark}
+                onChange={(event) => onBenchmarkChange(event.target.value)}
+                placeholder="Ex.: SPY"
+              />
+            </div>
+          </div>
+        </div>
+
+        {availableSymbols.length > 0 ? (
+          <div className="mt-4 flex flex-wrap items-center gap-2">
+            <span className="text-sm font-medium text-stone-700">Ativos</span>
+            {availableSymbols.map((symbol) => (
+              <label
+                key={symbol}
+                className="inline-flex h-9 items-center gap-2 rounded-md border border-border px-3 text-sm text-stone-700"
+              >
+                <input
+                  type="checkbox"
+                  className="h-4 w-4 rounded border-border text-moss focus:ring-moss/25"
+                  checked={selectedSymbols.length === 0 || selectedSymbols.includes(symbol)}
+                  onChange={() => onToggleSymbol(symbol)}
+                />
+                {symbol}
+              </label>
+            ))}
+            {selectedSymbols.length > 0 ? (
+              <Button type="button" variant="outline" onClick={onClearSymbols}>
+                Mostrar todos
+              </Button>
+            ) : null}
+          </div>
+        ) : null}
+      </Card>
+
+      {error ? <Alert variant="failure">{error}</Alert> : null}
+      {isLoading && !charts ? <Alert variant="info">Carregando gráficos do portfólio.</Alert> : null}
+      {charts?.dataQuality.status === "pending" ? (
+        <Alert variant="warning">
+          Os gráficos ainda dependem do primeiro retrato analítico ou do histórico de mercado.
+        </Alert>
+      ) : null}
+      {charts?.dataQuality.status === "failed" ? (
+        <Alert variant="failure">
+          A última recomputação falhou; a tela preserva o último pacote de gráficos disponível.
+        </Alert>
+      ) : null}
+      {charts?.dataQuality.status === "partial" ? (
+        <Alert variant="warning">
+          Alguns gráficos estão parciais: {labelUnavailableChartKeys(charts.dataQuality.unavailableChartKeys)}.
+        </Alert>
+      ) : null}
+
+      {charts ? (
+        <>
+          <section className="grid gap-4 xl:grid-cols-2">
+            <LineChartCard
+              title="Preço dos ativos"
+              emptyLabel="Sem histórico de preços para os ativos selecionados."
+              series={(firstAssetSeries?.points ?? []).map((point) => ({
+                date: point.date,
+                value: point.adjustedClose || point.close
+              }))}
+              valueLabel={(value) =>
+                formatCurrency(value, firstAssetSeries?.currency ?? charts.baseCurrency)
+              }
+              strokeClassName="stroke-moss"
+            />
+            <LineChartCard
+              title="Valor do portfólio"
+              emptyLabel="Sem série de valor calculada para o período."
+              series={charts.charts.portfolioPerformance}
+              valueLabel={(value) => formatCurrency(value, charts.baseCurrency)}
+              strokeClassName="stroke-blue-600"
+            />
+          </section>
+
+          <section className="grid gap-4 xl:grid-cols-2">
+            <LineChartCard
+              title="Retorno acumulado"
+              emptyLabel="Sem retorno acumulado para o período."
+              series={charts.charts.cumulativeReturn.map((point) => ({
+                date: point.date,
+                value: point.returnPercent
+              }))}
+              valueLabel={(value) => `${value.toFixed(2)}%`}
+              strokeClassName="stroke-emerald-600"
+            />
+            <LineChartCard
+              title="Drawdown"
+              emptyLabel="Sem drawdown calculado para o período."
+              series={charts.charts.drawdown.map((point) => ({
+                date: point.date,
+                value: point.drawdownPercent
+              }))}
+              valueLabel={(value) => `${value.toFixed(2)}%`}
+              strokeClassName="stroke-rose-600"
+            />
+          </section>
+
+          <section className="grid gap-4 xl:grid-cols-2">
+            <BarPanel
+              title="Alocação por ativo"
+              emptyLabel="Sem alocação disponível."
+              rows={charts.charts.allocation.map((point) => ({
+                label: point.symbol,
+                detail: formatCurrency(point.marketValueUsd, charts.baseCurrency),
+                percent: point.weightPercent
+              }))}
+            />
+            <BarPanel
+              title="Exposição por setor"
+              emptyLabel="Sem exposição setorial disponível."
+              rows={charts.charts.sectorExposure.map((point) => ({
+                label: point.sector,
+                detail: formatCurrency(point.marketValueUsd, charts.baseCurrency),
+                percent: point.weightPercent
+              }))}
+            />
+          </section>
+
+          <section className="grid gap-4 xl:grid-cols-2">
+            <LineChartCard
+              title="Risco móvel"
+              emptyLabel="Sem amostras suficientes para risco móvel."
+              series={charts.charts.rollingRisk.map((point) => ({
+                date: point.date,
+                value: point.volatilityPercent
+              }))}
+              valueLabel={(value) => `${value.toFixed(2)}%`}
+              strokeClassName="stroke-amber-600"
+            />
+            <LineChartCard
+              title="Comparação com referência"
+              emptyLabel="Sem referência configurada ou histórico suficiente."
+              series={charts.charts.benchmarkComparison.map((point) => ({
+                date: point.date,
+                value: point.returnPercent
+              }))}
+              valueLabel={(value) => `${value.toFixed(2)}%`}
+              strokeClassName="stroke-violet-600"
+            />
+          </section>
+
+          <section className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_380px]">
+            <CorrelationHeatmap charts={charts} />
+            <ChartDataQualityPanel charts={charts} />
+          </section>
+        </>
+      ) : null}
+    </section>
+  );
+}
+
+function LineChartCard({
+  title,
+  series,
+  emptyLabel,
+  valueLabel,
+  strokeClassName
+}: {
+  title: string;
+  series: Array<{ date: string; value: number }>;
+  emptyLabel: string;
+  valueLabel: (value: number) => string;
+  strokeClassName: string;
+}) {
+  const latest = series[series.length - 1];
+
+  return (
+    <Card>
+      <div className="flex items-start justify-between gap-3">
+        <h3 className="text-lg font-semibold text-stone-900">{title}</h3>
+        {latest ? (
+          <span className="text-sm font-medium text-stone-700">{valueLabel(latest.value)}</span>
+        ) : null}
+      </div>
+      {series.length < 2 ? (
+        <Alert variant="warning">{emptyLabel}</Alert>
+      ) : (
+        <div className="mt-3">
+          <MiniLineChart
+            points={series}
+            title={title}
+            strokeClassName={strokeClassName}
+          />
+          <div className="mt-2 flex justify-between text-xs text-stone-500">
+            <span>{series[0].date}</span>
+            <span>{latest?.date}</span>
+          </div>
+        </div>
+      )}
+    </Card>
+  );
+}
+
+function MiniLineChart({
+  points,
+  title,
+  strokeClassName
+}: {
+  points: Array<{ date: string; value: number }>;
+  title: string;
+  strokeClassName: string;
+}) {
+  const width = 640;
+  const height = 180;
+  const padding = 18;
+  const values = points.map((point) => point.value);
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const range = max - min || 1;
+  const path = points
+    .map((point, index) => {
+      const x =
+        padding + (index / Math.max(1, points.length - 1)) * (width - padding * 2);
+      const y = height - padding - ((point.value - min) / range) * (height - padding * 2);
+      return `${index === 0 ? "M" : "L"} ${x.toFixed(2)} ${y.toFixed(2)}`;
+    })
+    .join(" ");
+
+  return (
+    <svg
+      viewBox={`0 0 ${width} ${height}`}
+      role="img"
+      aria-label={title}
+      className="h-44 w-full rounded-md border border-border bg-white"
+      preserveAspectRatio="none"
+    >
+      <line
+        x1={padding}
+        y1={height - padding}
+        x2={width - padding}
+        y2={height - padding}
+        className="stroke-stone-200"
+      />
+      <line
+        x1={padding}
+        y1={padding}
+        x2={padding}
+        y2={height - padding}
+        className="stroke-stone-200"
+      />
+      <path d={path} fill="none" strokeWidth="3" className={strokeClassName} />
+    </svg>
+  );
+}
+
+function CorrelationHeatmap({ charts }: { charts: PortfolioChartBundle }) {
+  const symbols = charts.charts.correlation.symbols;
+  const cells = charts.charts.correlation.cells;
+
+  return (
+    <Card>
+      <h3 className="text-lg font-semibold text-stone-900">Correlação entre ativos</h3>
+      {symbols.length < 2 || cells.length === 0 ? (
+        <Alert variant="warning">Sem amostras suficientes para matriz de correlação.</Alert>
+      ) : (
+        <>
+          <div
+            className="hidden overflow-x-auto sm:block"
+            aria-label="Mapa de calor de correlação"
+          >
+            <div
+              className="grid min-w-[420px] gap-1 text-center text-xs"
+              style={{
+                gridTemplateColumns: `96px repeat(${symbols.length}, minmax(56px, 1fr))`
+              }}
+            >
+              <div />
+              {symbols.map((symbol) => (
+                <div key={symbol} className="font-semibold text-stone-700">
+                  {symbol}
+                </div>
+              ))}
+              {symbols.map((rowSymbol) => (
+                <div key={rowSymbol} className="contents">
+                  <div className="flex items-center font-semibold text-stone-700">
+                    {rowSymbol}
+                  </div>
+                  {symbols.map((columnSymbol) => {
+                    const value = correlationValue(rowSymbol, columnSymbol, cells);
+                    return (
+                      <div
+                        key={`${rowSymbol}-${columnSymbol}`}
+                        className="rounded-md px-2 py-3 font-medium text-stone-900"
+                        style={{ backgroundColor: correlationColor(value) }}
+                      >
+                        {value.toFixed(2)}
+                      </div>
+                    );
+                  })}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="sm:hidden">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Par</TableHead>
+                  <TableHead>Coeficiente</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {cells.map((cell) => (
+                  <TableRow key={`${cell.leftSymbol}-${cell.rightSymbol}`}>
+                    <TableCell className="font-medium text-stone-900">
+                      {cell.leftSymbol}/{cell.rightSymbol}
+                    </TableCell>
+                    <TableCell>{cell.correlation.toFixed(2)}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </>
+      )}
+    </Card>
+  );
+}
+
+function ChartDataQualityPanel({ charts }: { charts: PortfolioChartBundle }) {
+  return (
+    <Card>
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <h3 className="text-lg font-semibold text-stone-900">Qualidade dos gráficos</h3>
+        <Badge variant={chartQualityVariant(charts.dataQuality.status)}>
+          {labelChartQuality(charts.dataQuality.status)}
+        </Badge>
+      </div>
+      {charts.dataQuality.issues.length === 0 ? (
+        <Alert variant="success">Nenhum aviso de qualidade para o pacote atual.</Alert>
+      ) : (
+        <div className="space-y-3">
+          {charts.dataQuality.issues.slice(0, 6).map((issue, index) => (
+            <div key={`${issue.code}-${index}`} className="rounded-md border border-border p-3">
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge variant={dataQualitySeverityVariant(issue.severity)}>
+                  {labelDataQualitySeverity(issue.severity)}
+                </Badge>
+                <strong className="text-sm text-stone-900">
+                  {labelChartIssueCode(issue.code)}
+                </strong>
+              </div>
+              <p className="mt-1 text-sm text-stone-600">
+                {formatChartQualityMessage(issue.message)}
+              </p>
+            </div>
+          ))}
+        </div>
+      )}
+    </Card>
+  );
+}
+
 function AnalyticsDashboard({
   analytics,
   error,
@@ -1966,6 +2494,138 @@ function formatAnalyticsMessage(message: string) {
 
 function barWidth(percent: number) {
   return Math.max(2, Math.min(100, percent));
+}
+
+function labelUnavailableChartKeys(keys: string[]) {
+  if (keys.length === 0) {
+    return "nenhum gráfico indisponível";
+  }
+
+  return keys.map(labelChartKey).join(", ");
+}
+
+function labelChartKey(key: string) {
+  const labels: Record<string, string> = {
+    assetPrices: "preços dos ativos",
+    portfolioPerformance: "valor do portfólio",
+    cumulativeReturn: "retorno acumulado",
+    allocation: "alocação",
+    sectorExposure: "exposição setorial",
+    drawdown: "drawdown",
+    rollingRisk: "risco móvel",
+    correlation: "correlação",
+    benchmarkComparison: "comparação com referência",
+    annotations: "anotações"
+  };
+
+  return labels[key] ?? "gráfico indisponível";
+}
+
+function chartQualityVariant(
+  status: PortfolioChartBundle["dataQuality"]["status"]
+): "success" | "warning" | "failure" | "info" {
+  switch (status) {
+    case "complete":
+      return "success";
+    case "failed":
+      return "failure";
+    case "pending":
+      return "info";
+    default:
+      return "warning";
+  }
+}
+
+function labelChartQuality(status: PortfolioChartBundle["dataQuality"]["status"]) {
+  switch (status) {
+    case "complete":
+      return "completo";
+    case "partial":
+      return "parcial";
+    case "pending":
+      return "pendente";
+    case "failed":
+      return "falhou";
+  }
+}
+
+function labelChartIssueCode(code: string) {
+  const labels: Record<string, string> = {
+    "charts.asset_not_in_portfolio": "Ativo fora do portfólio",
+    "charts.asset_history_unavailable": "Histórico do ativo indisponível",
+    "charts.history_unavailable": "Histórico de preços indisponível",
+    "charts.correlation_insufficient_samples": "Correlação com amostras insuficientes",
+    "charts.benchmark_unavailable": "Referência indisponível",
+    "charts.benchmark_history_insufficient": "Histórico da referência insuficiente",
+    "market_data.history_unavailable": "Histórico de mercado indisponível"
+  };
+
+  return labels[code] ?? labelDataQualityIssueCode(code);
+}
+
+function formatChartQualityMessage(message: string) {
+  const requestedSymbol = message.match(/^Requested symbol (.+) is not held by this portfolio\.$/);
+  if (requestedSymbol) {
+    return `O ativo ${requestedSymbol[1]} não pertence a este portfólio.`;
+  }
+
+  const storedAsset = message.match(/^No stored market asset was found for (.+)\.$/);
+  if (storedAsset) {
+    return `Não há cadastro de mercado armazenado para ${storedAsset[1]}.`;
+  }
+
+  const history = message.match(/^No stored historical prices were available for (.+)\.$/);
+  if (history) {
+    return `Não há histórico de preços armazenado para ${history[1]}.`;
+  }
+
+  const benchmark = message.match(/^Benchmark (.+) is unavailable in stored backend market data\.$/);
+  if (benchmark) {
+    return `A referência ${benchmark[1]} não está disponível nos dados de mercado da plataforma.`;
+  }
+
+  const benchmarkHistory = message.match(
+    /^Benchmark (.+) does not have enough stored history for comparison\.$/
+  );
+  if (benchmarkHistory) {
+    return `A referência ${benchmarkHistory[1]} não tem histórico suficiente para comparação.`;
+  }
+
+  if (message === "Correlation needs at least two aligned return samples.") {
+    return "A correlação exige ao menos duas amostras alinhadas de retorno.";
+  }
+  if (message === "No stored historical prices are available for this asset.") {
+    return "Não há histórico de preços armazenado para este ativo.";
+  }
+
+  return formatAnalyticsMessage(message);
+}
+
+function correlationValue(
+  leftSymbol: string,
+  rightSymbol: string,
+  cells: PortfolioChartBundle["charts"]["correlation"]["cells"]
+) {
+  if (leftSymbol === rightSymbol) {
+    return 1;
+  }
+
+  return (
+    cells.find(
+      (cell) =>
+        (cell.leftSymbol === leftSymbol && cell.rightSymbol === rightSymbol) ||
+        (cell.leftSymbol === rightSymbol && cell.rightSymbol === leftSymbol)
+    )?.correlation ?? 0
+  );
+}
+
+function correlationColor(value: number) {
+  const intensity = Math.min(1, Math.abs(value));
+  if (value >= 0) {
+    return `rgba(16, 185, 129, ${0.12 + intensity * 0.48})`;
+  }
+
+  return `rgba(244, 63, 94, ${0.12 + intensity * 0.48})`;
 }
 
 interface ValidationDetails {

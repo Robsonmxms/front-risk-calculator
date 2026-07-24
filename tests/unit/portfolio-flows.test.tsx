@@ -13,6 +13,7 @@ import {
   MarketExchange,
   PortfolioAnalyticsReadModel,
   PortfolioAnalyticsSnapshot,
+  PortfolioChartBundle,
   PortfolioDetail,
   PortfolioListItem,
   PortfolioPosition,
@@ -41,6 +42,7 @@ const portfolioApiMocks = vi.hoisted(() => ({
   downloadPortfolioReport: vi.fn(),
   getPortfolio: vi.fn(),
   getPortfolioAnalytics: vi.fn(),
+  getPortfolioCharts: vi.fn(),
   getTradePrice: vi.fn(),
   listMarketExchanges: vi.fn(),
   listNotifications: vi.fn(),
@@ -461,7 +463,7 @@ describe("portfolio analytics states", () => {
 
     renderWithAuth(<PortfolioDetailPage />);
 
-    expect(await screen.findByText("completo")).toBeInTheDocument();
+    expect((await screen.findAllByText("completo")).length).toBeGreaterThan(0);
     expect(screen.getByText("Retorno total")).toBeInTheDocument();
     expect(screen.getByText("12.00%")).toBeInTheDocument();
     expect(screen.getByText("Concentração elevada")).toBeInTheDocument();
@@ -540,18 +542,74 @@ describe("portfolio analytics states", () => {
   });
 });
 
+describe("portfolio charting states", () => {
+  it("renders client-facing chart controls and backend-provided chart sections", async () => {
+    mockPortfolioDetailApi();
+
+    renderWithAuth(<PortfolioDetailPage />);
+
+    expect(await screen.findByRole("heading", { name: "Evolução e composição" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Período")).toHaveValue("1y");
+    expect(screen.getByLabelText("Intervalo")).toHaveValue("daily");
+    expect(screen.getByLabelText("Referência")).toBeInTheDocument();
+    expect(screen.getByText("Preço dos ativos")).toBeInTheDocument();
+    expect(screen.getByText("Valor do portfólio")).toBeInTheDocument();
+    expect(screen.getByText("Retorno acumulado")).toBeInTheDocument();
+    expect(screen.getAllByText("Correlação entre ativos").length).toBeGreaterThan(0);
+    expect(screen.getByText("Qualidade dos gráficos")).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText("Período"), { target: { value: "3m" } });
+
+    await waitFor(() =>
+      expect(portfolioApiMocks.getPortfolioCharts).toHaveBeenCalledWith(
+        "prt_main",
+        expect.objectContaining({ range: "3m" })
+      )
+    );
+  });
+
+  it("renders partial chart data quality without exposing raw backend messages", async () => {
+    mockPortfolioDetailApi({
+      charts: makePortfolioChartBundle({
+        dataQuality: {
+          status: "partial",
+          issues: [
+            {
+              code: "charts.history_unavailable",
+              severity: "warning",
+              message: "No stored historical prices were available for MSFT.",
+              symbols: ["MSFT"]
+            }
+          ],
+          staleInputCount: 1,
+          unavailableChartKeys: ["assetPrices", "rollingRisk"]
+        }
+      })
+    });
+
+    renderWithAuth(<PortfolioDetailPage />);
+
+    expect(await screen.findByText(/Alguns gráficos estão parciais/)).toBeInTheDocument();
+    expect(screen.getByText("Histórico de preços indisponível")).toBeInTheDocument();
+    expect(screen.getByText("Não há histórico de preços armazenado para MSFT.")).toBeInTheDocument();
+    expect(screen.queryByText("No stored historical prices were available for MSFT.")).not.toBeInTheDocument();
+  });
+});
+
 function renderWithAuth(children: React.ReactNode) {
   return render(<AuthProvider>{children}</AuthProvider>);
 }
 
 function mockPortfolioDetailApi({
   analytics = makeAnalyticsReadModel("complete", makeAnalyticsSnapshot()),
+  charts = makePortfolioChartBundle(),
   getPortfolio = () => makePortfolioDetail(),
   listPositions = () => ({ positions: [currentPosition] }),
   listTransactions = () => ({ transactions: [] }),
   listSnapshots = () => ({ snapshots: [makeSnapshot()] })
 }: {
   analytics?: PortfolioAnalyticsReadModel;
+  charts?: PortfolioChartBundle;
   getPortfolio?: () => PortfolioDetail;
   listPositions?: (
     portfolioId: string,
@@ -570,6 +628,10 @@ function mockPortfolioDetailApi({
   portfolioApiMocks.getPortfolioAnalytics.mockResolvedValue({
     data: analytics,
     meta: { status: analytics.status, baseCurrency: "USD" }
+  });
+  portfolioApiMocks.getPortfolioCharts.mockResolvedValue({
+    data: charts,
+    meta: { sourceSnapshotId: "ans_main", generatedAt: "2026-07-16T10:00:00.000Z" }
   });
   portfolioApiMocks.listPortfolioReports.mockResolvedValue({ reports: [] });
   portfolioApiMocks.listPortfolioAlerts.mockResolvedValue({ alerts: [] });
@@ -754,6 +816,106 @@ function makeAnalyticsSnapshot(
     },
     inputHash: "hash-main",
     calculationDurationMs: 42,
+    ...overrides
+  };
+}
+
+function makePortfolioChartBundle(
+  overrides: Partial<PortfolioChartBundle> = {}
+): PortfolioChartBundle {
+  return {
+    portfolioId: "prt_main",
+    asOfDate: "2026-07-15",
+    range: "1y",
+    interval: "daily",
+    baseCurrency: "USD",
+    charts: {
+      assetPrices: [
+        {
+          assetId: "asset-msft",
+          symbol: "MSFT",
+          name: "Microsoft Corporation",
+          currency: "USD",
+          providerName: "backend-market-data",
+          freshness: "fresh",
+          points: [
+            { date: "2026-07-14", close: 416, adjustedClose: 416 },
+            { date: "2026-07-15", close: 430, adjustedClose: 430 }
+          ]
+        }
+      ],
+      portfolioPerformance: [
+        { date: "2026-07-14", value: 1250 },
+        { date: "2026-07-15", value: 1290 }
+      ],
+      cumulativeReturn: [
+        { date: "2026-07-14", returnPercent: 0 },
+        { date: "2026-07-15", returnPercent: 3.2 }
+      ],
+      allocation: [
+        {
+          symbol: "MSFT",
+          name: "Microsoft Corporation",
+          weightPercent: 100,
+          marketValueUsd: 1290
+        }
+      ],
+      sectorExposure: [
+        {
+          sector: "Technology",
+          weightPercent: 100,
+          marketValueUsd: 1290
+        }
+      ],
+      drawdown: [
+        { date: "2026-07-14", drawdownPercent: 0 },
+        { date: "2026-07-15", drawdownPercent: -1.5 }
+      ],
+      rollingRisk: [
+        {
+          date: "2026-07-15",
+          volatilityPercent: 12.4,
+          rollingReturnPercent: 3.2,
+          sampleSize: 3
+        },
+        {
+          date: "2026-07-16",
+          volatilityPercent: 11.8,
+          rollingReturnPercent: 2.1,
+          sampleSize: 3
+        }
+      ],
+      correlation: {
+        symbols: ["MSFT", "SPY"],
+        cells: [
+          {
+            leftSymbol: "MSFT",
+            rightSymbol: "SPY",
+            correlation: 0.72
+          }
+        ]
+      },
+      benchmarkComparison: [
+        { date: "2026-07-14", symbol: "SPY", returnPercent: 0 },
+        { date: "2026-07-15", symbol: "SPY", returnPercent: 1.1 }
+      ],
+      annotations: [
+        {
+          id: "analytics-ans_main",
+          date: "2026-07-15",
+          type: "analytics",
+          label: "Retrato analítico recalculado",
+          portfolioId: "prt_main",
+          relatedId: "ans_main"
+        }
+      ]
+    },
+    dataQuality: {
+      status: "complete",
+      issues: [],
+      staleInputCount: 0,
+      unavailableChartKeys: []
+    },
     ...overrides
   };
 }
