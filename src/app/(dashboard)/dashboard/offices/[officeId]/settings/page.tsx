@@ -5,7 +5,7 @@ import { useParams } from "next/navigation";
 import { AppHeader } from "../../../../../../components/layout/AppHeader";
 import { Alert } from "../../../../../../components/ui/alert";
 import { Badge } from "../../../../../../components/ui/badge";
-import { Button } from "../../../../../../components/ui/button";
+import { Button, LinkButton } from "../../../../../../components/ui/button";
 import { Card } from "../../../../../../components/ui/card";
 import { Label } from "../../../../../../components/ui/form";
 import { Input } from "../../../../../../components/ui/input";
@@ -287,6 +287,14 @@ export default function OfficeSettingsPage() {
                 <h1 className="text-2xl font-semibold text-stone-900">{office.name}</h1>
                 <p className="text-sm text-stone-600">Perfil ativo e permissões carregadas.</p>
               </div>
+
+              <LinkButton
+                href={`/dashboard/offices/${officeId}/operations`}
+                variant="outline"
+                className="mt-4 w-fit"
+              >
+                Operação
+              </LinkButton>
 
               <div className="mt-4 flex flex-wrap gap-2">
                 {permissions?.permissions.slice(0, 8).map((permission) => (
