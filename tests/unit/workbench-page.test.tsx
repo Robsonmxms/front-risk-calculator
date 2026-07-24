@@ -14,6 +14,7 @@ const authApiMocks = vi.hoisted(() => ({
 
 const workbenchApiMocks = vi.hoisted(() => ({
   createReviewItem: vi.fn(),
+  getAdvisorCharts: vi.fn(),
   getWorkbench: vi.fn(),
   listReviewItems: vi.fn(),
   updateReviewItem: vi.fn()
@@ -94,6 +95,128 @@ const reviewItem = {
   updatedAt: "2026-07-09T00:00:00.000Z"
 };
 
+const advisorCharts = {
+  officeId: "ofc_main",
+  advisorUserId: "usr_advisor",
+  range: "90d",
+  filters: {
+    clientStatus: []
+  },
+  charts: {
+    bookValueTrend: [
+      { date: "2026-07-12", value: 218100, clientCount: 1, portfolioCount: 1 },
+      { date: "2026-07-15", value: 245800, clientCount: 1, portfolioCount: 1 }
+    ],
+    riskReturnScatter: [
+      {
+        id: "prt_main",
+        clientId: "client_main",
+        clientName: "Marina Silva",
+        portfolioId: "prt_main",
+        portfolioName: "Core Growth",
+        value: 245800,
+        annualizedReturnPercent: 8.4,
+        volatilityPercent: 12.8,
+        maxDrawdownPercent: 8.7,
+        riskBand: "watch",
+        freshness: "fresh",
+        drillDown: { clientId: "client_main", portfolioId: "prt_main" }
+      }
+    ],
+    drawdownDistribution: [
+      {
+        clientId: "client_main",
+        clientName: "Marina Silva",
+        value: 8.7,
+        portfolioCount: 1,
+        riskBand: "watch",
+        freshness: "fresh",
+        drillDown: { clientId: "client_main" }
+      }
+    ],
+    volatilityDistribution: [
+      {
+        clientId: "client_main",
+        clientName: "Marina Silva",
+        value: 12.8,
+        portfolioCount: 1,
+        riskBand: "watch",
+        freshness: "fresh",
+        drillDown: { clientId: "client_main" }
+      }
+    ],
+    sectorExposureHeatmap: [
+      {
+        clientId: "client_main",
+        clientName: "Marina Silva",
+        sector: "Technology",
+        weightPercent: 58,
+        marketValueUsd: 142564,
+        drillDown: { clientId: "client_main" }
+      }
+    ],
+    allocationBreakdown: [
+      { label: "Microsoft", weightPercent: 22, marketValueUsd: 54000 },
+      { label: "VTI", weightPercent: 28, marketValueUsd: 68800 }
+    ],
+    alertSeverityTimeline: [{ date: "2026-07-15", low: 0, medium: 1, high: 1, total: 2 }],
+    reportPipeline: [
+      { status: "delivered", count: 1, clientCount: 1, staleCount: 0 },
+      { status: "pending_approval", count: 1, clientCount: 1, staleCount: 1 }
+    ],
+    workbenchAging: [
+      { bucket: "overdue", low: 0, medium: 1, high: 0, total: 1 },
+      { bucket: "due_7d", low: 0, medium: 0, high: 0, total: 0 },
+      { bucket: "due_30d", low: 0, medium: 0, high: 0, total: 0 },
+      { bucket: "no_due_date", low: 0, medium: 0, high: 0, total: 0 }
+    ],
+    staleDataBacklog: [
+      {
+        portfolioId: "prt_main",
+        portfolioName: "Core Growth",
+        clientId: "client_main",
+        clientName: "Marina Silva",
+        freshness: "partial",
+        analyticsState: "pending",
+        marketDataState: "ready",
+        reason: "Snapshot analítico pendente",
+        drillDown: { clientId: "client_main", portfolioId: "prt_main" }
+      }
+    ]
+  },
+  rankings: {
+    needsAttention: [
+      {
+        rank: 1,
+        clientId: "client_main",
+        clientName: "Marina Silva",
+        score: 45,
+        reasons: ["Métricas em faixa de observação", "Pacotes de relatório em andamento"],
+        value: 245800,
+        riskBand: "watch",
+        freshness: "partial",
+        openReviewItemCount: 1,
+        highAlertCount: 1,
+        pendingReportCount: 1,
+        drillDown: { clientId: "client_main" }
+      }
+    ]
+  },
+  dataQuality: {
+    status: "partial",
+    issues: [{ code: "advisor_charts.analytics_partial", severity: "warning", message: "Partial" }],
+    sourceCounts: {
+      clients: 1,
+      households: 1,
+      portfolios: 1,
+      analyticsSnapshots: 1,
+      reportPackages: 2,
+      alerts: 2,
+      reviewItems: 1
+    }
+  }
+};
+
 describe("workbench page", () => {
   beforeEach(() => {
     cleanup();
@@ -139,6 +262,7 @@ describe("workbench page", () => {
       }
     });
     workbenchApiMocks.listReviewItems.mockResolvedValue({ reviewItems: [reviewItem] });
+    workbenchApiMocks.getAdvisorCharts.mockResolvedValue(advisorCharts);
     workbenchApiMocks.createReviewItem.mockResolvedValue({
       ...reviewItem,
       id: "rev_new",
@@ -165,6 +289,18 @@ describe("workbench page", () => {
     );
 
     expect(await screen.findByText("Revisar pacote mensal de risco")).toBeInTheDocument();
+    expect(await screen.findByText("Monitoramento do livro de clientes")).toBeInTheDocument();
+    expect(screen.getByText("Clientes que pedem atenção")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "1. Marina Silva" })).toHaveAttribute(
+      "href",
+      "/dashboard/clients/client_main"
+    );
+    expect(workbenchApiMocks.getAdvisorCharts).toHaveBeenCalledWith("ofc_main", {
+      advisorUserId: undefined,
+      freshness: "",
+      range: "90d",
+      riskBand: ""
+    });
     expect(screen.getByRole("link", { name: "cliente: Marina Silva" })).toHaveAttribute(
       "href",
       "/dashboard/clients/client_main"
@@ -182,6 +318,18 @@ describe("workbench page", () => {
       expect(workbenchApiMocks.listReviewItems).toHaveBeenLastCalledWith("ofc_main", {
         status: "open",
         severity: "medium"
+      });
+    });
+
+    fireEvent.change(screen.getByLabelText("Filtrar faixa de risco"), {
+      target: { value: "high" }
+    });
+    await waitFor(() => {
+      expect(workbenchApiMocks.getAdvisorCharts).toHaveBeenLastCalledWith("ofc_main", {
+        advisorUserId: undefined,
+        freshness: "",
+        range: "90d",
+        riskBand: "high"
       });
     });
 
@@ -239,6 +387,7 @@ describe("workbench page", () => {
     );
     expect(screen.queryByText("Revisar pacote mensal de risco")).not.toBeInTheDocument();
     expect(workbenchApiMocks.getWorkbench).not.toHaveBeenCalled();
+    expect(workbenchApiMocks.getAdvisorCharts).not.toHaveBeenCalled();
     expect(workbenchApiMocks.listReviewItems).not.toHaveBeenCalled();
     expect(workbenchApiMocks.createReviewItem).not.toHaveBeenCalled();
     expect(screen.queryByRole("button", { name: "Criar item" })).not.toBeInTheDocument();
