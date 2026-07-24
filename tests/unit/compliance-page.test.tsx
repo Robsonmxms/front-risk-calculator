@@ -219,7 +219,7 @@ describe("compliance page", () => {
     expect(screen.queryByText("delivery.report.failed")).not.toBeInTheDocument();
     expect(screen.queryByText("entrega: rpt_001")).not.toBeInTheDocument();
     expect(screen.queryByText(/delivery_timeout/)).not.toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "entrega: Relatório mensal de risco" })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: "entrega: Entrega de relatório" })).toHaveAttribute(
       "href",
       "/dashboard/clients/client_main"
     );

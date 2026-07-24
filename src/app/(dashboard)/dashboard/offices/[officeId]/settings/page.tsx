@@ -66,17 +66,6 @@ const ASSIGNABLE_PERMISSIONS: PermissionKey[] = [
   "audit.read"
 ];
 
-const RESOURCE_OPTIONS: Record<AssignmentResourceType, Array<{ id: string; label: string }>> = {
-  account: [{ id: "acct_main", label: "Conta principal de portfólio" }],
-  client: [
-    { id: "client_founder", label: "Alice Fundadora" },
-    { id: "client_main", label: "Marina Silva" },
-    { id: "client_spouse", label: "Renato Silva" }
-  ],
-  household: [{ id: "hh_main_silva", label: "Família Silva" }],
-  portfolio: [{ id: "prt_main", label: "Carteira Crescimento" }]
-};
-
 export default function OfficeSettingsPage() {
   const { actor, activeOffice } = useAuth();
   const params = useParams<{ officeId: string }>();
@@ -95,7 +84,7 @@ export default function OfficeSettingsPage() {
   const [assignmentTeamId, setAssignmentTeamId] = useState("");
   const [assignmentResourceType, setAssignmentResourceType] =
     useState<AssignmentResourceType>("portfolio");
-  const [assignmentResourceId, setAssignmentResourceId] = useState("prt_main");
+  const [assignmentResourceId, setAssignmentResourceId] = useState("");
   const [assignmentPermission, setAssignmentPermission] =
     useState<PermissionKey>("ledger.write");
   const [loading, setLoading] = useState(true);
@@ -108,7 +97,6 @@ export default function OfficeSettingsPage() {
     () => assignments.filter((assignment) => !assignment.revokedAt),
     [assignments]
   );
-  const assignmentResourceOptions = RESOURCE_OPTIONS[assignmentResourceType];
 
   useEffect(() => {
     let isActive = true;
@@ -255,7 +243,7 @@ export default function OfficeSettingsPage() {
 
   function handleAssignmentResourceTypeChange(resourceType: AssignmentResourceType) {
     setAssignmentResourceType(resourceType);
-    setAssignmentResourceId(RESOURCE_OPTIONS[resourceType][0]?.id ?? "");
+    setAssignmentResourceId("");
   }
 
   return (
@@ -524,24 +512,12 @@ export default function OfficeSettingsPage() {
 	                      </div>
 	                      <div>
 	                        <Label htmlFor="assignmentResourceId">Referência</Label>
-	                        {assignmentResourceOptions.length > 0 ? (
-	                          <Select
-	                            id="assignmentResourceId"
-	                            className="mt-2"
-	                            value={assignmentResourceId}
-	                            onChange={(event) => setAssignmentResourceId(event.target.value)}
-	                          >
-	                            {assignmentResourceOptions.map((option) => (
-	                              <option key={option.id} value={option.id}>
-	                                {option.label}
-	                              </option>
-	                            ))}
-	                          </Select>
-	                        ) : (
-	                          <Alert variant="info" className="mt-2">
-	                            Nenhuma referência disponível para este tipo.
-	                          </Alert>
-	                        )}
+	                        <Input
+	                          id="assignmentResourceId"
+	                          className="mt-2"
+	                          value={assignmentResourceId}
+	                          onChange={(event) => setAssignmentResourceId(event.target.value)}
+	                        />
 	                      </div>
                       <div>
                         <Label htmlFor="assignmentPermission">Permissão</Label>
@@ -637,9 +613,24 @@ function getAssignmentTarget(
 }
 
 function formatAssignmentResource(assignment: AdvisoryAssignment) {
-  const displayName =
-    RESOURCE_OPTIONS[assignment.resourceType].find((option) => option.id === assignment.resourceId)?.label ??
-    "referência interna";
+  const displayName = readableResourceReference(assignment.resourceId);
 
   return formatResourceReference(assignment.resourceType, undefined, displayName);
+}
+
+function readableResourceReference(value: string) {
+  const trimmed = value.trim();
+
+  if (!trimmed || looksTechnicalIdentifier(trimmed)) {
+    return "referência informada";
+  }
+
+  return trimmed;
+}
+
+function looksTechnicalIdentifier(value: string) {
+  return (
+    /^[a-z]+[a-z0-9]*[_:.][a-z0-9_.:-]+$/i.test(value) ||
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)
+  );
 }

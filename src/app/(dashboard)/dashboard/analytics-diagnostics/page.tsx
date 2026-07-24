@@ -318,7 +318,7 @@ function DiagnosticsFilters({
               id="portfolioIds"
               value={filters.portfolioIds}
               onChange={(event) => setField("portfolioIds", event.target.value)}
-              placeholder="prt_main, prt_growth"
+              placeholder="IDs separados por vírgula"
             />
           </Field>
           <Field label="Cliente" htmlFor="clientId">

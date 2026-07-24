@@ -249,9 +249,9 @@ describe("office settings", () => {
     expect(screen.getByLabelText("Selecionar escritório")).toBeInTheDocument();
     expect(screen.getAllByText("Portfolio User").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Core Advisory Team").length).toBeGreaterThan(0);
-    expect(screen.getByText("cliente: Marina Silva")).toBeInTheDocument();
+    expect(screen.getByText("cliente: referência informada")).toBeInTheDocument();
     expect(screen.queryByText("cliente: client_main")).not.toBeInTheDocument();
-    expect(screen.getByLabelText("Referência")).toHaveDisplayValue("Carteira Crescimento");
+    expect(screen.getByLabelText("Referência")).toHaveValue("");
 
     fireEvent.change(screen.getByLabelText("Nome"), {
       target: { value: "Orion Advisory Group" }
@@ -283,6 +283,9 @@ describe("office settings", () => {
 
     fireEvent.change(screen.getByLabelText("Usuário"), {
       target: { value: "usr_advisor" }
+    });
+    fireEvent.change(screen.getByLabelText("Referência"), {
+      target: { value: "prt_main" }
     });
     fireEvent.click(screen.getByRole("button", { name: "Criar permissão" }));
 
