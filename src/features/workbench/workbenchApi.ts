@@ -1,5 +1,9 @@
 import { apiFetch } from "../../lib/api/client";
 import {
+  AdvisorChartBundle,
+  AdvisorChartRange,
+  AdvisorFreshness,
+  AdvisorRiskBand,
   ReviewItem,
   ReviewItemSeverity,
   ReviewItemStatus,
@@ -14,8 +18,43 @@ export interface ReviewItemFilters {
   clientId?: string;
 }
 
+export interface AdvisorChartFilters {
+  advisorUserId?: string;
+  teamId?: string;
+  range?: AdvisorChartRange;
+  clientStatus?: string[];
+  riskBand?: AdvisorRiskBand | "";
+  freshness?: AdvisorFreshness | "";
+}
+
 export async function getWorkbench(officeId: string) {
   return apiFetch<StaffWorkbench>(`/offices/${officeId}/workbench`);
+}
+
+export async function getAdvisorCharts(officeId: string, filters: AdvisorChartFilters = {}) {
+  const params = new URLSearchParams();
+  if (filters.advisorUserId) {
+    params.set("advisorUserId", filters.advisorUserId);
+  }
+  if (filters.teamId) {
+    params.set("teamId", filters.teamId);
+  }
+  if (filters.range) {
+    params.set("range", filters.range);
+  }
+  if (filters.clientStatus?.length) {
+    params.set("clientStatus", filters.clientStatus.join(","));
+  }
+  if (filters.riskBand) {
+    params.set("riskBand", filters.riskBand);
+  }
+  if (filters.freshness) {
+    params.set("freshness", filters.freshness);
+  }
+  const query = params.toString();
+  return apiFetch<AdvisorChartBundle>(
+    `/offices/${officeId}/advisor/charts${query ? `?${query}` : ""}`
+  );
 }
 
 export async function listReviewItems(officeId: string, filters: ReviewItemFilters = {}) {
