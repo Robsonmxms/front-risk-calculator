@@ -24,13 +24,27 @@ import { ProtectedRoute } from "../../../../features/auth/ProtectedRoute";
 import { getClient, listClients } from "../../../../features/client/clientApi";
 import { ClientSummary } from "../../../../features/client/types";
 import {
+  chartPalette,
+  ThemedHorizontalBarChart,
+  ThemedInlineBarChart,
+  ThemedStackedBarChart
+} from "../../../../components/charts/risk-charts";
+import {
   approveReportPackage,
   createReportPackage,
   deliverReportPackage,
+  getDeliveryCharts,
   listClientReportPackages,
   revokeReportPackage
 } from "../../../../features/delivery/deliveryApi";
-import { ReportPackage, ReportPackageStatus } from "../../../../features/delivery/types";
+import {
+  DeliveryChartBundle,
+  DeliveryChartRange,
+  DeliveryChartsMeta,
+  DeliveryStatusFilter,
+  ReportPackage,
+  ReportPackageStatus
+} from "../../../../features/delivery/types";
 import { PortfolioListItem } from "../../../../features/portfolio/types";
 import {
   formatDateTime,
@@ -49,6 +63,24 @@ const STATUSES: Array<ReportPackageStatus | ""> = [
   "viewed",
   "revoked"
 ];
+const CHART_RANGES: Array<{ value: DeliveryChartRange; label: string }> = [
+  { value: "7d", label: "7 dias" },
+  { value: "30d", label: "30 dias" },
+  { value: "90d", label: "90 dias" },
+  { value: "ytd", label: "Ano atual" },
+  { value: "1y", label: "1 ano" },
+  { value: "all", label: "Tudo" }
+];
+const DELIVERY_STATUSES: Array<{ value: DeliveryStatusFilter | ""; label: string }> = [
+  { value: "", label: "Todos" },
+  { value: "pending_approval", label: "Aguardando aprovação" },
+  { value: "delivered", label: "Entregue" },
+  { value: "viewed", label: "Visto" },
+  { value: "failed", label: "Falha de relatório" },
+  { value: "failure", label: "Falha de entrega" },
+  { value: "unread", label: "Notificação nova" },
+  { value: "read", label: "Notificação lida" }
+];
 
 export default function ReportDeliveryPage() {
   const { actor, activeOffice } = useAuth();
@@ -60,6 +92,12 @@ export default function ReportDeliveryPage() {
   const [availablePortfolios, setAvailablePortfolios] = useState<PortfolioListItem[]>([]);
   const [packages, setPackages] = useState<ReportPackage[]>([]);
   const [statusFilter, setStatusFilter] = useState<ReportPackageStatus | "">("");
+  const [chartRange, setChartRange] = useState<DeliveryChartRange>("30d");
+  const [deliveryStatusFilter, setDeliveryStatusFilter] = useState<DeliveryStatusFilter | "">("");
+  const [channelFilter, setChannelFilter] = useState("");
+  const [charts, setCharts] = useState<DeliveryChartBundle | null>(null);
+  const [chartsMeta, setChartsMeta] = useState<DeliveryChartsMeta | null>(null);
+  const [chartsError, setChartsError] = useState<string | null>(null);
   const [title, setTitle] = useState("Pacote de revisão do cliente");
   const [summaryNotes, setSummaryNotes] = useState("Resumo preparado para consulta do cliente no portal.");
   const [internalNotes, setInternalNotes] = useState("");
@@ -145,6 +183,40 @@ export default function ReportDeliveryPage() {
       isActive = false;
     };
   }, [canUseDelivery, selectedClientId, statusFilter]);
+
+  useEffect(() => {
+    if (!officeId || !canUseDelivery) {
+      setCharts(null);
+      setChartsMeta(null);
+      setChartsError(null);
+      return;
+    }
+
+    let isActive = true;
+    setChartsError(null);
+    getDeliveryCharts(officeId, {
+      range: chartRange,
+      packageStatus: statusFilter,
+      deliveryStatus: deliveryStatusFilter,
+      channel: channelFilter.trim() || undefined
+    })
+      .then((response) => {
+        if (!isActive) {
+          return;
+        }
+        setCharts(response.data);
+        setChartsMeta(response.meta ?? null);
+      })
+      .catch((caught) => {
+        if (isActive) {
+          setChartsError(getApiErrorMessage(caught, "Não foi possível carregar os gráficos de entrega."));
+        }
+      });
+
+    return () => {
+      isActive = false;
+    };
+  }, [canUseDelivery, channelFilter, chartRange, deliveryStatusFilter, officeId, statusFilter]);
 
   async function handleCreatePackage(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -244,6 +316,71 @@ export default function ReportDeliveryPage() {
 
               {error ? <Alert variant="failure">{error}</Alert> : null}
               {notice ? <Alert variant="success">{notice}</Alert> : null}
+              {chartsError ? <Alert variant="failure">{chartsError}</Alert> : null}
+
+              <Card>
+                <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                  <div>
+                    <Label htmlFor="deliveryChartRange">Período</Label>
+                    <Select
+                      id="deliveryChartRange"
+                      className="mt-2"
+                      value={chartRange}
+                      onChange={(event) => setChartRange(event.target.value as DeliveryChartRange)}
+                    >
+                      {CHART_RANGES.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </Select>
+                  </div>
+                  <div>
+                    <Label htmlFor="deliveryChartStatus">Status operacional</Label>
+                    <Select
+                      id="deliveryChartStatus"
+                      className="mt-2"
+                      value={deliveryStatusFilter}
+                      onChange={(event) =>
+                        setDeliveryStatusFilter(event.target.value as DeliveryStatusFilter | "")
+                      }
+                    >
+                      {DELIVERY_STATUSES.map((status) => (
+                        <option key={status.value || "all"} value={status.value}>
+                          {status.label}
+                        </option>
+                      ))}
+                    </Select>
+                  </div>
+                  <div>
+                    <Label htmlFor="deliveryChannel">Canal</Label>
+                    <Input
+                      id="deliveryChannel"
+                      className="mt-2"
+                      value={channelFilter}
+                      onChange={(event) => setChannelFilter(event.target.value)}
+                      placeholder="portal, e-mail"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="packageStatus">Status do pacote</Label>
+                    <Select
+                      id="packageStatus"
+                      className="mt-2"
+                      value={statusFilter}
+                      onChange={(event) => setStatusFilter(event.target.value as ReportPackageStatus | "")}
+                    >
+                      {STATUSES.map((status) => (
+                        <option key={status || "all"} value={status}>
+                          {status ? labelReportPackageStatus(status) : "todos"}
+                        </option>
+                      ))}
+                    </Select>
+                  </div>
+                </div>
+              </Card>
+
+              {charts ? <DeliveryChartsPanel charts={charts} meta={chartsMeta} /> : null}
 
               <Card>
                 <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_220px]">
@@ -262,20 +399,12 @@ export default function ReportDeliveryPage() {
                       ))}
                     </Select>
                   </div>
-                  <div>
-                    <Label htmlFor="packageStatus">Status</Label>
-                    <Select
-                      id="packageStatus"
-                      className="mt-2"
-                      value={statusFilter}
-                      onChange={(event) => setStatusFilter(event.target.value as ReportPackageStatus | "")}
-                    >
-                      {STATUSES.map((status) => (
-                        <option key={status || "all"} value={status}>
-                          {status ? labelReportPackageStatus(status) : "todos"}
-                        </option>
-                      ))}
-                    </Select>
+                  <div className="rounded-md border border-border px-3 py-2">
+                    <span className="text-xs font-semibold uppercase text-stone-500">Escopo</span>
+                    <strong className="block text-2xl text-stone-900">
+                      {charts?.dataQuality.sourceCounts.clients ?? clients.length}
+                    </strong>
+                    <span className="text-xs text-stone-500">clientes autorizados</span>
                   </div>
                 </div>
               </Card>
@@ -428,6 +557,180 @@ export default function ReportDeliveryPage() {
   );
 }
 
+function DeliveryChartsPanel({
+  charts,
+  meta
+}: {
+  charts: DeliveryChartBundle;
+  meta: DeliveryChartsMeta | null;
+}) {
+  const lifecycleData = charts.charts.reportLifecycleFunnel.map((point) => ({
+    name: labelReportPackageStatus(point.status),
+    value: point.count,
+    detail: `${point.clientIds.length} clientes`
+  }));
+  const outcomeData = charts.charts.deliveryOutcomeTimeline.map((point) => ({
+    name: formatChartDate(point.date),
+    total: point.total,
+    delivered: point.delivered,
+    viewed: point.viewed,
+    failed: point.failed,
+    revoked: point.revoked
+  }));
+  const failureData = charts.charts.failureReasonBreakdown.map((point) => ({
+    name: failureCodeLabel(point.failureCode),
+    value: point.count,
+    detail: point.channel ? channelLabel(point.channel) : "canal não informado"
+  }));
+  const notificationData = charts.charts.notificationReadStatus.map((point) => ({
+    name: point.status === "read" ? "Lidas" : "Novas",
+    value: point.count,
+    detail: `${point.notificationIds.length} notificações`
+  }));
+  const maxReadiness = Math.max(
+    1,
+    ...charts.charts.clientPackageReadiness.map(
+      (point) =>
+        point.readyCount +
+        point.pendingCount +
+        point.failedItemCount +
+        point.staleNotificationCount
+    )
+  );
+
+  return (
+    <section className="grid gap-4 xl:grid-cols-2">
+      <Card>
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-xs font-semibold uppercase text-moss">Lifecycle</p>
+            <h2 className="text-xl font-semibold text-stone-900">Pacotes por status</h2>
+          </div>
+          <DataQualityBadge status={charts.dataQuality.status} />
+        </div>
+        <div className="mt-4">
+          <ThemedHorizontalBarChart
+            data={lifecycleData}
+            ariaLabel="Pacotes de relatório por status"
+            color={chartPalette.moss}
+          />
+        </div>
+      </Card>
+
+      <Card>
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-xs font-semibold uppercase text-moss">Entregas</p>
+            <h2 className="text-xl font-semibold text-stone-900">Resultado por período</h2>
+          </div>
+          {meta ? <Badge variant="outline">{formatDateTime(meta.generatedAt)}</Badge> : null}
+        </div>
+        <div className="mt-4">
+          <ThemedStackedBarChart
+            data={outcomeData}
+            ariaLabel="Resultado de entrega por período"
+            bars={[
+              { key: "delivered", label: "Entregue", color: chartPalette.emerald },
+              { key: "viewed", label: "Visto", color: chartPalette.blue },
+              { key: "failed", label: "Falha", color: chartPalette.rose },
+              { key: "revoked", label: "Revogado", color: chartPalette.slate }
+            ]}
+          />
+        </div>
+      </Card>
+
+      <Card>
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-xs font-semibold uppercase text-moss">Falhas</p>
+            <h2 className="text-xl font-semibold text-stone-900">Motivos de falha</h2>
+          </div>
+          <Badge variant="outline">{charts.dataQuality.sourceCounts.deliveryAuditEvents}</Badge>
+        </div>
+        <div className="mt-4">
+          <ThemedHorizontalBarChart
+            data={failureData}
+            ariaLabel="Motivos de falha de entrega"
+            color={chartPalette.rose}
+          />
+        </div>
+      </Card>
+
+      <Card>
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-xs font-semibold uppercase text-moss">Notificações</p>
+            <h2 className="text-xl font-semibold text-stone-900">Leitura pelo cliente</h2>
+          </div>
+          <Badge variant="outline">{charts.dataQuality.sourceCounts.notifications}</Badge>
+        </div>
+        <div className="mt-4">
+          <ThemedHorizontalBarChart
+            data={notificationData}
+            ariaLabel="Status de leitura das notificações"
+            color={chartPalette.blue}
+          />
+        </div>
+      </Card>
+
+      <Card className="xl:col-span-2">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-xs font-semibold uppercase text-moss">Prontidão</p>
+            <h2 className="text-xl font-semibold text-stone-900">Pacotes por cliente</h2>
+          </div>
+          <Badge variant="outline">{charts.charts.clientPackageReadiness.length} clientes</Badge>
+        </div>
+        {charts.charts.clientPackageReadiness.length === 0 ? (
+          <Alert variant="info" className="mt-4">Sem pacotes no escopo selecionado.</Alert>
+        ) : (
+          <div className="mt-5 overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Cliente</TableHead>
+                  <TableHead>Status recente</TableHead>
+                  <TableHead>Prontos</TableHead>
+                  <TableHead>Pendentes</TableHead>
+                  <TableHead>Falhas</TableHead>
+                  <TableHead>Notificações novas</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {charts.charts.clientPackageReadiness.map((point) => (
+                  <TableRow key={point.clientId}>
+                    <TableCell className="font-medium text-stone-900">{point.clientName}</TableCell>
+                    <TableCell>
+                      {point.latestPackageStatus ? statusBadge(point.latestPackageStatus) : "sem pacote"}
+                    </TableCell>
+                    <TableCell>
+                      <ThemedInlineBarChart
+                        value={point.readyCount}
+                        max={maxReadiness}
+                        ariaLabel={`Pacotes prontos de ${point.clientName}`}
+                        color={chartPalette.emerald}
+                      />
+                    </TableCell>
+                    <TableCell>{point.pendingCount}</TableCell>
+                    <TableCell>{point.failedItemCount}</TableCell>
+                    <TableCell>{point.staleNotificationCount}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        )}
+      </Card>
+
+      {charts.dataQuality.issues.length > 0 ? (
+        <Alert variant="warning" className="xl:col-span-2">
+          {charts.dataQuality.issues[0].message}
+        </Alert>
+      ) : null}
+    </section>
+  );
+}
+
 function MetricCard({ label, value }: { label: string; value: number }) {
   return (
     <Card>
@@ -439,4 +742,38 @@ function MetricCard({ label, value }: { label: string; value: number }) {
 
 function statusBadge(status: ReportPackageStatus) {
   return <Badge variant={reportPackageStatusVariant(status)}>{labelReportPackageStatus(status)}</Badge>;
+}
+
+function DataQualityBadge({ status }: { status: DeliveryChartBundle["dataQuality"]["status"] }) {
+  const labels = {
+    complete: "completo",
+    partial: "parcial",
+    empty: "sem dados"
+  };
+  return <Badge variant={status === "partial" ? "warning" : "outline"}>{labels[status]}</Badge>;
+}
+
+function formatChartDate(value: string) {
+  return new Intl.DateTimeFormat("pt-BR", {
+    day: "2-digit",
+    month: "2-digit"
+  }).format(new Date(`${value}T00:00:00.000Z`));
+}
+
+function failureCodeLabel(value: string) {
+  const labels: Record<string, string> = {
+    delivery_timeout: "tempo limite",
+    unclassified_failure: "não classificada"
+  };
+
+  return labels[value] ?? value.replace(/[_-]/g, " ");
+}
+
+function channelLabel(value: string) {
+  const labels: Record<string, string> = {
+    email: "e-mail",
+    portal: "portal"
+  };
+
+  return labels[value] ?? value;
 }

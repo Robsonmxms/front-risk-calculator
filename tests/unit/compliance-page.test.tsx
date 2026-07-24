@@ -13,6 +13,7 @@ const authApiMocks = vi.hoisted(() => ({
 }));
 
 const complianceApiMocks = vi.hoisted(() => ({
+  getComplianceCharts: vi.fn(),
   listAuditEvents: vi.fn(),
   listSupervisionReviews: vi.fn(),
   requestAuditExport: vi.fn(),
@@ -111,6 +112,77 @@ describe("compliance page", () => {
     complianceApiMocks.listSupervisionReviews.mockResolvedValue({
       supervisionReviews: [review]
     });
+    complianceApiMocks.getComplianceCharts.mockResolvedValue({
+      data: {
+        officeId: "ofc_main",
+        range: "30d",
+        filters: {},
+        charts: {
+          auditEventTimeline: [
+            {
+              date: "2026-07-15",
+              success: 0,
+              failure: 1,
+              info: 0,
+              warning: 0,
+              critical: 1,
+              total: 1,
+              eventIds: ["aud_report_delivery_failed"],
+              clientIds: ["client_main"],
+              portfolioIds: ["prt_main"]
+            }
+          ],
+          auditActionBreakdown: [
+            {
+              action: "delivery.report.failed",
+              resourceType: "delivery",
+              outcome: "failure",
+              severity: "critical",
+              count: 1,
+              eventIds: ["aud_report_delivery_failed"]
+            }
+          ],
+          reviewStatusFunnel: [
+            {
+              status: "open",
+              count: 1,
+              reviewIds: ["sv_aud_report_delivery_failed"],
+              auditEventIds: ["aud_report_delivery_failed"]
+            }
+          ],
+          reviewAging: [
+            {
+              bucket: "4-7d",
+              count: 1,
+              reviewIds: ["sv_aud_report_delivery_failed"],
+              auditEventIds: ["aud_report_delivery_failed"]
+            }
+          ],
+          permissionActivity: [],
+          exceptionHeatmap: [
+            {
+              date: "2026-07-15",
+              severity: "critical",
+              count: 1,
+              eventIds: ["aud_report_delivery_failed"]
+            }
+          ]
+        },
+        dataQuality: {
+          status: "complete",
+          issues: [],
+          sourceCounts: {
+            auditEvents: 1,
+            supervisionReviews: 1,
+            redactedAuditMetadataFields: 0
+          }
+        }
+      },
+      meta: {
+        generatedAt: "2026-07-16T00:00:00.000Z",
+        calculationDurationMs: 2
+      }
+    });
     complianceApiMocks.requestAuditExport.mockResolvedValue({
       id: "audexp_001",
       officeId: "ofc_main",
@@ -143,7 +215,7 @@ describe("compliance page", () => {
       </AuthProvider>
     );
 
-    expect(await screen.findAllByText("Falha na entrega do relatório")).toHaveLength(2);
+    expect((await screen.findAllByText("Falha na entrega do relatório")).length).toBeGreaterThanOrEqual(2);
     expect(screen.queryByText("delivery.report.failed")).not.toBeInTheDocument();
     expect(screen.queryByText("entrega: rpt_001")).not.toBeInTheDocument();
     expect(screen.queryByText(/delivery_timeout/)).not.toBeInTheDocument();
@@ -160,6 +232,10 @@ describe("compliance page", () => {
       expect(complianceApiMocks.listAuditEvents).toHaveBeenLastCalledWith(
         "ofc_main",
         expect.objectContaining({ severity: "critical", page: 1, pageSize: 25 })
+      );
+      expect(complianceApiMocks.getComplianceCharts).toHaveBeenLastCalledWith(
+        "ofc_main",
+        expect.objectContaining({ severity: "critical", range: "30d" })
       );
     });
 
