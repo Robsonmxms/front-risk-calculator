@@ -1,6 +1,9 @@
-import { apiFetch } from "../../lib/api/client";
+import { apiFetch, apiFetchEnvelope, ApiEnvelope } from "../../lib/api/client";
 import {
   ClientPortalReadModel,
+  DeliveryChartBundle,
+  DeliveryChartsMeta,
+  DeliveryChartsQuery,
   ReportPackage,
   ReportPackageItem,
   ReportPackageStatus
@@ -56,4 +59,24 @@ export async function revokeReportPackage(packageId: string) {
 
 export async function getClientPortal() {
   return apiFetch<ClientPortalReadModel>("/client-portal");
+}
+
+export async function getDeliveryCharts(
+  officeId: string,
+  filters: DeliveryChartsQuery = {}
+): Promise<ApiEnvelope<DeliveryChartBundle, DeliveryChartsMeta>> {
+  const query = buildQuery(filters);
+  return apiFetchEnvelope<DeliveryChartBundle, DeliveryChartsMeta>(
+    `/offices/${officeId}/delivery/charts${query ? `?${query}` : ""}`
+  );
+}
+
+function buildQuery(filters: object): string {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(filters)) {
+    if (value !== undefined && value !== "") {
+      params.set(key, String(value));
+    }
+  }
+  return params.toString();
 }

@@ -22,8 +22,15 @@ import { useAuth } from "../../../../features/auth/AuthProvider";
 import { LogoutButton } from "../../../../features/auth/LogoutButton";
 import { ProtectedRoute } from "../../../../features/auth/ProtectedRoute";
 import {
+  chartPalette,
+  ThemedHeatmapChart,
+  ThemedHorizontalBarChart,
+  ThemedStackedBarChart
+} from "../../../../components/charts/risk-charts";
+import {
   listAuditEvents,
   listSupervisionReviews,
+  getComplianceCharts,
   requestAuditExport,
   updateSupervisionReview
 } from "../../../../features/compliance/complianceApi";
@@ -33,6 +40,9 @@ import {
   AuditOutcome,
   AuditResourceType,
   AuditSeverity,
+  ComplianceChartBundle,
+  ComplianceChartsMeta,
+  ComplianceChartRange,
   SupervisionReview
 } from "../../../../features/compliance/types";
 import {
@@ -54,6 +64,14 @@ import {
 
 const SEVERITIES: Array<AuditSeverity | ""> = ["", "info", "warning", "critical"];
 const OUTCOMES: Array<AuditOutcome | ""> = ["", "success", "failure"];
+const CHART_RANGES: Array<{ value: ComplianceChartRange; label: string }> = [
+  { value: "7d", label: "7 dias" },
+  { value: "30d", label: "30 dias" },
+  { value: "90d", label: "90 dias" },
+  { value: "ytd", label: "Ano atual" },
+  { value: "1y", label: "1 ano" },
+  { value: "all", label: "Tudo" }
+];
 const RESOURCE_TYPES: Array<AuditResourceType | ""> = [
   "",
   "auth",
@@ -82,6 +100,9 @@ export default function CompliancePage() {
   const [outcomeFilter, setOutcomeFilter] = useState<AuditOutcome | "">("");
   const [resourceTypeFilter, setResourceTypeFilter] = useState<AuditResourceType | "">("");
   const [clientFilter, setClientFilter] = useState("");
+  const [chartRange, setChartRange] = useState<ComplianceChartRange>("30d");
+  const [charts, setCharts] = useState<ComplianceChartBundle | null>(null);
+  const [chartsMeta, setChartsMeta] = useState<ComplianceChartsMeta | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -103,12 +124,23 @@ export default function CompliancePage() {
     () => new Map(auditEvents.map((event) => [event.id, event])),
     [auditEvents]
   );
+  const chartFilters = useMemo(
+    () => ({
+      range: chartRange,
+      action: actionFilter || undefined,
+      severity: severityFilter,
+      resourceType: resourceTypeFilter
+    }),
+    [actionFilter, chartRange, resourceTypeFilter, severityFilter]
+  );
 
   useEffect(() => {
     if (!officeId || !canReadAudit) {
       setAuditEvents([]);
       setReviews([]);
       setTotal(0);
+      setCharts(null);
+      setChartsMeta(null);
       setLoading(false);
       return;
     }
@@ -119,15 +151,18 @@ export default function CompliancePage() {
 
     Promise.all([
       listAuditEvents(officeId, filters),
-      listSupervisionReviews(officeId, { status: "open" })
+      listSupervisionReviews(officeId, { status: "open" }),
+      getComplianceCharts(officeId, chartFilters)
     ])
-      .then(([auditPage, reviewPage]) => {
+      .then(([auditPage, reviewPage, chartsPage]) => {
         if (!isActive) {
           return;
         }
         setAuditEvents(auditPage.auditEvents);
         setTotal(auditPage.total);
         setReviews(reviewPage.supervisionReviews);
+        setCharts(chartsPage.data);
+        setChartsMeta(chartsPage.meta ?? null);
       })
       .catch((caught) => {
         if (isActive) {
@@ -143,7 +178,7 @@ export default function CompliancePage() {
     return () => {
       isActive = false;
     };
-  }, [canReadAudit, filters, officeId]);
+  }, [canReadAudit, chartFilters, filters, officeId]);
 
   async function handleExport(format: "csv" | "json") {
     if (!officeId) {
@@ -229,8 +264,25 @@ export default function CompliancePage() {
 
               {notice ? <Alert variant="info">{notice}</Alert> : null}
 
+              {charts ? <ComplianceChartsPanel charts={charts} meta={chartsMeta} /> : null}
+
               <Card>
-                <div className="grid gap-3 lg:grid-cols-[minmax(0,1.2fr)_repeat(4,minmax(140px,1fr))]">
+                <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-[180px_minmax(0,1.2fr)_repeat(4,minmax(140px,1fr))]">
+                  <div>
+                    <Label htmlFor="complianceRange">Período</Label>
+                    <Select
+                      id="complianceRange"
+                      className="mt-2"
+                      value={chartRange}
+                      onChange={(event) => setChartRange(event.target.value as ComplianceChartRange)}
+                    >
+                      {CHART_RANGES.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </Select>
+                  </div>
                   <div>
                     <Label htmlFor="auditAction">Ação</Label>
                     <Input
@@ -414,6 +466,129 @@ export default function CompliancePage() {
   );
 }
 
+function ComplianceChartsPanel({
+  charts,
+  meta
+}: {
+  charts: ComplianceChartBundle;
+  meta: ComplianceChartsMeta | null;
+}) {
+  const timelineData = charts.charts.auditEventTimeline.map((point) => ({
+    name: formatChartDate(point.date),
+    total: point.total,
+    success: point.success,
+    failure: point.failure,
+    warning: point.warning,
+    critical: point.critical
+  }));
+  const actionData = charts.charts.auditActionBreakdown.slice(0, 8).map((point) => ({
+    name: labelAuditAction(point.action),
+    value: point.count,
+    detail: `${labelResourceType(point.resourceType)} · ${labelAuditSeverity(point.severity)}`
+  }));
+  const agingData = charts.charts.reviewAging.map((point) => ({
+    name: agingBucketLabel(point.bucket),
+    value: point.count,
+    detail: `${point.reviewIds.length} revisões`
+  }));
+  const heatmapData = charts.charts.exceptionHeatmap.map((point) => ({
+    x: formatChartDate(point.date),
+    y: labelAuditSeverity(point.severity),
+    value: point.count,
+    fill:
+      point.severity === "critical"
+        ? chartPalette.rose
+        : point.severity === "warning"
+          ? chartPalette.amber
+          : chartPalette.blue,
+    detail: `${point.eventIds.length} eventos`
+  }));
+
+  return (
+    <section className="grid gap-4 xl:grid-cols-2">
+      <Card>
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-xs font-semibold uppercase text-moss">Auditoria</p>
+            <h2 className="text-xl font-semibold text-stone-900">Linha do tempo</h2>
+          </div>
+          <DataQualityBadge status={charts.dataQuality.status} />
+        </div>
+        <div className="mt-4">
+          <ThemedStackedBarChart
+            data={timelineData}
+            ariaLabel="Linha do tempo de eventos de auditoria por resultado"
+            bars={[
+              { key: "success", label: "Sucesso", color: chartPalette.emerald },
+              { key: "failure", label: "Falha", color: chartPalette.rose },
+              { key: "warning", label: "Atenção", color: chartPalette.amber },
+              { key: "critical", label: "Crítico", color: chartPalette.violet }
+            ]}
+          />
+        </div>
+      </Card>
+
+      <Card>
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-xs font-semibold uppercase text-moss">Ações</p>
+            <h2 className="text-xl font-semibold text-stone-900">Eventos por ação</h2>
+          </div>
+          <Badge variant="outline">{charts.dataQuality.sourceCounts.auditEvents}</Badge>
+        </div>
+        <div className="mt-4">
+          <ThemedHorizontalBarChart
+            data={actionData}
+            ariaLabel="Distribuição de eventos de auditoria por ação"
+            color={chartPalette.moss}
+          />
+        </div>
+      </Card>
+
+      <Card>
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-xs font-semibold uppercase text-moss">Supervisão</p>
+            <h2 className="text-xl font-semibold text-stone-900">Aging de revisões</h2>
+          </div>
+          <Badge variant="outline">{charts.dataQuality.sourceCounts.supervisionReviews}</Badge>
+        </div>
+        <div className="mt-4">
+          <ThemedHorizontalBarChart
+            data={agingData}
+            ariaLabel="Aging das revisões de supervisão"
+            color={chartPalette.blue}
+          />
+        </div>
+      </Card>
+
+      <Card>
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-xs font-semibold uppercase text-moss">Exceções</p>
+            <h2 className="text-xl font-semibold text-stone-900">Mapa de severidade</h2>
+          </div>
+          {meta ? <Badge variant="outline">{formatDateTime(meta.generatedAt)}</Badge> : null}
+        </div>
+        <div className="mt-4">
+          <ThemedHeatmapChart
+            data={heatmapData}
+            ariaLabel="Mapa de exceções por data e severidade"
+            valueLabel="eventos"
+            valueFormatter={(value) => String(value)}
+          />
+        </div>
+      </Card>
+
+      {charts.dataQuality.issues.length > 0 ? (
+        <Alert variant="warning" className="xl:col-span-2">
+          {charts.dataQuality.issues[0].message}
+        </Alert>
+      ) : null}
+    </section>
+  );
+}
+
 function MetricCard({ label, value }: { label: string; value: number }) {
   return (
     <Card>
@@ -421,6 +596,33 @@ function MetricCard({ label, value }: { label: string; value: number }) {
       <strong className="text-3xl text-stone-900">{value}</strong>
     </Card>
   );
+}
+
+function DataQualityBadge({ status }: { status: ComplianceChartBundle["dataQuality"]["status"] }) {
+  const labels = {
+    complete: "completo",
+    partial: "parcial",
+    empty: "sem dados"
+  };
+  return <Badge variant={status === "partial" ? "warning" : "outline"}>{labels[status]}</Badge>;
+}
+
+function agingBucketLabel(bucket: ComplianceChartBundle["charts"]["reviewAging"][number]["bucket"]) {
+  const labels = {
+    "0-1d": "0-1 dia",
+    "2-3d": "2-3 dias",
+    "4-7d": "4-7 dias",
+    "8-14d": "8-14 dias",
+    "15d+": "15+ dias"
+  };
+  return labels[bucket];
+}
+
+function formatChartDate(value: string) {
+  return new Intl.DateTimeFormat("pt-BR", {
+    day: "2-digit",
+    month: "2-digit"
+  }).format(new Date(`${value}T00:00:00.000Z`));
 }
 
 function resourceLink(event: AuditEvent) {

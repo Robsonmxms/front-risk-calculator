@@ -22,6 +22,7 @@ const deliveryApiMocks = vi.hoisted(() => ({
   approveReportPackage: vi.fn(),
   createReportPackage: vi.fn(),
   deliverReportPackage: vi.fn(),
+  getDeliveryCharts: vi.fn(),
   getClientPortal: vi.fn(),
   listClientReportPackages: vi.fn(),
   revokeReportPackage: vi.fn()
@@ -181,6 +182,96 @@ describe("report delivery pages", () => {
     deliveryApiMocks.listClientReportPackages.mockResolvedValue({
       reportPackages: [pendingPackage, deliveredPackage]
     });
+    deliveryApiMocks.getDeliveryCharts.mockResolvedValue({
+      data: {
+        officeId: "ofc_main",
+        range: "30d",
+        filters: {},
+        charts: {
+          reportLifecycleFunnel: [
+            {
+              status: "pending_approval",
+              count: 1,
+              reportPackageIds: ["rpkg_pending_main"],
+              clientIds: ["client_main"]
+            },
+            {
+              status: "delivered",
+              count: 1,
+              reportPackageIds: ["rpkg_delivered_main"],
+              clientIds: ["client_main"]
+            }
+          ],
+          approvalLatency: [
+            {
+              bucket: "4-24h",
+              count: 1,
+              averageHours: 24,
+              reportPackageIds: ["rpkg_delivered_main"]
+            }
+          ],
+          deliveryOutcomeTimeline: [
+            {
+              date: "2026-07-15",
+              delivered: 1,
+              viewed: 0,
+              failed: 1,
+              revoked: 0,
+              total: 2,
+              reportPackageIds: ["rpkg_delivered_main"],
+              eventIds: ["aud_report_delivery_failed"]
+            }
+          ],
+          failureReasonBreakdown: [
+            {
+              failureCode: "delivery_timeout",
+              channel: "portal",
+              count: 1,
+              eventIds: ["aud_report_delivery_failed"],
+              reportPackageIds: ["rpkg_delivered_main"]
+            }
+          ],
+          notificationReadStatus: [
+            {
+              status: "unread",
+              count: 1,
+              notificationIds: ["ntf_report_ready"]
+            }
+          ],
+          clientPackageReadiness: [
+            {
+              clientId: "client_main",
+              clientName: "Marina Silva",
+              householdId: "hh_main_silva",
+              readyCount: 1,
+              pendingCount: 1,
+              failedItemCount: 0,
+              staleNotificationCount: 1,
+              latestPackageStatus: "delivered",
+              latestPackageUpdatedAt: "2026-07-15T11:00:00.000Z",
+              reportPackageIds: ["rpkg_delivered_main", "rpkg_pending_main"],
+              notificationIds: ["ntf_report_ready"]
+            }
+          ]
+        },
+        dataQuality: {
+          status: "complete",
+          issues: [],
+          sourceCounts: {
+            clients: 1,
+            portfolios: 1,
+            reportPackages: 2,
+            reports: 0,
+            notifications: 1,
+            deliveryAuditEvents: 1
+          }
+        }
+      },
+      meta: {
+        generatedAt: "2026-07-16T00:00:00.000Z",
+        calculationDurationMs: 3
+      }
+    });
     deliveryApiMocks.createReportPackage.mockResolvedValue({
       ...pendingPackage,
       id: "rpkg_created",
@@ -232,8 +323,15 @@ describe("report delivery pages", () => {
       </AuthProvider>
     );
 
-    expect(await screen.findByText("Revisão de alocação pendente")).toBeInTheDocument();
+    expect(
+      await screen.findByText("Revisão de alocação pendente", {}, { timeout: 3000 })
+    ).toBeInTheDocument();
+    expect(await screen.findByText("Pacotes por status", {}, { timeout: 3000 })).toBeInTheDocument();
     expect(clientApiMocks.listClients).toHaveBeenCalledWith("ofc_main", { status: "active" });
+    expect(deliveryApiMocks.getDeliveryCharts).toHaveBeenCalledWith(
+      "ofc_main",
+      expect.objectContaining({ range: "30d", packageStatus: "" })
+    );
     expect(deliveryApiMocks.listClientReportPackages).toHaveBeenCalledWith("client_main", {
       status: ""
     });

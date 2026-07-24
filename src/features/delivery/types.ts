@@ -8,6 +8,33 @@ export type ReportPackageStatus =
   | "viewed"
   | "revoked";
 
+export type DeliveryChartRange = "7d" | "30d" | "90d" | "ytd" | "1y" | "all";
+export type DeliveryDataQualityStatus = "complete" | "partial" | "empty";
+export type ReportStatus = "pending" | "running" | "ready" | "failed";
+export type NotificationStatus = "unread" | "read";
+export type DeliveryStatusFilter =
+  | ReportPackageStatus
+  | ReportStatus
+  | NotificationStatus
+  | "success"
+  | "failure";
+
+export interface DataQualityIssue {
+  code: string;
+  severity: "info" | "warning" | "blocking";
+  message: string;
+}
+
+export interface DeliveryChartsQuery {
+  range?: DeliveryChartRange;
+  packageStatus?: ReportPackageStatus | "";
+  deliveryStatus?: DeliveryStatusFilter | "";
+  channel?: string;
+  clientId?: string;
+  householdId?: string;
+  advisorUserId?: string;
+}
+
 export type ReportPackageItemType = "report" | "analytics_snapshot" | "portfolio_summary";
 export type ReportPackageItemStatus = "ready" | "pending" | "unavailable";
 
@@ -61,4 +88,76 @@ export interface ClientPortalReadModel {
     householdName?: string;
   }>;
   packages: ClientPortalPackage[];
+}
+
+export interface DeliveryChartBundle {
+  officeId: string;
+  range: DeliveryChartRange;
+  filters: Omit<DeliveryChartsQuery, "range">;
+  charts: {
+    reportLifecycleFunnel: Array<{
+      status: ReportPackageStatus;
+      count: number;
+      reportPackageIds: string[];
+      clientIds: string[];
+    }>;
+    approvalLatency: Array<{
+      bucket: "0-4h" | "4-24h" | "1-3d" | "3d+";
+      count: number;
+      averageHours: number;
+      reportPackageIds: string[];
+    }>;
+    deliveryOutcomeTimeline: Array<{
+      date: string;
+      delivered: number;
+      viewed: number;
+      failed: number;
+      revoked: number;
+      total: number;
+      reportPackageIds: string[];
+      eventIds: string[];
+    }>;
+    failureReasonBreakdown: Array<{
+      failureCode: string;
+      channel?: string;
+      count: number;
+      eventIds: string[];
+      reportPackageIds: string[];
+    }>;
+    notificationReadStatus: Array<{
+      status: NotificationStatus;
+      count: number;
+      notificationIds: string[];
+    }>;
+    clientPackageReadiness: Array<{
+      clientId: string;
+      clientName: string;
+      householdId?: string;
+      readyCount: number;
+      pendingCount: number;
+      failedItemCount: number;
+      staleNotificationCount: number;
+      latestPackageStatus?: ReportPackageStatus;
+      latestPackageUpdatedAt?: string;
+      reportPackageIds: string[];
+      notificationIds: string[];
+    }>;
+  };
+  dataQuality: {
+    status: DeliveryDataQualityStatus;
+    issues: DataQualityIssue[];
+    sourceCounts: {
+      clients: number;
+      portfolios: number;
+      reportPackages: number;
+      reports: number;
+      notifications: number;
+      deliveryAuditEvents: number;
+    };
+  };
+}
+
+export interface DeliveryChartsMeta {
+  generatedAt: string;
+  calculationDurationMs: number;
 }

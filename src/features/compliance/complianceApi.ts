@@ -1,9 +1,12 @@
-import { apiFetch, apiFetchEnvelope } from "../../lib/api/client";
+import { apiFetch, apiFetchEnvelope, ApiEnvelope } from "../../lib/api/client";
 import {
   AuditEvent,
   AuditEventFilters,
   AuditEventPage,
   AuditExportJob,
+  ComplianceChartBundle,
+  ComplianceChartsMeta,
+  ComplianceChartsQuery,
   SupervisionReview,
   SupervisionReviewStatus
 } from "./types";
@@ -77,4 +80,24 @@ export async function requestAuditExport(
     method: "POST",
     body: JSON.stringify(input)
   });
+}
+
+export async function getComplianceCharts(
+  officeId: string,
+  filters: ComplianceChartsQuery = {}
+): Promise<ApiEnvelope<ComplianceChartBundle, ComplianceChartsMeta>> {
+  const query = buildQuery(filters);
+  return apiFetchEnvelope<ComplianceChartBundle, ComplianceChartsMeta>(
+    `/offices/${officeId}/compliance/charts${query ? `?${query}` : ""}`
+  );
+}
+
+function buildQuery(filters: object): string {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(filters)) {
+    if (value !== undefined && value !== "") {
+      params.set(key, String(value));
+    }
+  }
+  return params.toString();
 }
