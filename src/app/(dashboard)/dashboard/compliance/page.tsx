@@ -748,22 +748,6 @@ function auditResourceDisplayName(event: AuditEvent) {
 }
 
 function businessResourceName(value: string, event: AuditEvent) {
-  const knownNames: Record<string, string> = {
-    asn_core_client_main: "Permissão para Marina Silva",
-    client_founder: "Alice Fundadora",
-    client_main: "Marina Silva",
-    client_spouse: "Renato Silva",
-    hh_main_silva: "Família Silva",
-    pltxn_001: "Movimentação de MSFT",
-    prt_main: "Carteira Crescimento",
-    rpkg_delivered_main: "Pacote mensal de risco",
-    rpt_001: "Relatório mensal de risco"
-  };
-  const knownName = knownNames[value];
-  if (knownName) {
-    return knownName;
-  }
-
   if (!looksTechnical(value)) {
     return value;
   }

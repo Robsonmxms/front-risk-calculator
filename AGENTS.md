@@ -37,6 +37,11 @@ Specs are not local to this project. Before implementation, read the relevant ro
 - Do not implement analytics formulas except presentational formatting.
 - Do not enforce security only in UI; backend RBAC is authoritative.
 - Do not store refresh tokens in `localStorage`.
+- Runtime pages, components, hooks, API clients, and presentation helpers must not contain mocked,
+  demo, fixture, fallback, or hardcoded business records. Render backend API data, loading states,
+  empty states, unauthorized states, or stable errors only.
+- Keep UI test data and mocked API responses under `tests/` or test-only helpers; do not import
+  those fixtures into `src/`.
 - Keep `accessToken` and actor in `sessionStorage`; keep refresh token out of browser storage.
 - Prefer generated API types once the backend OpenAPI contract exists.
 - Show loading, unauthorized, session-expired, and error states where the current flow needs them.
