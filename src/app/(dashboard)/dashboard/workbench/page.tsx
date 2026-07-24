@@ -7,6 +7,14 @@ import { Alert } from "../../../../components/ui/alert";
 import { Badge } from "../../../../components/ui/badge";
 import { Button } from "../../../../components/ui/button";
 import { Card } from "../../../../components/ui/card";
+import {
+  chartPalette,
+  ThemedHeatmapChart,
+  ThemedHorizontalBarChart,
+  ThemedLineChart,
+  ThemedScatterChart,
+  ThemedStackedBarChart
+} from "../../../../components/charts/risk-charts";
 import { Label } from "../../../../components/ui/form";
 import { Input } from "../../../../components/ui/input";
 import { Select } from "../../../../components/ui/select";
@@ -849,30 +857,18 @@ function LineChart({ points }: { points: AdvisorChartBundle["charts"]["bookValue
     return <EmptyChartState>Nenhum histórico disponível.</EmptyChartState>;
   }
 
-  const width = 520;
-  const height = 220;
-  const padding = 24;
-  const values = points.map((point) => point.value);
-  const min = Math.min(...values);
-  const max = Math.max(...values);
-  const xFor = (index: number) =>
-    padding + (index / Math.max(points.length - 1, 1)) * (width - padding * 2);
-  const yFor = (value: number) =>
-    height - padding - ((value - min) / Math.max(max - min, 1)) * (height - padding * 2);
-  const path = points
-    .map((point, index) => `${index === 0 ? "M" : "L"} ${xFor(index)} ${yFor(point.value)}`)
-    .join(" ");
-
   return (
     <div className="grid gap-3">
-      <svg viewBox={`0 0 ${width} ${height}`} className="h-56 w-full" role="img" aria-label="Valor do livro no período">
-        <line x1={padding} y1={height - padding} x2={width - padding} y2={height - padding} className="stroke-border" />
-        <line x1={padding} y1={padding} x2={padding} y2={height - padding} className="stroke-border" />
-        <path d={path} fill="none" className="stroke-moss" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-        {points.map((point, index) => (
-          <circle key={`${point.date}-${point.value}`} cx={xFor(index)} cy={yFor(point.value)} r="4" className="fill-moss" />
-        ))}
-      </svg>
+      <ThemedLineChart
+        ariaLabel="Valor do livro no período"
+        color={chartPalette.moss}
+        valueFormatter={(value) => formatCurrency(value, "USD")}
+        data={points.map((point) => ({
+          name: formatDate(point.date),
+          value: point.value,
+          detail: `${point.clientCount} clientes · ${point.portfolioCount} portfólios`
+        }))}
+      />
       <div className="flex flex-wrap justify-between gap-2 text-xs text-stone-500">
         <span>{formatDate(points[0].date)}</span>
         <span className="font-medium text-stone-700">
@@ -885,39 +881,23 @@ function LineChart({ points }: { points: AdvisorChartBundle["charts"]["bookValue
 }
 
 function ScatterChart({ points }: { points: AdvisorChartBundle["charts"]["riskReturnScatter"] }) {
-  if (points.length === 0) {
-    return <EmptyChartState>Nenhum portfólio com dados de risco.</EmptyChartState>;
-  }
-
-  const width = 520;
-  const height = 220;
-  const padding = 28;
-  const returns = points.map((point) => point.annualizedReturnPercent ?? 0);
-  const risks = points.map((point) => point.volatilityPercent ?? 0);
-  const minReturn = Math.min(...returns, 0);
-  const maxReturn = Math.max(...returns, 1);
-  const maxRisk = Math.max(...risks, 1);
-  const xFor = (risk: number) => padding + (risk / maxRisk) * (width - padding * 2);
-  const yFor = (returnPercent: number) =>
-    height - padding - ((returnPercent - minReturn) / Math.max(maxReturn - minReturn, 1)) * (height - padding * 2);
-
   return (
     <div className="grid gap-3">
-      <svg viewBox={`0 0 ${width} ${height}`} className="h-56 w-full" role="img" aria-label="Risco e retorno por portfólio">
-        <line x1={padding} y1={height - padding} x2={width - padding} y2={height - padding} className="stroke-border" />
-        <line x1={padding} y1={padding} x2={padding} y2={height - padding} className="stroke-border" />
-        {points.map((point) => (
-          <circle
-            key={point.portfolioId}
-            cx={xFor(point.volatilityPercent ?? 0)}
-            cy={yFor(point.annualizedReturnPercent ?? 0)}
-            r={point.riskBand === "high" ? "8" : point.riskBand === "watch" ? "6" : "5"}
-            className={riskPointClass(point.riskBand)}
-          >
-            <title>{`${point.portfolioName}: ${formatPercent(point.volatilityPercent)} vol., ${formatPercent(point.annualizedReturnPercent)} retorno`}</title>
-          </circle>
-        ))}
-      </svg>
+      <ThemedScatterChart
+        ariaLabel="Risco e retorno por portfólio"
+        xLabel="volatilidade"
+        yLabel="retorno"
+        xFormatter={formatPercent}
+        yFormatter={formatPercent}
+        data={points.map((point) => ({
+          name: point.portfolioName,
+          x: point.volatilityPercent ?? 0,
+          y: point.annualizedReturnPercent ?? 0,
+          z: point.value,
+          fill: riskColor(point.riskBand),
+          detail: `${labelRiskBand(point.riskBand)} · ${labelPortfolioFreshness(point.freshness)}`
+        }))}
+      />
       <div className="grid gap-2 text-xs text-stone-600 sm:grid-cols-2">
         {points.slice(0, 4).map((point) => (
           <Link key={point.portfolioId} href={`/dashboard/portfolios/${point.portfolioId}`} className="rounded-md border border-border px-2 py-1 hover:border-moss">
@@ -930,48 +910,32 @@ function ScatterChart({ points }: { points: AdvisorChartBundle["charts"]["riskRe
 }
 
 function AllocationBars({ points }: { points: AdvisorChartBundle["charts"]["allocationBreakdown"] }) {
-  if (points.length === 0) {
-    return <EmptyChartState>Nenhuma alocação disponível.</EmptyChartState>;
-  }
-
   return (
-    <div className="grid gap-3">
-      {points.slice(0, 8).map((point) => (
-        <div key={point.label} className="grid gap-1">
-          <div className="flex items-center justify-between gap-3 text-sm">
-            <span className="truncate font-medium text-stone-900">{point.label}</span>
-            <span className="shrink-0 text-stone-500">{formatPercent(point.weightPercent)}</span>
-          </div>
-          <div className="h-2 rounded-full bg-muted">
-            <div className="h-2 rounded-full bg-moss" style={{ width: `${Math.min(point.weightPercent, 100)}%` }} />
-          </div>
-          <span className="text-xs text-stone-500">{formatCurrency(point.marketValueUsd, "USD")}</span>
-        </div>
-      ))}
-    </div>
+    <ThemedHorizontalBarChart
+      ariaLabel="Alocação agregada"
+      color={chartPalette.moss}
+      valueFormatter={formatPercent}
+      data={points.slice(0, 8).map((point) => ({
+        name: point.label,
+        value: point.weightPercent,
+        detail: formatCurrency(point.marketValueUsd, "USD")
+      }))}
+    />
   );
 }
 
 function SectorHeatmap({ cells }: { cells: AdvisorChartBundle["charts"]["sectorExposureHeatmap"] }) {
-  if (cells.length === 0) {
-    return <EmptyChartState>Nenhuma exposição setorial disponível.</EmptyChartState>;
-  }
-
   return (
-    <div className="grid gap-2 sm:grid-cols-2">
-      {cells.slice(0, 10).map((cell) => (
-        <Link
-          key={`${cell.clientId}-${cell.sector}`}
-          href={`/dashboard/clients/${cell.clientId}`}
-          className="grid gap-1 rounded-md border border-border p-3 text-sm hover:border-moss"
-          style={{ backgroundColor: heatColor(cell.weightPercent) }}
-        >
-          <span className="font-medium text-stone-900">{cell.clientName}</span>
-          <span className="text-stone-700">{cell.sector}</span>
-          <span className="text-xs text-stone-600">{formatPercent(cell.weightPercent)} · {formatCurrency(cell.marketValueUsd, "USD")}</span>
-        </Link>
-      ))}
-    </div>
+    <ThemedHeatmapChart
+      ariaLabel="Mapa setorial por cliente"
+      data={cells.slice(0, 14).map((cell) => ({
+        x: cell.sector,
+        y: cell.clientName,
+        value: cell.weightPercent,
+        fill: heatColor(cell.weightPercent),
+        detail: formatCurrency(cell.marketValueUsd, "USD")
+      }))}
+    />
   );
 }
 
@@ -981,20 +945,21 @@ function SeverityTimeline({ points }: { points: AdvisorChartBundle["charts"]["al
   }
 
   return (
-    <div className="grid gap-3">
-      {points.map((point) => (
-        <StackedCountBar
-          key={point.date}
-          label={formatDate(point.date)}
-          total={point.total}
-          segments={[
-            { label: "baixa", value: point.low, className: "bg-emerald-500" },
-            { label: "média", value: point.medium, className: "bg-amber-500" },
-            { label: "alta", value: point.high, className: "bg-rose-500" }
-          ]}
-        />
-      ))}
-    </div>
+    <ThemedStackedBarChart
+      ariaLabel="Severidade de alertas no período"
+      data={points.map((point) => ({
+        name: formatDate(point.date),
+        total: point.total,
+        low: point.low,
+        medium: point.medium,
+        high: point.high
+      }))}
+      bars={[
+        { key: "low", label: "baixa", color: chartPalette.emerald },
+        { key: "medium", label: "média", color: chartPalette.amber },
+        { key: "high", label: "alta", color: chartPalette.rose }
+      ]}
+    />
   );
 }
 
@@ -1003,24 +968,16 @@ function ReportPipeline({ points }: { points: AdvisorChartBundle["charts"]["repo
     return <EmptyChartState>Nenhum pacote no período.</EmptyChartState>;
   }
 
-  const total = points.reduce((sum, point) => sum + point.count, 0);
   return (
-    <div className="grid gap-3">
-      {points.map((point) => (
-        <div key={point.status} className="grid gap-1">
-          <div className="flex items-center justify-between gap-3 text-sm">
-            <span className="font-medium text-stone-900">{labelReportPackageStatus(point.status)}</span>
-            <span className="text-stone-500">{point.count}</span>
-          </div>
-          <div className="h-2 rounded-full bg-muted">
-            <div className="h-2 rounded-full bg-graphite" style={{ width: `${(point.count / Math.max(total, 1)) * 100}%` }} />
-          </div>
-          <span className="text-xs text-stone-500">
-            {point.clientCount} clientes{point.staleCount > 0 ? ` · ${point.staleCount} atrasados` : ""}
-          </span>
-        </div>
-      ))}
-    </div>
+    <ThemedHorizontalBarChart
+      ariaLabel="Pipeline de pacotes"
+      color={chartPalette.graphite}
+      data={points.map((point) => ({
+        name: labelReportPackageStatus(point.status),
+        value: point.count,
+        detail: `${point.clientCount} clientes${point.staleCount > 0 ? ` · ${point.staleCount} atrasados` : ""}`
+      }))}
+    />
   );
 }
 
@@ -1031,20 +988,21 @@ function WorkbenchAging({ points }: { points: AdvisorChartBundle["charts"]["work
   }
 
   return (
-    <div className="grid gap-3">
-      {visible.map((point) => (
-        <StackedCountBar
-          key={point.bucket}
-          label={labelAgingBucket(point.bucket)}
-          total={point.total}
-          segments={[
-            { label: "baixa", value: point.low, className: "bg-emerald-500" },
-            { label: "média", value: point.medium, className: "bg-amber-500" },
-            { label: "alta", value: point.high, className: "bg-rose-500" }
-          ]}
-        />
-      ))}
-    </div>
+    <ThemedStackedBarChart
+      ariaLabel="Envelhecimento da fila de acompanhamento"
+      data={visible.map((point) => ({
+        name: labelAgingBucket(point.bucket),
+        total: point.total,
+        low: point.low,
+        medium: point.medium,
+        high: point.high
+      }))}
+      bars={[
+        { key: "low", label: "baixa", color: chartPalette.emerald },
+        { key: "medium", label: "média", color: chartPalette.amber },
+        { key: "high", label: "alta", color: chartPalette.rose }
+      ]}
+    />
   );
 }
 
@@ -1134,35 +1092,6 @@ function DataQualityPanel({ charts }: { charts: AdvisorChartBundle }) {
   );
 }
 
-function StackedCountBar({
-  label,
-  total,
-  segments
-}: {
-  label: string;
-  total: number;
-  segments: Array<{ label: string; value: number; className: string }>;
-}) {
-  return (
-    <div className="grid gap-1">
-      <div className="flex items-center justify-between gap-3 text-sm">
-        <span className="font-medium text-stone-900">{label}</span>
-        <span className="text-stone-500">{total}</span>
-      </div>
-      <div className="flex h-2 overflow-hidden rounded-full bg-muted">
-        {segments.map((segment) => (
-          <div
-            key={segment.label}
-            className={segment.className}
-            style={{ width: `${(segment.value / Math.max(total, 1)) * 100}%` }}
-            title={`${segment.label}: ${segment.value}`}
-          />
-        ))}
-      </div>
-    </div>
-  );
-}
-
 function EmptyChartState({ children }: { children: ReactNode }) {
   return <Alert variant="info">{children}</Alert>;
 }
@@ -1219,14 +1148,14 @@ function qualityVariant(value: AdvisorChartBundle["dataQuality"]["status"]) {
   return "outline" as const;
 }
 
-function riskPointClass(value: AdvisorRiskBand) {
+function riskColor(value: AdvisorRiskBand) {
   if (value === "high") {
-    return "fill-rose-500";
+    return chartPalette.rose;
   }
   if (value === "watch") {
-    return "fill-amber-500";
+    return chartPalette.amber;
   }
-  return "fill-emerald-500";
+  return chartPalette.emerald;
 }
 
 function formatPercent(value: number | undefined) {
@@ -1234,8 +1163,8 @@ function formatPercent(value: number | undefined) {
 }
 
 function heatColor(weightPercent: number) {
-  const opacity = Math.min(Math.max(weightPercent / 100, 0.08), 0.28);
-  return `rgba(49, 94, 77, ${opacity})`;
+  const opacity = Math.min(Math.max(weightPercent / 100, 0.08), 0.72);
+  return `rgba(14, 91, 80, ${opacity})`;
 }
 
 function labelAgingBucket(value: AdvisorChartBundle["charts"]["workbenchAging"][number]["bucket"]) {
