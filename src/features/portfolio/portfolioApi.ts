@@ -10,6 +10,10 @@ import {
   NotificationRecord,
   PortfolioAlert,
   PortfolioAnalyticsReadModel,
+  PortfolioChartBundle,
+  PortfolioChartInterval,
+  PortfolioChartMeta,
+  PortfolioChartRange,
   PortfolioDetail,
   PortfolioListResponse,
   PortfolioPosition,
@@ -120,6 +124,39 @@ export async function getTradePrice(
 export async function getPortfolioAnalytics(portfolioId: string) {
   return apiFetchEnvelope<PortfolioAnalyticsReadModel, { status: string; baseCurrency: string }>(
     `/portfolios/${portfolioId}/analytics`
+  );
+}
+
+export async function getPortfolioCharts(
+  portfolioId: string,
+  input: {
+    range?: PortfolioChartRange;
+    interval?: PortfolioChartInterval;
+    assetSymbols?: string[];
+    benchmarkSymbol?: string;
+    baseCurrency?: string;
+  } = {}
+) {
+  const params = new URLSearchParams();
+  if (input.range) {
+    params.set("range", input.range);
+  }
+  if (input.interval) {
+    params.set("interval", input.interval);
+  }
+  if (input.assetSymbols && input.assetSymbols.length > 0) {
+    params.set("assetSymbols", input.assetSymbols.join(","));
+  }
+  if (input.benchmarkSymbol?.trim()) {
+    params.set("benchmarkSymbol", input.benchmarkSymbol.trim().toUpperCase());
+  }
+  if (input.baseCurrency?.trim()) {
+    params.set("baseCurrency", input.baseCurrency.trim().toUpperCase());
+  }
+
+  const query = params.toString();
+  return apiFetchEnvelope<PortfolioChartBundle, PortfolioChartMeta>(
+    `/portfolios/${portfolioId}/charts${query ? `?${query}` : ""}`
   );
 }
 
