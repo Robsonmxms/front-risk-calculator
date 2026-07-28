@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useCallback, useEffect, useState } from "react";
+import { FormEvent, ReactNode, useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { AppHeader } from "../../../../../components/layout/AppHeader";
@@ -837,108 +837,120 @@ export default function PortfolioDetailPage() {
             </Card>
 
             <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-              <Card>
+              <Card className="grid gap-1">
                 <span className="text-xs font-semibold uppercase text-stone-500">
                   Posições
                 </span>
-                <strong className="text-3xl text-stone-900">{portfolio.holdingsCount}</strong>
+                <strong className="block text-3xl leading-tight text-stone-900">
+                  {portfolio.holdingsCount}
+                </strong>
                 <p className="text-sm text-stone-600">ativas nesta visão</p>
               </Card>
-              <Card>
+              <Card className="grid gap-1">
                 <span className="text-xs font-semibold uppercase text-stone-500">
                   Transações
                 </span>
-                <strong className="text-3xl text-stone-900">{portfolio.transactionCount}</strong>
+                <strong className="block text-3xl leading-tight text-stone-900">
+                  {portfolio.transactionCount}
+                </strong>
                 <p className="text-sm text-stone-600">registradas no histórico</p>
               </Card>
-              <Card>
+              <Card className="grid gap-1">
                 <span className="text-xs font-semibold uppercase text-stone-500">
                   Custo
                 </span>
-                <strong className="text-3xl text-stone-900">
+                <strong className="block break-words text-3xl leading-tight text-stone-900">
                   {formatCurrency(portfolio.totalCostBasis, portfolio.baseCurrency)}
                 </strong>
                 <p className="text-sm text-stone-600">base histórica agregada</p>
               </Card>
-              <Card>
+              <Card className="grid gap-1">
                 <span className="text-xs font-semibold uppercase text-stone-500">
                   Estado
                 </span>
-                <strong className="text-lg text-stone-900">
+                <strong className="block text-lg leading-tight text-stone-900">
                   {labelProcessingState(portfolio.analyticsState)} / {labelProcessingState(portfolio.marketDataState)}
                 </strong>
                 <p className="text-sm text-stone-600">análises e dados de mercado</p>
               </Card>
             </section>
 
-            <PortfolioChartsDashboard
-              charts={charts}
-              positions={positions}
-              error={chartsError}
-              isLoading={isChartsLoading}
-              range={chartRange}
-              interval={chartInterval}
-              benchmark={chartBenchmark}
-              selectedSymbols={selectedChartSymbols}
-              onRangeChange={setChartRange}
-              onIntervalChange={setChartInterval}
-              onBenchmarkChange={setChartBenchmark}
-              onToggleSymbol={(symbol) =>
-                setSelectedChartSymbols((current) => {
-                  const allSymbols = Array.from(
-                    new Set(positions.map((position) => position.assetSymbol))
-                  ).sort((left, right) => left.localeCompare(right));
-                  const activeSymbols = current.length > 0 ? current : allSymbols;
-                  const nextSymbols = activeSymbols.includes(symbol)
-                    ? activeSymbols.filter((entry) => entry !== symbol)
-                    : [...activeSymbols, symbol].sort((left, right) =>
-                        left.localeCompare(right)
-                      );
+            <PortfolioSectionNavigation />
 
-                  return nextSymbols.length === allSymbols.length ? [] : nextSymbols;
-                })
-              }
-              onClearSymbols={() => setSelectedChartSymbols([])}
-            />
+            <section id="portfolio-graficos" className="scroll-mt-6">
+              <PortfolioChartsDashboard
+                charts={charts}
+                positions={positions}
+                error={chartsError}
+                isLoading={isChartsLoading}
+                range={chartRange}
+                interval={chartInterval}
+                benchmark={chartBenchmark}
+                selectedSymbols={selectedChartSymbols}
+                onRangeChange={setChartRange}
+                onIntervalChange={setChartInterval}
+                onBenchmarkChange={setChartBenchmark}
+                onToggleSymbol={(symbol) =>
+                  setSelectedChartSymbols((current) => {
+                    const allSymbols = Array.from(
+                      new Set(positions.map((position) => position.assetSymbol))
+                    ).sort((left, right) => left.localeCompare(right));
+                    const activeSymbols = current.length > 0 ? current : allSymbols;
+                    const nextSymbols = activeSymbols.includes(symbol)
+                      ? activeSymbols.filter((entry) => entry !== symbol)
+                      : [...activeSymbols, symbol].sort((left, right) =>
+                          left.localeCompare(right)
+                        );
 
-            <AnalyticsDashboard
-              analytics={analytics}
-              error={analyticsError}
-              isLoading={isAnalyticsLoading}
-              isRecomputing={isRecomputing}
-              recomputeNotice={recomputeNotice}
-              onRecompute={handleRecomputeAnalytics}
-            />
+                    return nextSymbols.length === allSymbols.length ? [] : nextSymbols;
+                  })
+                }
+                onClearSymbols={() => setSelectedChartSymbols([])}
+              />
+            </section>
 
-            <ReportsAlertsNotificationsPanel
-              reports={reports}
-              alerts={alerts}
-              notifications={notifications.filter(
-                (notification) => !notification.portfolioId || notification.portfolioId === portfolioId
-              )}
-              reportFormat={reportFormat}
-              alertTitle={alertTitle}
-              alertSeverity={alertSeverity}
-              realtimeStatus={realtimeStatus}
-              isRequestingReport={isRequestingReport}
-              isCreatingAlert={isCreatingAlert}
-              reportsError={reportsError}
-              alertsError={alertsError}
-              notificationsError={notificationsError}
-              reportNotice={reportNotice}
-              alertNotice={alertNotice}
-              onReportFormatChange={setReportFormat}
-              onAlertTitleChange={setAlertTitle}
-              onAlertSeverityChange={setAlertSeverity}
-              onRequestReport={handleRequestReport}
-              onRetryReport={handleRetryReport}
-              onDownloadReport={handleDownloadReport}
-              onCreateAlert={handleCreateAlert}
-              onMarkNotificationRead={handleMarkNotificationRead}
-            />
+            <section id="portfolio-analises" className="scroll-mt-6">
+              <AnalyticsDashboard
+                analytics={analytics}
+                error={analyticsError}
+                isLoading={isAnalyticsLoading}
+                isRecomputing={isRecomputing}
+                recomputeNotice={recomputeNotice}
+                onRecompute={handleRecomputeAnalytics}
+              />
+            </section>
 
-            <section className="grid gap-4 xl:grid-cols-[360px_minmax(0,1fr)]">
-              <Card>
+            <section id="portfolio-comunicacoes" className="scroll-mt-6">
+              <ReportsAlertsNotificationsPanel
+                reports={reports}
+                alerts={alerts}
+                notifications={notifications.filter(
+                  (notification) => !notification.portfolioId || notification.portfolioId === portfolioId
+                )}
+                reportFormat={reportFormat}
+                alertTitle={alertTitle}
+                alertSeverity={alertSeverity}
+                realtimeStatus={realtimeStatus}
+                isRequestingReport={isRequestingReport}
+                isCreatingAlert={isCreatingAlert}
+                reportsError={reportsError}
+                alertsError={alertsError}
+                notificationsError={notificationsError}
+                reportNotice={reportNotice}
+                alertNotice={alertNotice}
+                onReportFormatChange={setReportFormat}
+                onAlertTitleChange={setAlertTitle}
+                onAlertSeverityChange={setAlertSeverity}
+                onRequestReport={handleRequestReport}
+                onRetryReport={handleRetryReport}
+                onDownloadReport={handleDownloadReport}
+                onCreateAlert={handleCreateAlert}
+                onMarkNotificationRead={handleMarkNotificationRead}
+              />
+            </section>
+
+            <section className="grid scroll-mt-6 gap-4 xl:grid-cols-[360px_minmax(0,1fr)]">
+              <Card id="portfolio-transacao">
                 <div className="space-y-1">
                   <h2 className="text-xl font-semibold text-stone-900">Registrar transação</h2>
                   <p className="text-sm text-stone-600">Somente compra e venda nesta primeira versão do histórico.</p>
@@ -1162,7 +1174,7 @@ export default function PortfolioDetailPage() {
               </Card>
 
               <div className="grid gap-4">
-                <Card>
+                <Card id="portfolio-posicoes" className="scroll-mt-6">
                   <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
                     <div>
                       <h2 className="text-xl font-semibold text-stone-900">Posições</h2>
@@ -1221,7 +1233,7 @@ export default function PortfolioDetailPage() {
                 </Card>
 
                 <section className="grid gap-4 lg:grid-cols-2">
-                  <Card>
+                  <Card id="portfolio-transacoes" className="scroll-mt-6">
                     <div>
                       <h2 className="text-xl font-semibold text-stone-900">Transações</h2>
                       <p className="text-sm text-stone-600">Histórico de movimentações do portfólio.</p>
@@ -1256,7 +1268,7 @@ export default function PortfolioDetailPage() {
                     )}
                   </Card>
 
-                  <Card>
+                  <Card id="portfolio-historicos" className="scroll-mt-6">
                     <div>
                       <h2 className="text-xl font-semibold text-stone-900">Históricos</h2>
                       <p className="text-sm text-stone-600">Estados históricos reconstruídos por data.</p>
@@ -1291,6 +1303,37 @@ export default function PortfolioDetailPage() {
         )}
       </main>
     </ProtectedRoute>
+  );
+}
+
+function PortfolioSectionNavigation() {
+  const links = [
+    { href: "#portfolio-graficos", label: "Gráficos" },
+    { href: "#portfolio-analises", label: "Análises" },
+    { href: "#portfolio-comunicacoes", label: "Relatórios" },
+    { href: "#portfolio-transacao", label: "Registrar" },
+    { href: "#portfolio-posicoes", label: "Posições" },
+    { href: "#portfolio-transacoes", label: "Transações" },
+    { href: "#portfolio-historicos", label: "Históricos" }
+  ];
+
+  return (
+    <nav
+      aria-label="Seções do portfólio"
+      className="overflow-x-auto rounded-lg border border-border bg-card p-2 shadow-sm"
+    >
+      <div className="flex min-w-max gap-2">
+        {links.map((link) => (
+          <a
+            key={link.href}
+            href={link.href}
+            className="inline-flex min-h-11 items-center rounded-md px-3 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-moss/25"
+          >
+            {link.label}
+          </a>
+        ))}
+      </div>
+    </nav>
   );
 }
 
@@ -1788,6 +1831,17 @@ function PortfolioChartsDashboard({
   );
 }
 
+function ChartPanelEmptyState({ children }: { children: ReactNode }) {
+  return (
+    <Alert variant="warning" className="mt-3 flex min-h-40 items-center bg-amber-50/70">
+      <div className="space-y-1">
+        <p className="font-semibold text-amber-950">Dados insuficientes</p>
+        <p>{children}</p>
+      </div>
+    </Alert>
+  );
+}
+
 function LineChartCard({
   title,
   series,
@@ -1812,7 +1866,7 @@ function LineChartCard({
         ) : null}
       </div>
       {series.length < 2 ? (
-        <Alert variant="warning">{emptyLabel}</Alert>
+        <ChartPanelEmptyState>{emptyLabel}</ChartPanelEmptyState>
       ) : (
         <div className="mt-3">
           <ThemedLineChart
@@ -1843,7 +1897,9 @@ function CorrelationHeatmap({ charts }: { charts: PortfolioChartBundle }) {
     <Card>
       <h3 className="text-lg font-semibold text-stone-900">Correlação entre ativos</h3>
       {symbols.length < 2 || cells.length === 0 ? (
-        <Alert variant="warning">Sem amostras suficientes para matriz de correlação.</Alert>
+        <ChartPanelEmptyState>
+          Sem amostras suficientes para matriz de correlação.
+        </ChartPanelEmptyState>
       ) : (
         <ThemedHeatmapChart
           ariaLabel="Mapa de calor de correlação"
@@ -2071,7 +2127,7 @@ function BarPanel({
     <Card>
       <h3 className="text-lg font-semibold text-stone-900">{title}</h3>
       {rows.length === 0 ? (
-        <Alert variant="warning">{emptyLabel}</Alert>
+        <ChartPanelEmptyState>{emptyLabel}</ChartPanelEmptyState>
       ) : (
         <ThemedHorizontalBarChart
           ariaLabel={title}
@@ -2102,7 +2158,7 @@ function PerformancePanel({ snapshot }: { snapshot: PortfolioAnalyticsSnapshot }
         ) : null}
       </div>
       {snapshot.performance.length === 0 ? (
-        <Alert variant="warning">Sem série histórica calculada.</Alert>
+        <ChartPanelEmptyState>Sem série histórica calculada.</ChartPanelEmptyState>
       ) : (
         <ThemedLineChart
           ariaLabel="Desempenho histórico do portfólio"
@@ -2123,7 +2179,7 @@ function DrawdownPanel({ snapshot }: { snapshot: PortfolioAnalyticsSnapshot }) {
     <Card>
       <h3 className="text-lg font-semibold text-stone-900">Perda máxima</h3>
       {snapshot.drawdown.length === 0 ? (
-        <Alert variant="warning">Sem drawdown calculado.</Alert>
+        <ChartPanelEmptyState>Sem drawdown calculado.</ChartPanelEmptyState>
       ) : (
         <ThemedHorizontalBarChart
           ariaLabel="Perda máxima no período"
@@ -2145,7 +2201,7 @@ function CorrelationPanel({ snapshot }: { snapshot: PortfolioAnalyticsSnapshot }
     <Card>
       <h3 className="text-lg font-semibold text-stone-900">Correlação</h3>
       {snapshot.correlation.length === 0 ? (
-        <Alert variant="warning">Sem pares suficientes para correlação.</Alert>
+        <ChartPanelEmptyState>Sem pares suficientes para correlação.</ChartPanelEmptyState>
       ) : (
         <ThemedHeatmapChart
           ariaLabel="Correlação entre ativos do retrato de risco"
@@ -2436,13 +2492,13 @@ function chartQualityVariant(
 function labelChartQuality(status: PortfolioChartBundle["dataQuality"]["status"]) {
   switch (status) {
     case "complete":
-      return "completo";
+      return "dados completos";
     case "partial":
-      return "parcial";
+      return "fontes parciais";
     case "pending":
-      return "pendente";
+      return "atualização pendente";
     case "failed":
-      return "falhou";
+      return "dados indisponíveis";
   }
 }
 

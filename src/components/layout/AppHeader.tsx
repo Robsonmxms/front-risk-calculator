@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ReactNode } from "react";
+import { ReactNode, useState } from "react";
 import { useAuth } from "../../features/auth/AuthProvider";
 import { cn } from "../../lib/utils";
 
@@ -28,77 +28,96 @@ export function AppHeader({
   actions?: ReactNode;
 }) {
   const { actor, activeOffice, officeMemberships, selectOffice } = useAuth();
+  const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   const isClientOffice = activeOffice?.role === "client";
   const canOpenOfficeSettings =
     actor?.role === "admin" || activeOffice?.role === "office_admin";
   const canOpenCompliance = actor?.role === "admin" || activeOffice?.role === "office_admin";
   const canOpenReportDelivery = Boolean(activeOffice && !isClientOffice);
   const canOpenTeamAreas = Boolean(activeOffice && !isClientOffice);
+  const navItems = [
+    { href: "/dashboard", active: active === "dashboard", label: "Painel", visible: true },
+    { href: "/admin", active: active === "admin", label: "Administração", visible: Boolean(showAdmin) },
+    { href: "/dashboard/workbench", active: active === "workbench", label: "Mesa", visible: canOpenTeamAreas },
+    {
+      href: "/dashboard/analytics-diagnostics",
+      active: active === "analyticsDiagnostics",
+      label: "Diagnósticos",
+      visible: canOpenTeamAreas
+    },
+    {
+      href: "/dashboard/compliance",
+      active: active === "compliance",
+      label: "Conformidade",
+      visible: Boolean(activeOffice && canOpenCompliance)
+    },
+    {
+      href: "/dashboard/report-delivery",
+      active: active === "reportDelivery",
+      label: "Entregas",
+      visible: Boolean(activeOffice && canOpenReportDelivery)
+    },
+    {
+      href: "/dashboard/client-portal",
+      active: active === "clientPortal",
+      label: "Portal do cliente",
+      visible: Boolean(activeOffice)
+    },
+    {
+      href: "/dashboard/clients",
+      active: active === "clients",
+      label: "Clientes",
+      visible: canOpenTeamAreas
+    },
+    {
+      href: activeOffice ? `/dashboard/offices/${activeOffice.officeId}/settings` : "/dashboard",
+      active: active === "office",
+      label: "Escritório",
+      visible: Boolean(activeOffice && canOpenOfficeSettings)
+    }
+  ].filter((item) => item.visible);
+  const activeNavLabel = navItems.find((item) => item.active)?.label ?? "Menu";
 
   return (
     <header className="rounded-lg border border-border bg-card/95 px-4 py-3 shadow-sm">
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        <Link href="/dashboard" className="w-fit">
-          <span className="block text-xs font-semibold uppercase tracking-normal text-moss">
-            Risk Calculator
-          </span>
-          <span className="block text-lg font-semibold text-foreground">{title}</span>
-        </Link>
+        <div className="flex min-w-0 items-start justify-between gap-3">
+          <Link href="/dashboard" className="min-w-0">
+            <span className="block text-xs font-semibold uppercase tracking-normal text-moss">
+              Risk Calculator
+            </span>
+            <span className="block truncate text-lg font-semibold text-foreground">{title}</span>
+          </Link>
+
+          <button
+            type="button"
+            className={cn(
+              "inline-flex min-h-11 items-center gap-2 rounded-md border border-border bg-background px-3 text-sm font-medium text-foreground shadow-sm md:hidden",
+              "hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-moss/25"
+            )}
+            aria-controls="app-header-mobile-nav"
+            aria-expanded={isMobileNavOpen}
+            onClick={() => setIsMobileNavOpen((current) => !current)}
+          >
+            <span className="grid h-4 w-4 gap-1" aria-hidden="true">
+              <span className="h-0.5 rounded-full bg-current" />
+              <span className="h-0.5 rounded-full bg-current" />
+              <span className="h-0.5 rounded-full bg-current" />
+            </span>
+            <span>{activeNavLabel}</span>
+          </button>
+        </div>
 
         <div className="flex min-w-0 flex-wrap items-center gap-3 md:justify-end">
-          <nav className="flex max-w-full flex-wrap items-center gap-1" aria-label="Navegação principal">
-            <HeaderLink href="/dashboard" active={active === "dashboard"}>
-              Painel
-            </HeaderLink>
-            {showAdmin ? (
-              <HeaderLink href="/admin" active={active === "admin"}>
-                Administração
+          <nav
+            className="hidden max-w-full flex-wrap items-center gap-1 md:flex"
+            aria-label="Navegação principal"
+          >
+            {navItems.map((item) => (
+              <HeaderLink key={item.href} href={item.href} active={item.active}>
+                {item.label}
               </HeaderLink>
-            ) : null}
-            {canOpenTeamAreas ? (
-              <HeaderLink href="/dashboard/workbench" active={active === "workbench"}>
-                Mesa
-              </HeaderLink>
-            ) : null}
-            {canOpenTeamAreas ? (
-              <HeaderLink
-                href="/dashboard/analytics-diagnostics"
-                active={active === "analyticsDiagnostics"}
-              >
-                Diagnósticos
-              </HeaderLink>
-            ) : null}
-            {activeOffice && canOpenCompliance ? (
-              <HeaderLink href="/dashboard/compliance" active={active === "compliance"}>
-                Conformidade
-              </HeaderLink>
-            ) : null}
-            {activeOffice && canOpenReportDelivery ? (
-              <HeaderLink
-                href="/dashboard/report-delivery"
-                active={active === "reportDelivery"}
-              >
-                Entregas
-              </HeaderLink>
-            ) : null}
-            {activeOffice ? (
-              <HeaderLink href="/dashboard/client-portal" active={active === "clientPortal"}>
-                Portal do cliente
-              </HeaderLink>
-            ) : null}
-            {canOpenTeamAreas ? (
-              <HeaderLink href="/dashboard/clients" active={active === "clients"}>
-                Clientes
-              </HeaderLink>
-            ) : null}
-            {activeOffice && canOpenOfficeSettings ? (
-              <HeaderLink
-                href={`/dashboard/offices/${activeOffice.officeId}/settings`}
-                active={active === "office"}
-              >
-                Escritório
-              </HeaderLink>
-            ) : null}
+            ))}
           </nav>
           {officeMemberships.length > 1 ? (
             <select
@@ -122,6 +141,26 @@ export function AppHeader({
           {actions}
         </div>
       </div>
+
+      {isMobileNavOpen ? (
+        <nav
+          id="app-header-mobile-nav"
+          className="mt-3 grid gap-1 border-t border-border pt-3 md:hidden"
+          aria-label="Navegação principal"
+        >
+          {navItems.map((item) => (
+            <HeaderLink
+              key={item.href}
+              href={item.href}
+              active={item.active}
+              className="min-h-11 justify-start px-3"
+              onNavigate={() => setIsMobileNavOpen(false)}
+            >
+              {item.label}
+            </HeaderLink>
+          ))}
+        </nav>
+      ) : null}
     </header>
   );
 }
@@ -129,19 +168,25 @@ export function AppHeader({
 function HeaderLink({
   href,
   active,
+  className,
+  onNavigate,
   children
 }: {
   href: string;
   active: boolean;
+  className?: string;
+  onNavigate?: () => void;
   children: ReactNode;
 }) {
   return (
     <Link
       href={href}
+      onClick={onNavigate}
       className={cn(
-        "rounded-md px-2.5 py-2 text-sm font-medium text-muted-foreground transition-colors sm:px-3",
+        "inline-flex rounded-md px-2.5 py-2 text-sm font-medium text-muted-foreground transition-colors sm:px-3",
         "hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-moss/25",
-        active && "bg-muted text-foreground"
+        active && "bg-muted text-foreground",
+        className
       )}
       aria-current={active ? "page" : undefined}
     >

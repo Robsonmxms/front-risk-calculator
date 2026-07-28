@@ -295,6 +295,8 @@ describe("workbench page", () => {
       "href",
       "/dashboard/clients/client_main"
     );
+    expect(screen.getAllByText(/245\.800,00/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText("fontes parciais").length).toBeGreaterThan(0);
     expect(workbenchApiMocks.getAdvisorCharts).toHaveBeenCalledWith("ofc_main", {
       advisorUserId: undefined,
       freshness: "",

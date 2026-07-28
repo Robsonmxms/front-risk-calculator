@@ -594,7 +594,17 @@ function HeatmapSymbol(props: ScatterShapeProps) {
 }
 
 function ChartEmptyState({ children }: { children: React.ReactNode }) {
-  return <Alert variant="info">{children}</Alert>;
+  return (
+    <Alert
+      variant="info"
+      className="flex min-h-40 items-center rounded-md bg-blue-50/70"
+    >
+      <div className="space-y-1">
+        <p className="font-semibold text-blue-950">Dados insuficientes</p>
+        <p>{children}</p>
+      </div>
+    </Alert>
+  );
 }
 
 function compactNumber(value: number) {
