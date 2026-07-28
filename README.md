@@ -118,6 +118,8 @@ suite E2E/visual dedicada.
 O alvo AWS atual e container Node com Next.js standalone output. Detalhes de hosting,
 `NEXT_PUBLIC_API_BASE_URL`, promocao de ambiente e limites de performance estao em
 [docs/aws-frontend-readiness.md](docs/aws-frontend-readiness.md).
+Checks obrigatorios sugeridos para branch protection estao em
+[docs/branch-protection.md](docs/branch-protection.md).
 
 Docker:
 
