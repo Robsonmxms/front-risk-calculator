@@ -18,14 +18,6 @@ import {
 import { Label } from "../../../../components/ui/form";
 import { Input } from "../../../../components/ui/input";
 import { Select } from "../../../../components/ui/select";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow
-} from "../../../../components/ui/table";
 import { Textarea } from "../../../../components/ui/textarea";
 import { useAuth } from "../../../../features/auth/AuthProvider";
 import { LogoutButton } from "../../../../features/auth/LogoutButton";
@@ -396,46 +388,66 @@ export default function WorkbenchPage() {
                 {reviewItems.length === 0 ? (
                   <Alert variant="info" className="mt-5">Nenhum item de acompanhamento neste filtro.</Alert>
                 ) : (
-                  <div className="mt-5 overflow-x-auto">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Título</TableHead>
-                          <TableHead>Recurso</TableHead>
-                          <TableHead>Severidade</TableHead>
-                          <TableHead>Prazo</TableHead>
-                          <TableHead>Status</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {reviewItems.map((item) => (
-                          <TableRow key={item.id}>
-                            <TableCell className="font-medium text-stone-900">{item.title}</TableCell>
-                            <TableCell>{resourceLink(item, workbench, isClientOffice)}</TableCell>
-                            <TableCell>{labelAlertSeverity(item.severity)}</TableCell>
-                            <TableCell>{item.dueDate ?? "Sem prazo"}</TableCell>
-                            <TableCell>
-                              {isClientOffice ? (
-                                labelReviewStatus(item.status)
-                              ) : (
-                                <Select
-                                  aria-label={`Status ${item.title}`}
-                                  value={item.status}
-                                  disabled={saving}
-                                  onChange={(event) =>
-                                    handleStatusChange(item, event.target.value as ReviewItemStatus)
-                                  }
-                                >
-                                  <option value="open">{labelReviewStatus("open")}</option>
-                                  <option value="in_progress">{labelReviewStatus("in_progress")}</option>
-                                  <option value="closed">{labelReviewStatus("closed")}</option>
-                                </Select>
-                              )}
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
+                  <div className="mt-5 divide-y divide-border rounded-lg border border-border">
+                    <div className="hidden grid-cols-[minmax(180px,1.4fr)_minmax(160px,1fr)_120px_120px_minmax(150px,.9fr)] gap-3 bg-muted/40 px-3 py-2 text-xs font-semibold uppercase text-stone-500 md:grid">
+                      <span>Título</span>
+                      <span>Recurso</span>
+                      <span>Severidade</span>
+                      <span>Prazo</span>
+                      <span>Status</span>
+                    </div>
+                    {reviewItems.map((item) => (
+                      <div
+                        key={item.id}
+                        className="grid gap-3 p-3 text-sm md:grid-cols-[minmax(180px,1.4fr)_minmax(160px,1fr)_120px_120px_minmax(150px,.9fr)] md:items-center"
+                      >
+                        <div>
+                          <span className="block text-xs font-semibold uppercase text-stone-500 md:hidden">
+                            Título
+                          </span>
+                          <strong className="font-medium text-stone-900">{item.title}</strong>
+                        </div>
+                        <div>
+                          <span className="block text-xs font-semibold uppercase text-stone-500 md:hidden">
+                            Recurso
+                          </span>
+                          {resourceLink(item, workbench, isClientOffice)}
+                        </div>
+                        <div>
+                          <span className="block text-xs font-semibold uppercase text-stone-500 md:hidden">
+                            Severidade
+                          </span>
+                          {labelAlertSeverity(item.severity)}
+                        </div>
+                        <div>
+                          <span className="block text-xs font-semibold uppercase text-stone-500 md:hidden">
+                            Prazo
+                          </span>
+                          {item.dueDate ?? "Sem prazo"}
+                        </div>
+                        <div>
+                          <span className="block text-xs font-semibold uppercase text-stone-500 md:hidden">
+                            Status
+                          </span>
+                          {isClientOffice ? (
+                            labelReviewStatus(item.status)
+                          ) : (
+                            <Select
+                              aria-label={`Status ${item.title}`}
+                              value={item.status}
+                              disabled={saving}
+                              onChange={(event) =>
+                                handleStatusChange(item, event.target.value as ReviewItemStatus)
+                              }
+                            >
+                              <option value="open">{labelReviewStatus("open")}</option>
+                              <option value="in_progress">{labelReviewStatus("in_progress")}</option>
+                              <option value="closed">{labelReviewStatus("closed")}</option>
+                            </Select>
+                          )}
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 )}
               </Card>
@@ -660,11 +672,15 @@ export default function WorkbenchPage() {
   );
 }
 
-function MetricCard({ label, value }: { label: string; value: number }) {
+function MetricCard({ label, value }: { label: string; value: ReactNode }) {
   return (
-    <Card>
-      <span className="text-xs font-semibold uppercase text-stone-500">{label}</span>
-      <strong className="text-3xl text-stone-900">{value}</strong>
+    <Card className="grid h-full gap-1">
+      <span className="text-xs font-semibold uppercase leading-tight text-stone-500">
+        {label}
+      </span>
+      <strong className="block break-words text-2xl leading-tight text-stone-900">
+        {value}
+      </strong>
     </Card>
   );
 }
@@ -769,7 +785,10 @@ function AdvisorChartsDashboard({
       ) : (
         <>
           <section className="grid gap-4 md:grid-cols-4">
-            <MetricCard label="Valor acompanhado" value={Math.round(totalBookValue(charts))} />
+            <MetricCard
+              label="Valor acompanhado"
+              value={formatCurrency(totalBookValue(charts), "USD")}
+            />
             <MetricCard label="Portfólios" value={charts.dataQuality.sourceCounts.portfolios} />
             <MetricCard label="Alertas" value={charts.dataQuality.sourceCounts.alerts} />
             <MetricCard label="Pacotes" value={charts.dataQuality.sourceCounts.reportPackages} />
@@ -1034,33 +1053,53 @@ function NeedsAttentionTable({ items }: { items: AdvisorChartBundle["rankings"][
   }
 
   return (
-    <div className="overflow-x-auto">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Cliente</TableHead>
-            <TableHead>Faixa</TableHead>
-            <TableHead>Dados</TableHead>
-            <TableHead>Motivos</TableHead>
-            <TableHead>Valor</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {items.slice(0, 8).map((item) => (
-            <TableRow key={item.clientId}>
-              <TableCell>
-                <Link href={`/dashboard/clients/${item.clientId}`} className="font-medium text-moss">
-                  {item.rank}. {item.clientName}
-                </Link>
-              </TableCell>
-              <TableCell>{labelRiskBand(item.riskBand)}</TableCell>
-              <TableCell>{labelPortfolioFreshness(item.freshness)}</TableCell>
-              <TableCell className="max-w-[320px] text-xs text-stone-500">{item.reasons.join(", ")}</TableCell>
-              <TableCell>{formatCurrency(item.value, "USD")}</TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+    <div className="divide-y divide-border rounded-lg border border-border">
+      <div className="hidden grid-cols-[minmax(180px,1.2fr)_100px_150px_minmax(180px,1fr)_minmax(130px,.8fr)] gap-3 bg-muted/40 px-3 py-2 text-xs font-semibold uppercase text-stone-500 md:grid">
+        <span>Cliente</span>
+        <span>Faixa</span>
+        <span>Dados</span>
+        <span>Motivos</span>
+        <span className="text-right">Valor</span>
+      </div>
+      {items.slice(0, 8).map((item) => (
+        <div
+          key={item.clientId}
+          className="grid gap-3 p-3 text-sm md:grid-cols-[minmax(180px,1.2fr)_100px_150px_minmax(180px,1fr)_minmax(130px,.8fr)] md:items-start"
+        >
+          <div>
+            <span className="block text-xs font-semibold uppercase text-stone-500 md:hidden">
+              Cliente
+            </span>
+            <Link href={`/dashboard/clients/${item.clientId}`} className="font-medium text-moss">
+              {item.rank}. {item.clientName}
+            </Link>
+          </div>
+          <div>
+            <span className="block text-xs font-semibold uppercase text-stone-500 md:hidden">
+              Faixa
+            </span>
+            {labelRiskBand(item.riskBand)}
+          </div>
+          <div>
+            <span className="block text-xs font-semibold uppercase text-stone-500 md:hidden">
+              Dados
+            </span>
+            {labelPortfolioFreshness(item.freshness)}
+          </div>
+          <div>
+            <span className="block text-xs font-semibold uppercase text-stone-500 md:hidden">
+              Motivos
+            </span>
+            <span className="text-xs text-stone-500">{item.reasons.join(", ")}</span>
+          </div>
+          <div className="font-medium text-stone-900 md:text-right">
+            <span className="block text-xs font-semibold uppercase text-stone-500 md:hidden">
+              Valor
+            </span>
+            {formatCurrency(item.value, "USD")}
+          </div>
+        </div>
+      ))}
     </div>
   );
 }
@@ -1093,7 +1132,14 @@ function DataQualityPanel({ charts }: { charts: AdvisorChartBundle }) {
 }
 
 function EmptyChartState({ children }: { children: ReactNode }) {
-  return <Alert variant="info">{children}</Alert>;
+  return (
+    <Alert variant="info" className="flex min-h-40 items-center bg-blue-50/70">
+      <div className="space-y-1">
+        <p className="font-semibold text-blue-950">Dados insuficientes</p>
+        <p>{children}</p>
+      </div>
+    </Alert>
+  );
 }
 
 function totalBookValue(charts: AdvisorChartBundle) {
@@ -1129,7 +1175,7 @@ function labelAdvisorQualityStatus(value: AdvisorChartBundle["dataQuality"]["sta
   const labels: Record<AdvisorChartBundle["dataQuality"]["status"], string> = {
     fresh: "fontes atualizadas",
     partial: "fontes parciais",
-    stale: "fontes defasadas",
+    stale: "dados desatualizados",
     empty: "sem clientes"
   };
   return labels[value];

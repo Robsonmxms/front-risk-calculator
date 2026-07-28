@@ -45,9 +45,9 @@ const officeRoleLabels = {
 } as const;
 
 const portfolioFreshnessLabels: LabelMap<PortfolioFreshness> = {
-  fresh: "atualizado",
-  partial: "parcial",
-  stale: "desatualizado"
+  fresh: "dados atualizados",
+  partial: "fontes parciais",
+  stale: "dados desatualizados"
 };
 
 const portfolioStatusLabels: LabelMap<PortfolioStatus> = {
@@ -67,10 +67,10 @@ const transactionTypeLabels: LabelMap<PortfolioTransactionType> = {
 };
 
 const analyticsStatusLabels: LabelMap<AnalyticsReadStatus> = {
-  complete: "completo",
-  partial: "parcial",
-  pending: "pendente",
-  failed: "falhou"
+  complete: "dados completos",
+  partial: "fontes parciais",
+  pending: "atualização pendente",
+  failed: "dados indisponíveis"
 };
 
 const analyticsMetricStatusLabels: LabelMap<AnalyticsMetricStatus> = {

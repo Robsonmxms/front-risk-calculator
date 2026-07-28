@@ -253,6 +253,9 @@ describe("dashboard portfolio creation flow", () => {
     renderWithAuth(<DashboardPage />);
 
     expect(await screen.findByRole("heading", { name: "Investidor Principal" })).toBeInTheDocument();
+    expect(document.querySelector("#app-header-mobile-nav")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Painel" }));
+    expect(document.querySelector("#app-header-mobile-nav")).not.toBeNull();
 
     fireEvent.change(screen.getByLabelText("Nome"), {
       target: { value: "Dividendos Brasil" }
@@ -285,6 +288,7 @@ describe("dashboard portfolio creation flow", () => {
     expect(
       await screen.findByRole("heading", { name: "Investidor Principal" })
     ).toBeInTheDocument();
+    expect(screen.queryByText("R$ 0,00")).not.toBeInTheDocument();
 
     portfolioApiMocks.convertCurrency.mockClear();
     fireEvent.change(screen.getByLabelText("USD"), {
@@ -463,7 +467,7 @@ describe("portfolio analytics states", () => {
 
     renderWithAuth(<PortfolioDetailPage />);
 
-    expect((await screen.findAllByText("completo")).length).toBeGreaterThan(0);
+    expect((await screen.findAllByText("dados completos")).length).toBeGreaterThan(0);
     expect(screen.getByText("Retorno total")).toBeInTheDocument();
     expect(screen.getByText("12.00%")).toBeInTheDocument();
     expect(screen.getByText("Concentração elevada")).toBeInTheDocument();
@@ -476,7 +480,7 @@ describe("portfolio analytics states", () => {
 
     renderWithAuth(<PortfolioDetailPage />);
 
-    expect(await screen.findByText("pendente")).toBeInTheDocument();
+    expect(await screen.findByText("atualização pendente")).toBeInTheDocument();
     expect(screen.getByText("As análises ainda não possuem retrato de risco calculado.")).toBeInTheDocument();
   });
 
@@ -511,7 +515,7 @@ describe("portfolio analytics states", () => {
 
     renderWithAuth(<PortfolioDetailPage />);
 
-    expect(await screen.findByText("parcial")).toBeInTheDocument();
+    expect(await screen.findByText("fontes parciais")).toBeInTheDocument();
     expect(screen.getByText("Retrato de risco parcial com 1 métricas indisponíveis.")).toBeInTheDocument();
     expect(screen.getByText("Indisponível")).toBeInTheDocument();
     expect(screen.getByText("Dados de mercado desatualizados")).toBeInTheDocument();
@@ -534,7 +538,7 @@ describe("portfolio analytics states", () => {
 
     renderWithAuth(<PortfolioDetailPage />);
 
-    expect(await screen.findByText("falhou")).toBeInTheDocument();
+    expect(await screen.findByText("dados indisponíveis")).toBeInTheDocument();
     expect(
       screen.getByText("O último retrato de risco bem-sucedido continua visível após a falha mais recente.")
     ).toBeInTheDocument();
@@ -593,6 +597,37 @@ describe("portfolio charting states", () => {
     expect(screen.getByText("Histórico de preços indisponível")).toBeInTheDocument();
     expect(screen.getByText("Não há histórico de preços armazenado para MSFT.")).toBeInTheDocument();
     expect(screen.queryByText("No stored historical prices were available for MSFT.")).not.toBeInTheDocument();
+  });
+
+  it("renders proportional chart empty states and portfolio section navigation", async () => {
+    const baseCharts = makePortfolioChartBundle();
+    mockPortfolioDetailApi({
+      charts: makePortfolioChartBundle({
+        charts: {
+          ...baseCharts.charts,
+          assetPrices: [],
+          portfolioPerformance: [],
+          cumulativeReturn: [],
+          allocation: [],
+          sectorExposure: [],
+          drawdown: [],
+          rollingRisk: [],
+          correlation: { symbols: [], cells: [] },
+          benchmarkComparison: []
+        }
+      }),
+      listPositions: () => ({ positions: [] })
+    });
+
+    renderWithAuth(<PortfolioDetailPage />);
+
+    expect(await screen.findByRole("navigation", { name: "Seções do portfólio" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Registrar" })).toHaveAttribute(
+      "href",
+      "#portfolio-transacao"
+    );
+    expect(screen.getAllByText("Dados insuficientes").length).toBeGreaterThan(0);
+    expect(screen.getByText("Sem série de valor calculada para o período.")).toBeInTheDocument();
   });
 });
 

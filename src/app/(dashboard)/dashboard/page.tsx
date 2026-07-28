@@ -9,6 +9,7 @@ import { Card } from "../../../components/ui/card";
 import { FieldError, Label } from "../../../components/ui/form";
 import { Input } from "../../../components/ui/input";
 import { Select } from "../../../components/ui/select";
+import { Skeleton } from "../../../components/ui/skeleton";
 import { Textarea } from "../../../components/ui/textarea";
 import { ProtectedRoute } from "../../../features/auth/ProtectedRoute";
 import { useAuth } from "../../../features/auth/AuthProvider";
@@ -154,8 +155,8 @@ export default function DashboardPage() {
           actions={<LogoutButton />}
         />
 
-        <section className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px] xl:grid-cols-[minmax(0,1fr)_320px_360px]">
-          <Card>
+        <section className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_320px] xl:grid-cols-[minmax(0,1fr)_320px_360px]">
+          <Card className="h-fit">
             <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
               <div className="space-y-1">
                 <p className="text-xs font-semibold uppercase text-moss">
@@ -167,18 +168,22 @@ export default function DashboardPage() {
                 </p>
               </div>
               <div className="grid gap-3 sm:grid-cols-2">
-                <div className="rounded-lg border border-border bg-muted/40 p-4">
+                <div className="grid gap-1 rounded-lg border border-border bg-muted/40 p-4">
                   <span className="text-xs font-semibold uppercase text-stone-500">
                     Portfólios
                   </span>
-                  <strong className="text-3xl text-stone-900">{portfolios.length}</strong>
+                  <strong className="block text-3xl leading-tight text-stone-900">
+                    {portfolios.length}
+                  </strong>
                   <p className="text-sm text-stone-600">visíveis nesta sessão</p>
                 </div>
-                <div className="rounded-lg border border-border bg-muted/40 p-4">
+                <div className="grid gap-1 rounded-lg border border-border bg-muted/40 p-4">
                   <span className="text-xs font-semibold uppercase text-stone-500">
                     Contas
                   </span>
-                  <strong className="text-3xl text-stone-900">{memberships.length}</strong>
+                  <strong className="block text-3xl leading-tight text-stone-900">
+                    {memberships.length}
+                  </strong>
                   <p className="text-sm text-stone-600">habilitadas para leitura</p>
                 </div>
               </div>
@@ -187,7 +192,7 @@ export default function DashboardPage() {
 
           <CurrencyConverterCard />
 
-          <Card>
+          <Card className="h-fit">
             <div className="space-y-1">
               <h2 className="text-xl font-semibold text-stone-900">Criar portfólio</h2>
               <p className="text-sm text-stone-600">
@@ -404,6 +409,7 @@ function CurrencyConverterCard() {
     }
 
     let isActive = true;
+    setConversion(null);
     setStatus("loading");
     setError(null);
 
@@ -435,20 +441,30 @@ function CurrencyConverterCard() {
   }, [amount, targetCurrency]);
 
   return (
-    <Card>
+    <Card className="h-fit">
       <div className="space-y-1">
         <p className="text-xs font-semibold uppercase text-moss">Dólar agora</p>
-        <h2 className="text-xl font-semibold text-stone-900">
-          {conversion
-            ? formatCurrency(conversion.convertedAmount, conversion.to)
-            : formatCurrency(0, targetCurrency)}
-        </h2>
+        <div className="min-h-9" aria-live="polite">
+          {status === "loading" ? (
+            <Skeleton className="h-8 w-36" aria-label="Carregando cotação" />
+          ) : conversion ? (
+            <strong className="block text-xl font-semibold text-stone-900">
+              {formatCurrency(conversion.convertedAmount, conversion.to)}
+            </strong>
+          ) : (
+            <span className="block text-base font-medium text-stone-500">
+              Cotação indisponível
+            </span>
+          )}
+        </div>
         <p className="text-sm text-stone-600">
           {status === "loading"
-            ? "Atualizando..."
+            ? "Carregando cotação..."
+            : status === "error"
+              ? "Revise o valor ou tente novamente."
             : conversion
               ? `${formatCurrency(conversion.amount, "USD")} via dados de mercado da plataforma`
-              : "USD"}
+              : "Informe valor e moeda para consultar."}
         </p>
       </div>
 
