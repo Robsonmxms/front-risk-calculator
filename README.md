@@ -103,9 +103,16 @@ Comandos uteis:
 
 ```bash
 yarn test
+yarn test:coverage
 yarn typecheck
 yarn lint
 ```
+
+`yarn test:coverage` usa Vitest com provider `v8` e gate minimo de 80% para statements,
+branches, functions e lines no escopo critico de contrato do frontend: cliente HTTP, clientes de
+API em `src/features`, armazenamento de sessao e navegacao autenticada. As paginas e componentes
+maiores continuam cobertos por `yarn test`; eles nao entram no limiar de coverage ate existir uma
+suite E2E/visual dedicada.
 
 Docker:
 
@@ -122,10 +129,15 @@ docker compose up --build
 
 ## Testes
 
-Os testes unitarios atuais validam o comportamento do cliente HTTP em expiracao de sessao:
+Os testes unitarios atuais validam fluxos de sessao, telas protegidas e contratos HTTP:
 
 - retry apos refresh bem-sucedido;
 - limpeza de sessao quando o refresh falha.
+- login por senha e Google;
+- logout e limpeza local mesmo em falha de rede;
+- download de blobs e envelopes de erro;
+- contratos dos clientes de auth, client, office, portfolio, workbench, compliance e delivery;
+- estados responsivos, vazios, parciais e indisponiveis nas telas principais.
 
 ## Licenca
 

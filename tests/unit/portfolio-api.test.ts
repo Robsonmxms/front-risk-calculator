@@ -1,14 +1,28 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  convertCurrency,
+  createPortfolio,
   createPortfolioAlert,
+  createPortfolioTransaction,
+  downloadPortfolioReport,
+  getPortfolio,
+  getPortfolioAnalytics,
   getPortfolioCharts,
   getTradePrice,
+  listPortfolioAlerts,
   listNotifications,
   listPortfolioReports,
   listMarketExchanges,
+  listPortfolioPositions,
+  listPortfolios,
+  listPortfolioSnapshots,
+  listPortfolioTransactions,
   markNotificationRead,
+  requestPortfolioAnalyticsRecompute,
   requestPortfolioReport,
-  searchMarketAssets
+  searchMarketAssets,
+  updatePortfolio,
+  updatePortfolioAlert
 } from "../../src/features/portfolio/portfolioApi";
 import { ApiError } from "../../src/lib/api/client";
 import { clearSession } from "../../src/features/auth/sessionStore";
@@ -165,6 +179,135 @@ describe("portfolio api market data client", () => {
     );
   });
 
+  it("covers portfolio CRUD and ledger endpoints through backend-owned routes", async () => {
+    const portfolio = {
+      id: "prt_main",
+      officeId: "ofc_main",
+      accountId: "acct_main",
+      accountName: "Carteira Principal",
+      name: "Carteira Principal",
+      baseCurrency: "USD",
+      membershipRole: "owner",
+      holdingsCount: 1,
+      transactionCount: 1,
+      totalCostBasis: 1200,
+      freshness: "fresh",
+      status: "ready",
+      analyticsState: "ready",
+      marketDataState: "ready",
+      createdAt: "2026-07-16T10:00:00.000Z",
+      updatedAt: "2026-07-16T10:00:00.000Z",
+      warnings: []
+    };
+    const transaction = {
+      id: "txn-1",
+      portfolioId: "prt_main",
+      assetSymbol: "MSFT",
+      assetName: "Microsoft Corporation",
+      tradeDate: "2026-07-16",
+      type: "buy",
+      quantity: 3,
+      unitPrice: 400,
+      totalAmount: 1200,
+      currency: "USD",
+      createdAt: "2026-07-16T10:00:00.000Z"
+    };
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse(200, { data: { portfolios: [portfolio] } }))
+      .mockResolvedValueOnce(jsonResponse(201, { data: portfolio }))
+      .mockResolvedValueOnce(jsonResponse(200, { data: portfolio }))
+      .mockResolvedValueOnce(jsonResponse(200, { data: { ...portfolio, name: "Carteira Ajustada" } }))
+      .mockResolvedValueOnce(jsonResponse(200, { data: { transactions: [transaction] } }))
+      .mockResolvedValueOnce(jsonResponse(201, { data: transaction }))
+      .mockResolvedValueOnce(
+        jsonResponse(200, {
+          data: {
+            positions: [
+              {
+                portfolioId: "prt_main",
+                assetSymbol: "MSFT",
+                assetName: "Microsoft Corporation",
+                quantity: 3,
+                averageCost: 400,
+                totalCostBasis: 1200,
+                currency: "USD",
+                lastTransactionDate: "2026-07-16"
+              }
+            ]
+          }
+        })
+      )
+      .mockResolvedValueOnce(
+        jsonResponse(200, {
+          data: {
+            snapshots: [
+              {
+                id: "snp-1",
+                portfolioId: "prt_main",
+                asOfDate: "2026-07-16",
+                createdAt: "2026-07-16T10:00:00.000Z",
+                positions: [],
+                transactionCount: 1,
+                totalCostBasis: 1200
+              }
+            ]
+          }
+        })
+      );
+    vi.stubGlobal("fetch", fetchMock);
+    vi.spyOn(crypto, "randomUUID").mockReturnValue("idem-1");
+
+    await expect(listPortfolios()).resolves.toMatchObject({
+      portfolios: [expect.objectContaining({ id: "prt_main" })]
+    });
+    await expect(
+      createPortfolio({
+        accountId: "acct_main",
+        name: "Carteira Principal",
+        baseCurrency: "USD"
+      })
+    ).resolves.toMatchObject({ id: "prt_main" });
+    await expect(getPortfolio("prt_main")).resolves.toMatchObject({ id: "prt_main" });
+    await expect(updatePortfolio("prt_main", { name: "Carteira Ajustada" })).resolves.toMatchObject({
+      name: "Carteira Ajustada"
+    });
+    await expect(listPortfolioTransactions("prt_main")).resolves.toMatchObject({
+      transactions: [expect.objectContaining({ id: "txn-1" })]
+    });
+    await expect(
+      createPortfolioTransaction("prt_main", {
+        assetSymbol: "MSFT",
+        assetName: "Microsoft Corporation",
+        tradeDate: "2026-07-16",
+        type: "buy",
+        quantity: 3,
+        unitPrice: 400,
+        currency: "USD"
+      })
+    ).resolves.toMatchObject({ id: "txn-1" });
+    await expect(listPortfolioPositions("prt_main", "2026-07-16")).resolves.toMatchObject({
+      positions: [expect.objectContaining({ assetSymbol: "MSFT" })]
+    });
+    await expect(listPortfolioSnapshots("prt_main")).resolves.toMatchObject({
+      snapshots: [expect.objectContaining({ id: "snp-1" })]
+    });
+
+    expect(fetchMock.mock.calls[0][0]).toBe("http://localhost:8000/api/v1/portfolios");
+    expect(fetchMock.mock.calls[1][1]).toMatchObject({ method: "POST" });
+    expect(fetchMock.mock.calls[2][0]).toBe(
+      "http://localhost:8000/api/v1/portfolios/prt_main"
+    );
+    expect(fetchMock.mock.calls[3][1]).toMatchObject({ method: "PATCH" });
+    expect(fetchMock.mock.calls[5][1].headers["Idempotency-Key"]).toBe("idem-1");
+    expect(fetchMock.mock.calls[6][0]).toBe(
+      "http://localhost:8000/api/v1/portfolios/prt_main/positions?asOf=2026-07-16"
+    );
+    expect(fetchMock.mock.calls[7][0]).toBe(
+      "http://localhost:8000/api/v1/portfolios/prt_main/snapshots"
+    );
+  });
+
   it("requests portfolio chart bundles with range, interval, assets and benchmark", async () => {
     const fetchMock = vi.fn().mockResolvedValueOnce(
       jsonResponse(200, {
@@ -220,6 +363,47 @@ describe("portfolio api market data client", () => {
     });
     expect(fetchMock.mock.calls[0][0]).toBe(
       "http://localhost:8000/api/v1/portfolios/prt_main/charts?range=1m&interval=weekly&assetSymbols=MSFT%2CVTI&benchmarkSymbol=SPY&baseCurrency=USD"
+    );
+  });
+
+  it("uses compact chart URLs when optional chart filters are absent", async () => {
+    const fetchMock = vi.fn().mockResolvedValueOnce(
+      jsonResponse(200, {
+        data: {
+          portfolioId: "prt_main",
+          asOfDate: "2026-07-15",
+          range: "1m",
+          interval: "daily",
+          baseCurrency: "USD",
+          charts: {
+            assetPrices: [],
+            portfolioPerformance: [],
+            cumulativeReturn: [],
+            allocation: [],
+            sectorExposure: [],
+            drawdown: [],
+            rollingRisk: [],
+            correlation: { symbols: [], cells: [] },
+            benchmarkComparison: [],
+            annotations: []
+          },
+          dataQuality: {
+            status: "complete",
+            issues: [],
+            staleInputCount: 0,
+            unavailableChartKeys: []
+          }
+        },
+        meta: { generatedAt: "2026-07-16T10:00:00.000Z" }
+      })
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(getPortfolioCharts("prt_main")).resolves.toMatchObject({
+      data: { portfolioId: "prt_main" }
+    });
+    expect(fetchMock.mock.calls[0][0]).toBe(
+      "http://localhost:8000/api/v1/portfolios/prt_main/charts"
     );
   });
 
@@ -292,6 +476,84 @@ describe("portfolio api market data client", () => {
     );
   });
 
+  it("downloads reports, recomputes analytics, and converts currency through backend APIs", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        jsonResponse(200, {
+          data: {
+            totalValue: 1200,
+            metrics: {},
+            insights: [],
+            dataQuality: { status: "complete", issues: [] }
+          },
+          meta: { status: "complete", baseCurrency: "USD" }
+        })
+      )
+      .mockResolvedValueOnce(
+        jsonResponse(202, {
+          data: { jobId: "job-1", status: "queued", portfolioId: "prt_main" }
+        })
+      )
+      .mockResolvedValueOnce(
+        jsonResponse(200, {
+          data: {
+            conversion: {
+              from: "usd",
+              to: "brl",
+              amount: 100,
+              convertedAmount: 545,
+              rate: 5.45,
+              providerName: "brapi",
+              asOf: "2026-07-16T10:00:00.000Z"
+            }
+          },
+          meta: { providerName: "brapi", asOf: "2026-07-16T10:00:00.000Z" }
+        })
+      )
+      .mockResolvedValueOnce(
+        new Response("report-body", {
+          status: 200,
+          headers: {
+            "Content-Disposition": 'attachment; filename="relatorio.pdf"',
+            "Content-Type": "application/pdf"
+          }
+        })
+      );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(getPortfolioAnalytics("prt_main")).resolves.toMatchObject({
+      meta: { status: "complete" }
+    });
+    await expect(requestPortfolioAnalyticsRecompute("prt_main")).resolves.toMatchObject({
+      jobId: "job-1",
+      status: "queued"
+    });
+    await expect(convertCurrency({ from: "usd", to: "brl", amount: 100 })).resolves.toMatchObject({
+      data: { conversion: { convertedAmount: 545 } },
+      meta: { providerName: "brapi" }
+    });
+    await expect(downloadPortfolioReport("rpt-1")).resolves.toMatchObject({
+      filename: "relatorio.pdf",
+      contentType: "application/pdf"
+    });
+
+    expect(fetchMock.mock.calls[0][0]).toBe(
+      "http://localhost:8000/api/v1/portfolios/prt_main/analytics"
+    );
+    expect(fetchMock.mock.calls[1][0]).toBe(
+      "http://localhost:8000/api/v1/portfolios/prt_main/analytics/recompute"
+    );
+    expect(fetchMock.mock.calls[1][1]).toMatchObject({ method: "POST" });
+    expect(fetchMock.mock.calls[2][0]).toBe(
+      "http://localhost:8000/api/v1/market-data/fx-rate?from=usd&to=brl&amount=100"
+    );
+    expect(fetchMock.mock.calls[3][0]).toBe(
+      "http://localhost:8000/api/v1/reports/rpt-1/download"
+    );
+    expect(fetchMock.mock.calls[3][1].headers.Accept).toBe("application/pdf,text/csv");
+  });
+
   it("creates alerts and reads notifications through backend endpoints", async () => {
     const fetchMock = vi
       .fn()
@@ -346,6 +608,45 @@ describe("portfolio api market data client", () => {
       "http://localhost:8000/api/v1/portfolios/prt_main/alerts"
     );
     expect(fetchMock.mock.calls[1][0]).toBe("http://localhost:8000/api/v1/notifications");
+  });
+
+  it("lists and updates alerts through backend authorization boundaries", async () => {
+    const alert = {
+      id: "alt-1",
+      portfolioId: "prt_main",
+      createdBy: "usr_user",
+      title: "Limite de volatilidade",
+      severity: "high",
+      status: "monitoring",
+      condition: { eventType: "metric_threshold", metricKey: "volatility", operator: "gte", threshold: 20 },
+      createdAt: "2026-07-16T10:00:00.000Z",
+      updatedAt: "2026-07-16T10:00:00.000Z"
+    };
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse(200, { data: { alerts: [alert] } }))
+      .mockResolvedValueOnce(
+        jsonResponse(200, {
+          data: { ...alert, status: "disabled", title: "Volatilidade em pausa" }
+        })
+      );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(listPortfolioAlerts("prt_main")).resolves.toMatchObject({
+      alerts: [expect.objectContaining({ id: "alt-1" })]
+    });
+    await expect(
+      updatePortfolioAlert("alt-1", {
+        status: "disabled",
+        title: "Volatilidade em pausa"
+      })
+    ).resolves.toMatchObject({ status: "disabled" });
+
+    expect(fetchMock.mock.calls[0][0]).toBe(
+      "http://localhost:8000/api/v1/portfolios/prt_main/alerts"
+    );
+    expect(fetchMock.mock.calls[1][0]).toBe("http://localhost:8000/api/v1/alerts/alt-1");
+    expect(fetchMock.mock.calls[1][1]).toMatchObject({ method: "PATCH" });
   });
 
   it("surfaces forbidden notification read responses without client-side success", async () => {

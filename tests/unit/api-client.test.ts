@@ -1,7 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   apiFetch,
+  apiFetchBlob,
   apiFetchEnvelope,
+  ApiError,
+  refreshSession,
   SessionExpiredError
 } from "../../src/lib/api/client";
 import {
@@ -128,5 +131,93 @@ describe("apiFetch session behavior", () => {
       meta: { count: 0 }
     });
     expect(fetchMock.mock.calls[0][1]?.cache).toBe("no-store");
+  });
+
+  it("returns undefined data for no-content responses", async () => {
+    const fetchMock = vi.fn().mockResolvedValueOnce(jsonResponse(204, undefined));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(apiFetch<void>("/auth/logout")).resolves.toBeUndefined();
+    expect(fetchMock.mock.calls[0][1].headers).toMatchObject({
+      "Content-Type": "application/json"
+    });
+  });
+
+  it("uses stable fallback errors when the backend returns a non-json failure", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValueOnce(
+        new Response("internal error", {
+          status: 500,
+          headers: { "Content-Type": "text/plain" }
+        })
+      )
+    );
+
+    await expect(apiFetch("/unstable")).rejects.toMatchObject({
+      status: 500,
+      code: "api.request_failed",
+      message: "Request failed"
+    });
+  });
+
+  it("does not refresh on unauthorized responses without a refresh token", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValueOnce(
+        jsonResponse(401, {
+          error: { code: "auth.unauthorized", message: "Authentication required" }
+        })
+      )
+    );
+
+    await expect(apiFetch("/users/me")).rejects.toMatchObject({
+      status: 401,
+      code: "auth.unauthorized"
+    });
+  });
+
+  it("requires an in-memory refresh token before refreshing explicitly", async () => {
+    await expect(refreshSession()).rejects.toBeInstanceOf(SessionExpiredError);
+  });
+
+  it("downloads blobs with backend filename and content type metadata", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValueOnce(
+        new Response("pdf-body", {
+          status: 200,
+          headers: {
+            "Content-Disposition": 'attachment; filename="risk-report.pdf"',
+            "Content-Type": "application/pdf"
+          }
+        })
+      )
+    );
+
+    const result = await apiFetchBlob("/reports/rpt-1/download", {
+      headers: { Accept: "application/pdf" }
+    });
+
+    expect(result.filename).toBe("risk-report.pdf");
+    expect(result.contentType).toBe("application/pdf");
+    await expect(result.blob.text()).resolves.toBe("pdf-body");
+  });
+
+  it("surfaces blob endpoint failures through the normal api error envelope", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValueOnce(
+        jsonResponse(403, {
+          error: {
+            code: "reports.download_denied",
+            message: "Report download denied",
+            details: { reportId: "rpt-1" }
+          }
+        })
+      )
+    );
+
+    await expect(apiFetchBlob("/reports/rpt-1/download")).rejects.toBeInstanceOf(ApiError);
   });
 });
