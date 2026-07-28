@@ -10,6 +10,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
+    "check:public-config": "node scripts/check-public-runtime-config.mjs",
     "check:runtime-data": "node scripts/check-runtime-mock-data.mjs",
     "lint-staged": "lint-staged",
     "prepare": "husky",

@@ -26,9 +26,9 @@ FROM base AS runtime
 WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
-COPY package.json yarn.lock* .yarnrc.yml ./
-RUN yarn install --production
-COPY --from=build /app/.next ./.next
-COPY --from=build /app/next.config.js ./next.config.js
+ENV HOSTNAME=0.0.0.0
+ENV PORT=3000
+COPY --from=build /app/.next/standalone ./
+COPY --from=build /app/.next/static ./.next/static
 EXPOSE 3000
-CMD ["yarn", "start"]
+CMD ["node", "server.js"]
