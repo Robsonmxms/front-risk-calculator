@@ -14,6 +14,7 @@ export default defineConfig({
         "src/components/layout/AppHeader.tsx",
         "src/features/**/*Api.ts",
         "src/features/auth/sessionStore.ts",
+        "src/lib/api/config.ts",
         "src/lib/api/client.ts"
       ],
       provider: "v8",

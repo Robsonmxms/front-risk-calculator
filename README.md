@@ -106,6 +106,7 @@ yarn test
 yarn test:coverage
 yarn typecheck
 yarn lint
+yarn check:public-config
 ```
 
 `yarn test:coverage` usa Vitest com provider `v8` e gate minimo de 80% para statements,
@@ -113,6 +114,10 @@ branches, functions e lines no escopo critico de contrato do frontend: cliente H
 API em `src/features`, armazenamento de sessao e navegacao autenticada. As paginas e componentes
 maiores continuam cobertos por `yarn test`; eles nao entram no limiar de coverage ate existir uma
 suite E2E/visual dedicada.
+
+O alvo AWS atual e container Node com Next.js standalone output. Detalhes de hosting,
+`NEXT_PUBLIC_API_BASE_URL`, promocao de ambiente e limites de performance estao em
+[docs/aws-frontend-readiness.md](docs/aws-frontend-readiness.md).
 
 Docker:
 
