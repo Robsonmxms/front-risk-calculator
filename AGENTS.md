@@ -5,15 +5,21 @@ Guidance for AI agents working in the frontend project.
 ## Frontend Role
 
 `front-risk-calculator` is the Next.js user interface for the Investment Portfolio Analytics
-Platform. Today it presents auth, protected routes, dashboard/account access visibility, admin
-user listing, portfolio dashboard/detail flows, market-data-assisted transaction entry, analytics
-views, asynchronous XLSX portfolio import/template/error-report flows, report requests, alert setup,
-notifications, realtime refresh, and session-expired or
-unauthorized states, plus office/client/workbench, compliance, analytics diagnostics, report
-delivery, and client portal flows.
+Platform. Today it presents auth, protected routes, dashboard/account access visibility, read-only
+admin user listing, portfolio dashboard/detail flows, market-data-assisted transaction entry,
+analytics views, asynchronous XLSX portfolio import/template/error-report flows, report requests,
+alert setup, notifications, realtime refresh, and session-expired or unauthorized states, plus
+office/client/workbench, compliance, analytics diagnostics, report delivery, and client portal
+flows.
 
 Production-grade report templates, external object storage, and hardened realtime operations remain
 planned macro-spec scope.
+
+Two root macro features are active but not implemented. Feature
+`1 - centralized-secrets-runtime-configuration` is backend-owned and must never expose secret
+material through `NEXT_PUBLIC_*` or API payloads. Feature `2 - hierarchical-user-management` adds
+the role-specific rosters and create/edit flows; the current `/admin` screen remains an admin-only,
+read-only list until that feature is delivered.
 
 Specs are not local to this project. Before implementation, read the relevant root macro spec in
 `../.specs/features/<feature>/`.
@@ -35,6 +41,10 @@ Specs are not local to this project. Before implementation, read the relevant ro
 
 - Do not create `front-risk-calculator/.specs/`.
 - The backend API is the source of truth.
+- Keep global roles, office membership roles, account roles, and advisory permissions distinct in
+  navigation and presentation contracts.
+- Only intentionally public browser configuration may use `NEXT_PUBLIC_*`; secret or
+  server-sensitive configuration must never be bundled into the frontend.
 - Do not call market data providers from the browser, server components, or Next route handlers.
 - Do not implement analytics formulas except presentational formatting.
 - Do not enforce security only in UI; backend RBAC is authoritative.
