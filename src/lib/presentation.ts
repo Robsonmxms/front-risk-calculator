@@ -1,6 +1,6 @@
 import { ApiError } from "./api/client";
-import type { UserRole, UserStatus } from "../features/auth/types";
-import type { ReportPackageStatus } from "../features/delivery/types";
+import type { UserRole, UserStatus } from "./contracts/auth";
+import type { ReportPackageStatus } from "./contracts/delivery";
 import type {
   AlertSeverity,
   AlertStatus,
@@ -13,7 +13,7 @@ import type {
   ProcessingState,
   ReportStatus,
   RiskInsightSeverity
-} from "../features/portfolio/types";
+} from "./contracts/portfolio";
 
 type BadgeVariant = "default" | "info" | "success" | "warning" | "failure" | "outline";
 

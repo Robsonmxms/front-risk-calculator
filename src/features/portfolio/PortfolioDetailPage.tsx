@@ -1,0 +1,2730 @@
+"use client";
+
+import { FormEvent, useCallback, useEffect, useState } from "react";
+import Link from "next/link";
+import { useParams } from "next/navigation";
+import { AppHeader, LogoutButton, ProtectedRoute, useAuth } from "../auth";
+import { PageSectionNavigation } from "../../components/organisms/PageSectionNavigation";
+import { Alert } from "../../components/atoms/alert";
+import { Badge } from "../../components/atoms/badge";
+import { Button, LinkButton } from "../../components/atoms/button";
+import { Card } from "../../components/atoms/card";
+import { ChartEmptyState } from "../../components/organisms/ChartEmptyState";
+import {
+  chartPalette,
+  ThemedHeatmapChart,
+  ThemedHorizontalBarChart,
+  ThemedLineChart
+} from "../../components/organisms/risk-charts";
+import { FieldError, Label } from "../../components/atoms/form";
+import { Input } from "../../components/atoms/input";
+import { Select } from "../../components/atoms/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+  TableViewport
+} from "../../components/atoms/table";
+import { Textarea } from "../../components/atoms/textarea";
+import {
+  createPortfolioAlert,
+  createPortfolioTransaction,
+  downloadPortfolioReport,
+  getTradePrice,
+  getPortfolioCharts,
+  getPortfolioAnalytics,
+  getPortfolio,
+  listNotifications,
+  listPortfolioAlerts,
+  listMarketExchanges,
+  listPortfolioPositions,
+  listPortfolioReports,
+  listPortfolioSnapshots,
+  listPortfolioTransactions,
+  markNotificationRead,
+  requestPortfolioAnalyticsRecompute,
+  requestPortfolioReport,
+  searchMarketAssets
+} from "./portfolioApi";
+import {
+  AlertSeverity,
+  AnalyticsMetric,
+  MarketAsset,
+  MarketExchange,
+  NotificationRecord,
+  PortfolioAlert,
+  PortfolioAnalyticsReadModel,
+  PortfolioAnalyticsSnapshot,
+  PortfolioChartBundle,
+  PortfolioChartInterval,
+  PortfolioChartRange,
+  PortfolioDetail,
+  PortfolioPosition,
+  PortfolioReport,
+  PortfolioSnapshot,
+  PortfolioTransaction,
+  RealtimeMessage,
+  ReportFormat,
+  TradePriceQuote
+} from "./types";
+import { ApiError } from "../../lib/api/client";
+import {
+  alertSeverityVariant,
+  alertStatusVariant,
+  analyticsStatusVariant,
+  dataQualitySeverityVariant,
+  formatCurrency,
+  formatDate,
+  formatDateInputValue,
+  formatDateTime,
+  formatDecimal,
+  formatInputDecimal,
+  formatPercentage,
+  formatPortfolioWarning,
+  getApiErrorMessage,
+  insightSeverityVariant,
+  labelAccountRole,
+  labelAlertSeverity,
+  labelAlertStatus,
+  labelAnalyticsMetricKey,
+  labelAnalyticsMetricStatus,
+  labelAnalyticsStatus,
+  labelDataQualityIssueCode,
+  labelDataQualitySeverity,
+  labelInsightSeverity,
+  labelNotificationSeverity,
+  labelNotificationStatus,
+  labelPortfolioFreshness,
+  labelPortfolioStatus,
+  labelProcessingState,
+  labelRealtimeStatus,
+  labelReportFailureCode,
+  labelReportStatus,
+  labelSector,
+  labelTransactionType,
+  notificationSeverityVariant,
+  portfolioFreshnessVariant,
+  portfolioStatusVariant,
+  realtimeStatusVariant,
+  reportStatusVariant
+} from "../../lib/presentation";
+import { connectRealtime, RealtimeConnectionStatus } from "../../lib/realtime/client";
+
+interface TransactionFormState {
+  exchangeCode: string;
+  assetSymbol: string;
+  assetName: string;
+  tradeDate: string;
+  type: "buy" | "sell";
+  quantity: string;
+  unitPrice: string;
+  currency: string;
+  notes: string;
+}
+
+type AssetSearchStatus = "idle" | "loading" | "success" | "empty" | "error";
+type TradePriceStatus = "idle" | "loading" | "success" | "error";
+
+const TRANSACTIONS_PER_PAGE = 20;
+const SNAPSHOTS_PER_PAGE = 10;
+
+export default function PortfolioDetailPage() {
+  const { actor } = useAuth();
+  const routeParams = useParams<{ portfolioId: string }>();
+  const portfolioId = routeParams.portfolioId;
+  const [portfolio, setPortfolio] = useState<PortfolioDetail | null>(null);
+  const [positions, setPositions] = useState<PortfolioPosition[]>([]);
+  const [transactions, setTransactions] = useState<PortfolioTransaction[]>([]);
+  const [snapshots, setSnapshots] = useState<PortfolioSnapshot[]>([]);
+  const [transactionPage, setTransactionPage] = useState(1);
+  const [snapshotPage, setSnapshotPage] = useState(1);
+  const [analytics, setAnalytics] = useState<PortfolioAnalyticsReadModel | null>(null);
+  const [charts, setCharts] = useState<PortfolioChartBundle | null>(null);
+  const [reports, setReports] = useState<PortfolioReport[]>([]);
+  const [alerts, setAlerts] = useState<PortfolioAlert[]>([]);
+  const [notifications, setNotifications] = useState<NotificationRecord[]>([]);
+  const [selectedAsOf, setSelectedAsOf] = useState<string>("");
+  const [chartRange, setChartRange] = useState<PortfolioChartRange>("1y");
+  const [chartInterval, setChartInterval] = useState<PortfolioChartInterval>("daily");
+  const [chartBenchmark, setChartBenchmark] = useState("");
+  const [selectedChartSymbols, setSelectedChartSymbols] = useState<string[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isAnalyticsLoading, setIsAnalyticsLoading] = useState(false);
+  const [isChartsLoading, setIsChartsLoading] = useState(false);
+  const [isRecomputing, setIsRecomputing] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isRequestingReport, setIsRequestingReport] = useState(false);
+  const [isCreatingAlert, setIsCreatingAlert] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [analyticsError, setAnalyticsError] = useState<string | null>(null);
+  const [chartsError, setChartsError] = useState<string | null>(null);
+  const [reportsError, setReportsError] = useState<string | null>(null);
+  const [alertsError, setAlertsError] = useState<string | null>(null);
+  const [notificationsError, setNotificationsError] = useState<string | null>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [recomputeNotice, setRecomputeNotice] = useState<string | null>(null);
+  const [submissionNotice, setSubmissionNotice] = useState<string | null>(null);
+  const [reportNotice, setReportNotice] = useState<string | null>(null);
+  const [alertNotice, setAlertNotice] = useState<string | null>(null);
+  const [realtimeStatus, setRealtimeStatus] = useState<RealtimeConnectionStatus>("disconnected");
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+  const [reportFormat, setReportFormat] = useState<ReportFormat>("pdf");
+  const [alertTitle, setAlertTitle] = useState("Análises atualizaram métricas monitoradas");
+  const [alertSeverity, setAlertSeverity] = useState<AlertSeverity>("medium");
+  const [assetSearchStatus, setAssetSearchStatus] = useState<AssetSearchStatus>("idle");
+  const [assetSearchResults, setAssetSearchResults] = useState<MarketAsset[]>([]);
+  const [assetSearchMessage, setAssetSearchMessage] = useState<string | null>(null);
+  const [marketExchanges, setMarketExchanges] = useState<MarketExchange[]>([]);
+  const [selectedAssetId, setSelectedAssetId] = useState<string | null>(null);
+  const [tradePriceStatus, setTradePriceStatus] = useState<TradePriceStatus>("idle");
+  const [tradePrice, setTradePrice] = useState<TradePriceQuote | null>(null);
+  const [tradePriceError, setTradePriceError] = useState<string | null>(null);
+  const [form, setForm] = useState<TransactionFormState>({
+    exchangeCode: "NASDAQ",
+    assetSymbol: "",
+    assetName: "",
+    tradeDate: formatDateInputValue(),
+    type: "buy",
+    quantity: "",
+    unitPrice: "",
+    currency: "USD",
+    notes: ""
+  });
+
+  useEffect(() => {
+    let isActive = true;
+
+    listMarketExchanges()
+      .then((response) => {
+        if (!isActive) {
+          return;
+        }
+
+        setMarketExchanges(response.exchanges);
+        setForm((current) => ({
+          ...current,
+          exchangeCode: response.exchanges.some(
+            (exchange) => exchange.code === current.exchangeCode
+          )
+            ? current.exchangeCode
+            : (response.exchanges[0]?.code ?? current.exchangeCode)
+        }));
+      })
+      .catch(() => undefined);
+
+    return () => {
+      isActive = false;
+    };
+  }, []);
+
+  const reloadAnalytics = useCallback(async () => {
+    if (!portfolioId) {
+      return;
+    }
+
+    setIsAnalyticsLoading(true);
+    setAnalyticsError(null);
+    try {
+      const response = await getPortfolioAnalytics(portfolioId);
+      setAnalytics(response.data);
+    } catch (requestError) {
+      setAnalyticsError(getApiErrorMessage(requestError, "Não foi possível carregar as análises."));
+    } finally {
+      setIsAnalyticsLoading(false);
+    }
+  }, [portfolioId]);
+
+  const reloadCharts = useCallback(async () => {
+    if (!portfolioId) {
+      return;
+    }
+
+    setIsChartsLoading(true);
+    setChartsError(null);
+    try {
+      const response = await getPortfolioCharts(portfolioId, {
+        range: chartRange,
+        interval: chartInterval,
+        benchmarkSymbol: chartBenchmark,
+        assetSymbols: selectedChartSymbols,
+        baseCurrency: portfolio?.baseCurrency
+      });
+      setCharts(response.data);
+    } catch (requestError) {
+      setChartsError(getApiErrorMessage(requestError, "Não foi possível carregar os gráficos."));
+    } finally {
+      setIsChartsLoading(false);
+    }
+  }, [
+    chartBenchmark,
+    chartInterval,
+    chartRange,
+    portfolio?.baseCurrency,
+    portfolioId,
+    selectedChartSymbols
+  ]);
+
+  const reloadReports = useCallback(async () => {
+    if (!portfolioId) {
+      return;
+    }
+
+    setReportsError(null);
+    try {
+      const response = await listPortfolioReports(portfolioId);
+      setReports(response.reports);
+    } catch (requestError) {
+      setReportsError(getApiErrorMessage(requestError, "Não foi possível carregar relatórios."));
+    }
+  }, [portfolioId]);
+
+  const reloadAlerts = useCallback(async () => {
+    if (!portfolioId) {
+      return;
+    }
+
+    setAlertsError(null);
+    try {
+      const response = await listPortfolioAlerts(portfolioId);
+      setAlerts(response.alerts);
+    } catch (requestError) {
+      setAlertsError(getApiErrorMessage(requestError, "Não foi possível carregar alertas."));
+    }
+  }, [portfolioId]);
+
+  const reloadNotifications = useCallback(async () => {
+    setNotificationsError(null);
+    try {
+      const response = await listNotifications();
+      setNotifications(response.notifications);
+    } catch (requestError) {
+      setNotificationsError(
+        getApiErrorMessage(requestError, "Não foi possível carregar notificações.")
+      );
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!portfolioId) {
+      return;
+    }
+
+    let isActive = true;
+    setIsLoading(true);
+    setError(null);
+    setTransactionPage(1);
+    setSnapshotPage(1);
+
+    Promise.all([
+      getPortfolio(portfolioId),
+      listPortfolioPositions(portfolioId),
+      listPortfolioTransactions(portfolioId),
+      listPortfolioSnapshots(portfolioId),
+      getPortfolioAnalytics(portfolioId),
+      listPortfolioReports(portfolioId),
+      listPortfolioAlerts(portfolioId),
+      listNotifications()
+    ])
+      .then(
+        ([
+          portfolioData,
+          positionsData,
+          transactionsData,
+          snapshotsData,
+          analyticsData,
+          reportsData,
+          alertsData,
+          notificationsData
+        ]) => {
+          if (!isActive) {
+            return;
+          }
+
+          setPortfolio(portfolioData);
+          setPositions(positionsData.positions);
+          setTransactions(transactionsData.transactions);
+          setSnapshots(snapshotsData.snapshots);
+          setAnalytics(analyticsData.data);
+          setReports(reportsData.reports);
+          setAlerts(alertsData.alerts);
+          setNotifications(notificationsData.notifications);
+        }
+      )
+      .catch((requestError: unknown) => {
+        if (isActive) {
+          setError(
+            getApiErrorMessage(requestError, "Não foi possível carregar o detalhe do portfólio.")
+          );
+        }
+      })
+      .finally(() => {
+        if (isActive) {
+          setIsLoading(false);
+        }
+      });
+
+    return () => {
+      isActive = false;
+    };
+  }, [portfolioId]);
+
+  useEffect(() => {
+    void reloadCharts();
+  }, [reloadCharts]);
+
+  useEffect(() => {
+    if (!portfolioId || !actor) {
+      return;
+    }
+
+    const connection = connectRealtime({
+      portfolioId,
+      onStatus: setRealtimeStatus,
+      onMessage: (message: RealtimeMessage) => {
+        if (message.portfolioId && message.portfolioId !== portfolioId) {
+          return;
+        }
+
+        if (message.type === "analytics.updated" || message.type === "analytics.failed") {
+          void reloadAnalytics();
+          void reloadCharts();
+        }
+        if (message.type === "report.generated" || message.type === "report.failed") {
+          void reloadReports();
+        }
+        if (message.type === "notification.sent") {
+          void reloadNotifications();
+        }
+        if (message.type === "market_data.updated" || message.type === "portfolio.updated") {
+          void getPortfolio(portfolioId)
+            .then(setPortfolio)
+            .catch(() => undefined);
+          void reloadCharts();
+        }
+      },
+      onError: () => setRealtimeStatus("disconnected")
+    });
+
+    return () => {
+      connection.close();
+    };
+  }, [actor, portfolioId, reloadAnalytics, reloadCharts, reloadNotifications, reloadReports]);
+
+  useEffect(() => {
+    if (!portfolioId) {
+      return;
+    }
+
+    const hasPendingReports = reports.some(
+      (report) => report.status === "pending" || report.status === "running"
+    );
+    const shouldPoll =
+      realtimeStatus !== "connected" || hasPendingReports || analytics?.status === "pending";
+
+    if (!shouldPoll) {
+      return;
+    }
+
+    const intervalId = window.setInterval(() => {
+      void reloadReports();
+      void reloadNotifications();
+      void reloadAnalytics();
+      void reloadCharts();
+    }, 15000);
+
+    return () => window.clearInterval(intervalId);
+  }, [
+    analytics?.status,
+    portfolioId,
+    realtimeStatus,
+    reloadAnalytics,
+    reloadCharts,
+    reloadNotifications,
+    reloadReports,
+    reports
+  ]);
+
+  useEffect(() => {
+    function handleAnalyticsUpdated(event: Event) {
+      const detail = (event as CustomEvent<{ portfolioId?: string }>).detail;
+      if (!detail?.portfolioId || detail.portfolioId === portfolioId) {
+        void reloadAnalytics();
+        void reloadCharts();
+      }
+    }
+
+    window.addEventListener("analytics.updated", handleAnalyticsUpdated);
+    return () => {
+      window.removeEventListener("analytics.updated", handleAnalyticsUpdated);
+    };
+  }, [portfolioId, reloadAnalytics, reloadCharts]);
+
+  useEffect(() => {
+    if (!portfolioId) {
+      return;
+    }
+
+    let isActive = true;
+
+    listPortfolioPositions(portfolioId, selectedAsOf || undefined)
+      .then((response) => {
+        if (isActive) {
+          setPositions(response.positions);
+        }
+      })
+      .catch(() => undefined);
+
+    return () => {
+      isActive = false;
+    };
+  }, [portfolioId, selectedAsOf]);
+
+  useEffect(() => {
+    const query = form.assetSymbol.trim();
+    if (query.length < 2) {
+      setAssetSearchStatus("idle");
+      setAssetSearchResults([]);
+      setAssetSearchMessage(null);
+      return;
+    }
+
+    let isActive = true;
+    setAssetSearchStatus("loading");
+    setAssetSearchMessage(null);
+
+    const timeoutId = window.setTimeout(() => {
+      searchMarketAssets(query, form.exchangeCode || undefined)
+        .then((response) => {
+          if (!isActive) {
+            return;
+          }
+
+          setAssetSearchResults(response.data.assets);
+          setAssetSearchStatus(response.data.assets.length > 0 ? "success" : "empty");
+          setAssetSearchMessage(
+            response.meta?.providerStatus === "degraded"
+              ? "Dados de mercado indisponíveis; exibindo registros já conhecidos pela plataforma."
+              : null
+          );
+        })
+        .catch((requestError: unknown) => {
+          if (!isActive) {
+            return;
+          }
+
+          setAssetSearchResults([]);
+          setAssetSearchStatus("error");
+          setAssetSearchMessage(
+            getApiErrorMessage(
+              requestError,
+              "Dados de mercado indisponíveis. Informe o ativo manualmente."
+            )
+          );
+        });
+    }, 250);
+
+    return () => {
+      isActive = false;
+      window.clearTimeout(timeoutId);
+    };
+  }, [form.assetSymbol, form.exchangeCode]);
+
+  useEffect(() => {
+    const quantity = Number(form.quantity);
+    if (!selectedAssetId || !form.tradeDate || !Number.isFinite(quantity) || quantity <= 0) {
+      setTradePrice(null);
+      setTradePriceStatus("idle");
+      setTradePriceError(null);
+      return;
+    }
+
+    let isActive = true;
+    setTradePriceStatus("loading");
+    setTradePriceError(null);
+
+    const timeoutId = window.setTimeout(() => {
+      getTradePrice(selectedAssetId, { tradeDate: form.tradeDate, quantity })
+        .then((response) => {
+          if (!isActive) {
+            return;
+          }
+
+          const calculatedPrice = response.data.tradePrice;
+          setTradePrice(calculatedPrice);
+          setTradePriceStatus("success");
+          setFormErrors((current) => {
+            const remainingErrors = { ...current };
+            delete remainingErrors.unitPrice;
+            return remainingErrors;
+          });
+          setForm((current) => ({
+            ...current,
+            unitPrice: formatInputDecimal(calculatedPrice.unitPrice, 2),
+            currency: calculatedPrice.currency
+          }));
+        })
+        .catch((requestError: unknown) => {
+          if (!isActive) {
+            return;
+          }
+
+          setTradePrice(null);
+          setTradePriceStatus("error");
+          setTradePriceError(
+            getApiErrorMessage(
+              requestError,
+              "Não foi possível calcular o preço pelos dados de mercado."
+            )
+          );
+        });
+    }, 250);
+
+    return () => {
+      isActive = false;
+      window.clearTimeout(timeoutId);
+    };
+  }, [form.quantity, form.tradeDate, selectedAssetId]);
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!portfolioId) {
+      return;
+    }
+
+    setSubmitError(null);
+    setSubmissionNotice(null);
+    setFormErrors({});
+
+    if (!selectedAssetId) {
+      setFormErrors({
+        assetSymbol: "Selecione um ativo retornado pelos dados de mercado antes de registrar."
+      });
+      setSubmitError("Selecione um ativo retornado pelos dados de mercado antes de registrar.");
+      return;
+    }
+
+    const quantity = Number(form.quantity);
+    const hasCurrentTradePrice =
+      tradePriceStatus === "success" &&
+      tradePrice?.assetId === selectedAssetId &&
+      tradePrice.tradeDate === form.tradeDate &&
+      tradePrice.quantity === quantity;
+
+    if (!hasCurrentTradePrice || !tradePrice) {
+      setFormErrors({
+        unitPrice: "Aguarde o cálculo do preço pelos dados de mercado."
+      });
+      setSubmitError("Aguarde o cálculo do preço pelos dados de mercado antes de registrar.");
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      await createPortfolioTransaction(portfolioId, {
+        assetSymbol: form.assetSymbol,
+        assetName: form.assetName,
+        tradeDate: form.tradeDate,
+        type: form.type,
+        quantity,
+        unitPrice: tradePrice.unitPrice,
+        currency: tradePrice.currency,
+        notes: form.notes
+      });
+
+      const [portfolioData, positionsData, transactionsData, snapshotsData] = await Promise.all([
+        getPortfolio(portfolioId),
+        listPortfolioPositions(portfolioId, selectedAsOf || undefined),
+        listPortfolioTransactions(portfolioId),
+        listPortfolioSnapshots(portfolioId)
+      ]);
+      setPortfolio(portfolioData);
+      setPositions(positionsData.positions);
+      setTransactions(transactionsData.transactions);
+      setSnapshots(snapshotsData.snapshots);
+      setTransactionPage(1);
+      setSnapshotPage(1);
+      setSubmissionNotice(
+        portfolioData.marketDataState === "pending"
+          ? "Transação registrada. Os dados de mercado deste ativo serão atualizados na fila de acompanhamento."
+          : null
+      );
+      await reloadAnalytics();
+      setForm({
+        exchangeCode: "NASDAQ",
+        assetSymbol: "",
+        assetName: "",
+        tradeDate: formatDateInputValue(),
+        type: "buy",
+        quantity: "",
+        unitPrice: "",
+        currency: portfolioData.baseCurrency,
+        notes: ""
+      });
+      setSelectedAssetId(null);
+      setTradePrice(null);
+      setTradePriceStatus("idle");
+      setTradePriceError(null);
+      await reloadCharts();
+    } catch (requestError) {
+      setFormErrors(getFieldErrors(requestError));
+      setSubmitError(getApiErrorMessage(requestError, "Não foi possível registrar a transação."));
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  async function handleRecomputeAnalytics() {
+    if (!portfolioId) {
+      return;
+    }
+
+    setIsRecomputing(true);
+    setAnalyticsError(null);
+    setRecomputeNotice(null);
+    try {
+      await requestPortfolioAnalyticsRecompute(portfolioId);
+      setRecomputeNotice("Recálculo das análises solicitado à plataforma.");
+      await reloadAnalytics();
+      await reloadCharts();
+    } catch (requestError) {
+      setAnalyticsError(getApiErrorMessage(requestError, "Não foi possível solicitar recálculo."));
+    } finally {
+      setIsRecomputing(false);
+    }
+  }
+
+  const transactionPageCount = Math.max(1, Math.ceil(transactions.length / TRANSACTIONS_PER_PAGE));
+  const snapshotPageCount = Math.max(1, Math.ceil(snapshots.length / SNAPSHOTS_PER_PAGE));
+  const visibleTransactions = transactions.slice(
+    (transactionPage - 1) * TRANSACTIONS_PER_PAGE,
+    transactionPage * TRANSACTIONS_PER_PAGE
+  );
+  const visibleSnapshots = snapshots.slice(
+    (snapshotPage - 1) * SNAPSHOTS_PER_PAGE,
+    snapshotPage * SNAPSHOTS_PER_PAGE
+  );
+
+  async function handleRequestReport(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    await enqueueReport(reportFormat);
+  }
+
+  async function handleRetryReport(format: ReportFormat) {
+    await enqueueReport(format);
+  }
+
+  async function enqueueReport(format: ReportFormat) {
+    if (!portfolioId) {
+      return;
+    }
+
+    setIsRequestingReport(true);
+    setReportsError(null);
+    setReportNotice(null);
+    try {
+      await requestPortfolioReport(portfolioId, format);
+      setReportNotice("Relatório solicitado. O status será atualizado automaticamente.");
+      await reloadReports();
+    } catch (requestError) {
+      setReportsError(getApiErrorMessage(requestError, "Não foi possível solicitar relatório."));
+    } finally {
+      setIsRequestingReport(false);
+    }
+  }
+
+  async function handleDownloadReport(report: PortfolioReport) {
+    setReportsError(null);
+    try {
+      const { blob, filename } = await downloadPortfolioReport(report.id);
+      const objectUrl = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = objectUrl;
+      anchor.download = filename ?? `${report.id}.${report.format}`;
+      anchor.click();
+      URL.revokeObjectURL(objectUrl);
+    } catch (requestError) {
+      setReportsError(getApiErrorMessage(requestError, "Não foi possível baixar o relatório."));
+    }
+  }
+
+  async function handleCreateAlert(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!portfolioId) {
+      return;
+    }
+
+    setIsCreatingAlert(true);
+    setAlertsError(null);
+    setAlertNotice(null);
+    try {
+      await createPortfolioAlert(portfolioId, {
+        title: alertTitle,
+        severity: alertSeverity,
+        condition: { eventType: "analytics.updated" }
+      });
+      setAlertNotice("Alerta criado para novas atualizações de análises.");
+      setAlertTitle("Análises atualizaram métricas monitoradas");
+      setAlertSeverity("medium");
+      await reloadAlerts();
+    } catch (requestError) {
+      setAlertsError(getApiErrorMessage(requestError, "Não foi possível criar o alerta."));
+    } finally {
+      setIsCreatingAlert(false);
+    }
+  }
+
+  async function handleMarkNotificationRead(notification: NotificationRecord) {
+    setNotificationsError(null);
+    try {
+      await markNotificationRead(notification.id);
+      await reloadNotifications();
+    } catch (requestError) {
+      const message =
+        requestError instanceof ApiError && [403, 404].includes(requestError.status)
+          ? "Notificação indisponível para esta sessão."
+          : getApiErrorMessage(requestError, "Não foi possível atualizar a notificação.");
+      setNotificationsError(message);
+    }
+  }
+
+  const transactionSubmitBlocked =
+    isSubmitting || !selectedAssetId || tradePriceStatus !== "success";
+  const transactionSubmitHelp = !selectedAssetId
+    ? "Selecione um ativo retornado pelos dados de mercado para liberar o registro."
+    : tradePriceStatus === "loading"
+      ? "Aguardando o cálculo do preço pelos dados de mercado."
+      : tradePriceStatus === "error"
+        ? "Corrija o ativo, a data ou a quantidade para recalcular o preço."
+        : tradePriceStatus !== "success"
+          ? "Informe data e quantidade para calcular o preço antes de registrar."
+          : null;
+
+  return (
+    <ProtectedRoute roles={["admin", "analyst", "user"]}>
+      <main className="mx-auto flex min-h-screen max-w-7xl flex-col gap-6 px-4 py-5 lg:px-6">
+        <AppHeader
+          title="Histórico do portfólio"
+          active="dashboard"
+          showAdmin={actor?.role === "admin"}
+          actions={<LogoutButton />}
+        />
+
+        <LinkButton href="/dashboard" variant="outline" className="w-fit">
+          Voltar para portfólios
+        </LinkButton>
+
+        {isLoading ? (
+          <Alert variant="info">Montando portfólio, posições, transações e históricos.</Alert>
+        ) : error || !portfolio ? (
+          <Alert variant="failure">{error ?? "Portfólio não encontrado."}</Alert>
+        ) : (
+          <>
+            {portfolio.warnings.length > 0 ? (
+              <Alert variant={portfolio.freshness === "partial" ? "warning" : "failure"}>
+                <div className="space-y-1">
+                  {portfolio.warnings.map((warning) => (
+                    <p key={warning}>{formatPortfolioWarning(warning)}</p>
+                  ))}
+                </div>
+              </Alert>
+            ) : null}
+            {submissionNotice ? <Alert variant="warning">{submissionNotice}</Alert> : null}
+
+            <Card>
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                <div className="space-y-1">
+                  <p className="text-xs font-semibold uppercase text-moss">Detalhe do portfólio</p>
+                  <h1 className="text-3xl font-semibold text-stone-900">{portfolio.name}</h1>
+                  <p className="text-stone-600">
+                    {portfolio.accountName} · perfil {labelAccountRole(portfolio.membershipRole)}
+                  </p>
+                  {portfolio.clientId ? (
+                    <Link
+                      href={`/dashboard/clients/${portfolio.clientId}`}
+                      className="inline-flex text-sm font-medium text-moss hover:text-moss/80"
+                    >
+                      {portfolio.clientName ?? "Cliente vinculado"}
+                      {portfolio.householdName ? ` · ${portfolio.householdName}` : ""}
+                    </Link>
+                  ) : null}
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Badge variant={portfolioFreshnessVariant(portfolio.freshness)}>
+                    {labelPortfolioFreshness(portfolio.freshness)}
+                  </Badge>
+                  <Badge variant={portfolioStatusVariant(portfolio.status)}>
+                    {labelPortfolioStatus(portfolio.status)}
+                  </Badge>
+                </div>
+              </div>
+            </Card>
+
+            <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+              <Card className="grid gap-1">
+                <span className="text-xs font-semibold uppercase text-stone-500">Posições</span>
+                <strong className="block text-3xl leading-tight text-stone-900">
+                  {portfolio.holdingsCount}
+                </strong>
+                <p className="text-sm text-stone-600">ativas nesta visão</p>
+              </Card>
+              <Card className="grid gap-1">
+                <span className="text-xs font-semibold uppercase text-stone-500">Transações</span>
+                <strong className="block text-3xl leading-tight text-stone-900">
+                  {portfolio.transactionCount}
+                </strong>
+                <p className="text-sm text-stone-600">registradas no histórico</p>
+              </Card>
+              <Card className="grid gap-1">
+                <span className="text-xs font-semibold uppercase text-stone-500">Custo</span>
+                <strong className="block break-words text-3xl leading-tight text-stone-900">
+                  {formatCurrency(portfolio.totalCostBasis, portfolio.baseCurrency)}
+                </strong>
+                <p className="text-sm text-stone-600">base histórica agregada</p>
+              </Card>
+              <Card className="grid gap-1">
+                <span className="text-xs font-semibold uppercase text-stone-500">Estado</span>
+                <strong className="block text-lg leading-tight text-stone-900">
+                  {labelProcessingState(portfolio.analyticsState)} /{" "}
+                  {labelProcessingState(portfolio.marketDataState)}
+                </strong>
+                <p className="text-sm text-stone-600">análises e dados de mercado</p>
+              </Card>
+            </section>
+
+            <PortfolioSectionNavigation />
+
+            <section id="portfolio-graficos" className="scroll-mt-6">
+              <PortfolioChartsDashboard
+                charts={charts}
+                positions={positions}
+                error={chartsError}
+                isLoading={isChartsLoading}
+                range={chartRange}
+                interval={chartInterval}
+                benchmark={chartBenchmark}
+                selectedSymbols={selectedChartSymbols}
+                onRangeChange={setChartRange}
+                onIntervalChange={setChartInterval}
+                onBenchmarkChange={setChartBenchmark}
+                onToggleSymbol={(symbol) =>
+                  setSelectedChartSymbols((current) => {
+                    const allSymbols = Array.from(
+                      new Set(positions.map((position) => position.assetSymbol))
+                    ).sort((left, right) => left.localeCompare(right));
+                    const activeSymbols = current.length > 0 ? current : allSymbols;
+                    const nextSymbols = activeSymbols.includes(symbol)
+                      ? activeSymbols.filter((entry) => entry !== symbol)
+                      : [...activeSymbols, symbol].sort((left, right) => left.localeCompare(right));
+
+                    return nextSymbols.length === allSymbols.length ? [] : nextSymbols;
+                  })
+                }
+                onClearSymbols={() => setSelectedChartSymbols([])}
+              />
+            </section>
+
+            <section id="portfolio-analises" className="scroll-mt-6">
+              <AnalyticsDashboard
+                analytics={analytics}
+                error={analyticsError}
+                isLoading={isAnalyticsLoading}
+                isRecomputing={isRecomputing}
+                recomputeNotice={recomputeNotice}
+                onRecompute={handleRecomputeAnalytics}
+              />
+            </section>
+
+            <section id="portfolio-comunicacoes" className="scroll-mt-6">
+              <ReportsAlertsNotificationsPanel
+                reports={reports}
+                alerts={alerts}
+                notifications={notifications.filter(
+                  (notification) =>
+                    !notification.portfolioId || notification.portfolioId === portfolioId
+                )}
+                reportFormat={reportFormat}
+                alertTitle={alertTitle}
+                alertSeverity={alertSeverity}
+                realtimeStatus={realtimeStatus}
+                isRequestingReport={isRequestingReport}
+                isCreatingAlert={isCreatingAlert}
+                reportsError={reportsError}
+                alertsError={alertsError}
+                notificationsError={notificationsError}
+                reportNotice={reportNotice}
+                alertNotice={alertNotice}
+                onReportFormatChange={setReportFormat}
+                onAlertTitleChange={setAlertTitle}
+                onAlertSeverityChange={setAlertSeverity}
+                onRequestReport={handleRequestReport}
+                onRetryReport={handleRetryReport}
+                onDownloadReport={handleDownloadReport}
+                onCreateAlert={handleCreateAlert}
+                onMarkNotificationRead={handleMarkNotificationRead}
+              />
+            </section>
+
+            <section className="grid scroll-mt-6 gap-4 xl:grid-cols-[360px_minmax(0,1fr)]">
+              <Card id="portfolio-transacao">
+                <div className="space-y-1">
+                  <h2 className="text-xl font-semibold text-stone-900">Registrar transação</h2>
+                  <p className="text-sm text-stone-600">
+                    Somente compra e venda nesta primeira versão do histórico.
+                  </p>
+                </div>
+
+                <form className="space-y-4" onSubmit={handleSubmit}>
+                  <div>
+                    <Label htmlFor="type">Tipo</Label>
+                    <Select
+                      id="type"
+                      className="mt-2"
+                      value={form.type}
+                      onChange={(event) =>
+                        setForm((current) => ({
+                          ...current,
+                          type: event.target.value as "buy" | "sell"
+                        }))
+                      }
+                      aria-invalid={Boolean(formErrors.type)}
+                    >
+                      <option value="buy">{labelTransactionType("buy")}</option>
+                      <option value="sell">{labelTransactionType("sell")}</option>
+                    </Select>
+                    <FieldError>{formErrors.type}</FieldError>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="exchangeCode">Bolsa</Label>
+                    <Select
+                      id="exchangeCode"
+                      className="mt-2"
+                      value={form.exchangeCode}
+                      onChange={(event) => {
+                        const exchange = marketExchanges.find(
+                          (entry) => entry.code === event.target.value
+                        );
+                        setSelectedAssetId(null);
+                        setTradePrice(null);
+                        setTradePriceStatus("idle");
+                        setTradePriceError(null);
+                        setForm((current) => ({
+                          ...current,
+                          exchangeCode: event.target.value,
+                          assetSymbol: "",
+                          assetName: "",
+                          unitPrice: "",
+                          currency: exchange?.currency ?? current.currency
+                        }));
+                      }}
+                    >
+                      {marketExchanges.map((exchange) => (
+                        <option key={exchange.code} value={exchange.code}>
+                          {exchange.code} · {exchange.name}
+                        </option>
+                      ))}
+                    </Select>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="assetSymbol">Código ou ativo</Label>
+                    <Input
+                      id="assetSymbol"
+                      className="mt-2"
+                      value={form.assetSymbol}
+                      onChange={(event) => {
+                        setSelectedAssetId(null);
+                        setTradePrice(null);
+                        setTradePriceStatus("idle");
+                        setTradePriceError(null);
+                        setForm((current) => ({
+                          ...current,
+                          assetSymbol: event.target.value,
+                          assetName: "",
+                          unitPrice: ""
+                        }));
+                      }}
+                      placeholder="Ex.: MSFT, Petrobras, PETR4"
+                      required
+                      aria-invalid={Boolean(formErrors.assetSymbol)}
+                    />
+                    <FieldError>{formErrors.assetSymbol}</FieldError>
+                    <AssetSearchState
+                      status={assetSearchStatus}
+                      results={assetSearchResults}
+                      message={assetSearchMessage}
+                      selectedExchange={marketExchanges.find(
+                        (exchange) => exchange.code === form.exchangeCode
+                      )}
+                      onSelect={(asset) => {
+                        setSelectedAssetId(asset.id);
+                        setTradePrice(null);
+                        setTradePriceStatus("idle");
+                        setTradePriceError(null);
+                        setForm((current) => ({
+                          ...current,
+                          assetSymbol: asset.symbol,
+                          assetName: asset.name,
+                          currency: asset.latestQuote?.currency ?? asset.currency,
+                          unitPrice: ""
+                        }));
+                      }}
+                    />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="assetName">Ativo</Label>
+                    <Input
+                      id="assetName"
+                      className="mt-2"
+                      value={form.assetName}
+                      onChange={(event) =>
+                        setForm((current) => ({ ...current, assetName: event.target.value }))
+                      }
+                      required
+                      aria-invalid={Boolean(formErrors.assetName)}
+                    />
+                    <FieldError>{formErrors.assetName}</FieldError>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="tradeDate">Data</Label>
+                    <Input
+                      id="tradeDate"
+                      className="mt-2"
+                      type="date"
+                      value={form.tradeDate}
+                      onChange={(event) =>
+                        setForm((current) => ({ ...current, tradeDate: event.target.value }))
+                      }
+                      required
+                      aria-invalid={Boolean(formErrors.tradeDate)}
+                    />
+                    <FieldError>{formErrors.tradeDate}</FieldError>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="quantity">Quantidade</Label>
+                    <Input
+                      id="quantity"
+                      className="mt-2"
+                      type="number"
+                      min="0.00000001"
+                      step="0.00000001"
+                      value={form.quantity}
+                      onChange={(event) =>
+                        setForm((current) => ({ ...current, quantity: event.target.value }))
+                      }
+                      required
+                      aria-invalid={Boolean(formErrors.quantity)}
+                    />
+                    <FieldError>{formErrors.quantity}</FieldError>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="unitPrice">Preço unitário</Label>
+                    <Input
+                      id="unitPrice"
+                      className="mt-2"
+                      type="number"
+                      min="0.01"
+                      step="0.01"
+                      value={form.unitPrice}
+                      readOnly
+                      required
+                      aria-invalid={Boolean(formErrors.unitPrice || tradePriceStatus === "error")}
+                    />
+                    <FieldError>{formErrors.unitPrice}</FieldError>
+                    <TradePriceState
+                      status={tradePriceStatus}
+                      tradePrice={tradePrice}
+                      error={tradePriceError}
+                    />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="currency">Moeda</Label>
+                    <Input
+                      id="currency"
+                      className="mt-2"
+                      value={form.currency}
+                      readOnly
+                      required
+                      aria-invalid={Boolean(formErrors.currency)}
+                    />
+                    <FieldError>{formErrors.currency}</FieldError>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="notes">Notas</Label>
+                    <Textarea
+                      id="notes"
+                      className="mt-2"
+                      rows={3}
+                      value={form.notes}
+                      onChange={(event) =>
+                        setForm((current) => ({ ...current, notes: event.target.value }))
+                      }
+                      aria-invalid={Boolean(formErrors.notes)}
+                    />
+                    <FieldError>{formErrors.notes}</FieldError>
+                  </div>
+
+                  {submitError ? <Alert variant="failure">{submitError}</Alert> : null}
+
+                  <Button type="submit" disabled={transactionSubmitBlocked}>
+                    {isSubmitting ? "Registrando..." : "Registrar transação"}
+                  </Button>
+                  {transactionSubmitHelp ? (
+                    <p className="text-sm text-stone-600" role="status">
+                      {transactionSubmitHelp}
+                    </p>
+                  ) : null}
+                </form>
+              </Card>
+
+              <div className="grid gap-4">
+                <Card id="portfolio-posicoes" className="scroll-mt-6">
+                  <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+                    <div>
+                      <h2 className="text-xl font-semibold text-stone-900">Posições</h2>
+                      <p className="text-sm text-stone-600">
+                        Reconstrução atual ou por data do histórico.
+                      </p>
+                    </div>
+                    <div className="w-full md:max-w-52">
+                      <Label htmlFor="asOf">Data base</Label>
+                      <Input
+                        id="asOf"
+                        className="mt-2"
+                        type="date"
+                        value={selectedAsOf}
+                        onChange={(event) => setSelectedAsOf(event.target.value)}
+                      />
+                    </div>
+                  </div>
+
+                  {positions.length === 0 ? (
+                    <Alert variant="warning">
+                      Ainda não existem ativos abertos para a data selecionada.
+                    </Alert>
+                  ) : (
+                    <TableViewport label="Posições do portfólio">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Código</TableHead>
+                            <TableHead>Ativo</TableHead>
+                            <TableHead>Quantidade</TableHead>
+                            <TableHead>Custo médio</TableHead>
+                            <TableHead>Custo total</TableHead>
+                            <TableHead>Última operação</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {positions.map((position) => (
+                            <TableRow key={position.assetSymbol}>
+                              <TableCell className="font-medium text-stone-900">
+                                {position.assetSymbol}
+                              </TableCell>
+                              <TableCell>{position.assetName}</TableCell>
+                              <TableCell>{formatDecimal(position.quantity)}</TableCell>
+                              <TableCell>
+                                {formatCurrency(position.averageCost, position.currency)}
+                              </TableCell>
+                              <TableCell>
+                                {formatCurrency(position.totalCostBasis, position.currency)}
+                              </TableCell>
+                              <TableCell>{formatDate(position.lastTransactionDate)}</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </TableViewport>
+                  )}
+                </Card>
+
+                <section className="grid gap-4 lg:grid-cols-2">
+                  <Card id="portfolio-transacoes" className="scroll-mt-6">
+                    <div>
+                      <h2 className="text-xl font-semibold text-stone-900">Transações</h2>
+                      <p className="text-sm text-stone-600">
+                        Histórico de movimentações do portfólio.
+                      </p>
+                    </div>
+
+                    {transactions.length === 0 ? (
+                      <Alert variant="warning">
+                        Registre a primeira operação para iniciar as projeções.
+                      </Alert>
+                    ) : (
+                      <div className="divide-y divide-border rounded-lg border border-border">
+                        {visibleTransactions.map((transaction) => (
+                          <div
+                            key={transaction.id}
+                            className="flex items-start justify-between gap-3 p-4"
+                          >
+                            <div>
+                              <strong className="text-stone-900">
+                                {labelTransactionType(transaction.type)} {transaction.assetSymbol}
+                              </strong>
+                              <p className="text-sm text-stone-600">
+                                {transaction.assetName} · {formatDate(transaction.tradeDate)}
+                              </p>
+                              {transaction.notes ? (
+                                <p className="mt-1 text-sm text-stone-500">{transaction.notes}</p>
+                              ) : null}
+                            </div>
+                            <div className="text-right text-sm text-stone-700">
+                              <div>{formatDecimal(transaction.quantity)}</div>
+                              <div>
+                                {formatCurrency(transaction.totalAmount, transaction.currency)}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {transactions.length > TRANSACTIONS_PER_PAGE ? (
+                      <ListPagination
+                        label="Paginação de transações"
+                        itemLabel="transações"
+                        page={transactionPage}
+                        pageSize={TRANSACTIONS_PER_PAGE}
+                        totalItems={transactions.length}
+                        totalPages={transactionPageCount}
+                        onPageChange={setTransactionPage}
+                      />
+                    ) : null}
+                  </Card>
+
+                  <Card id="portfolio-historicos" className="scroll-mt-6">
+                    <div>
+                      <h2 className="text-xl font-semibold text-stone-900">Históricos</h2>
+                      <p className="text-sm text-stone-600">
+                        Estados históricos reconstruídos por data.
+                      </p>
+                    </div>
+
+                    {snapshots.length === 0 ? (
+                      <Alert variant="warning">
+                        Registros históricos serão gerados conforme as movimentações evoluírem.
+                      </Alert>
+                    ) : (
+                      <div className="divide-y divide-border rounded-lg border border-border">
+                        {visibleSnapshots.map((snapshot) => (
+                          <div
+                            key={snapshot.id}
+                            className="flex items-start justify-between gap-3 p-4"
+                          >
+                            <div>
+                              <strong className="text-stone-900">
+                                {formatDate(snapshot.asOfDate)}
+                              </strong>
+                              <p className="text-sm text-stone-600">
+                                {snapshot.positions.length} posições · {snapshot.transactionCount}{" "}
+                                transações
+                              </p>
+                            </div>
+                            <div className="text-right text-sm text-stone-700">
+                              {formatCurrency(snapshot.totalCostBasis, portfolio.baseCurrency)}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {snapshots.length > SNAPSHOTS_PER_PAGE ? (
+                      <ListPagination
+                        label="Paginação de históricos"
+                        itemLabel="históricos"
+                        page={snapshotPage}
+                        pageSize={SNAPSHOTS_PER_PAGE}
+                        totalItems={snapshots.length}
+                        totalPages={snapshotPageCount}
+                        onPageChange={setSnapshotPage}
+                      />
+                    ) : null}
+                  </Card>
+                </section>
+              </div>
+            </section>
+          </>
+        )}
+      </main>
+    </ProtectedRoute>
+  );
+}
+
+function ListPagination({
+  label,
+  itemLabel,
+  page,
+  pageSize,
+  totalItems,
+  totalPages,
+  onPageChange
+}: {
+  label: string;
+  itemLabel: string;
+  page: number;
+  pageSize: number;
+  totalItems: number;
+  totalPages: number;
+  onPageChange: (page: number) => void;
+}) {
+  const firstItem = (page - 1) * pageSize + 1;
+  const lastItem = Math.min(page * pageSize, totalItems);
+
+  return (
+    <nav
+      aria-label={label}
+      className="flex flex-col gap-3 rounded-lg border border-border bg-muted/30 p-3 sm:flex-row sm:items-center sm:justify-between"
+    >
+      <div className="text-sm text-stone-600" aria-live="polite">
+        <span className="font-medium text-stone-800">
+          Exibindo {firstItem}–{lastItem}
+        </span>{" "}
+        de {totalItems} {itemLabel}
+        <span className="block text-xs text-stone-500 sm:inline">
+          {" "}
+          · Página {page} de {totalPages}
+        </span>
+      </div>
+      <div className="flex gap-2">
+        <Button
+          aria-label={`Página anterior de ${itemLabel}`}
+          className="flex-1 sm:flex-none"
+          disabled={page === 1}
+          onClick={() => onPageChange(page - 1)}
+          size="sm"
+          variant="outline"
+        >
+          Anterior
+        </Button>
+        <Button
+          aria-label={`Próxima página de ${itemLabel}`}
+          className="flex-1 sm:flex-none"
+          disabled={page === totalPages}
+          onClick={() => onPageChange(page + 1)}
+          size="sm"
+          variant="outline"
+        >
+          Próxima
+        </Button>
+      </div>
+    </nav>
+  );
+}
+
+function PortfolioSectionNavigation() {
+  const links = [
+    { href: "#portfolio-graficos", label: "Gráficos" },
+    { href: "#portfolio-analises", label: "Análises" },
+    { href: "#portfolio-comunicacoes", label: "Relatórios" },
+    { href: "#portfolio-transacao", label: "Registrar" },
+    { href: "#portfolio-posicoes", label: "Posições" },
+    { href: "#portfolio-transacoes", label: "Transações" },
+    { href: "#portfolio-historicos", label: "Históricos" }
+  ];
+  return <PageSectionNavigation label="Seções do portfólio" links={links} />;
+}
+
+function ReportsAlertsNotificationsPanel({
+  reports,
+  alerts,
+  notifications,
+  reportFormat,
+  alertTitle,
+  alertSeverity,
+  realtimeStatus,
+  isRequestingReport,
+  isCreatingAlert,
+  reportsError,
+  alertsError,
+  notificationsError,
+  reportNotice,
+  alertNotice,
+  onReportFormatChange,
+  onAlertTitleChange,
+  onAlertSeverityChange,
+  onRequestReport,
+  onRetryReport,
+  onDownloadReport,
+  onCreateAlert,
+  onMarkNotificationRead
+}: {
+  reports: PortfolioReport[];
+  alerts: PortfolioAlert[];
+  notifications: NotificationRecord[];
+  reportFormat: ReportFormat;
+  alertTitle: string;
+  alertSeverity: AlertSeverity;
+  realtimeStatus: RealtimeConnectionStatus;
+  isRequestingReport: boolean;
+  isCreatingAlert: boolean;
+  reportsError: string | null;
+  alertsError: string | null;
+  notificationsError: string | null;
+  reportNotice: string | null;
+  alertNotice: string | null;
+  onReportFormatChange: (format: ReportFormat) => void;
+  onAlertTitleChange: (title: string) => void;
+  onAlertSeverityChange: (severity: AlertSeverity) => void;
+  onRequestReport: (event: FormEvent<HTMLFormElement>) => void;
+  onRetryReport: (format: ReportFormat) => void;
+  onDownloadReport: (report: PortfolioReport) => void;
+  onCreateAlert: (event: FormEvent<HTMLFormElement>) => void;
+  onMarkNotificationRead: (notification: NotificationRecord) => void;
+}) {
+  const unreadCount = notifications.filter(
+    (notification) => notification.status === "unread"
+  ).length;
+
+  return (
+    <section className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Card>
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <h2 className="text-xl font-semibold text-stone-900">Relatórios</h2>
+              <p className="text-sm text-stone-600">Arquivos gerados pela plataforma.</p>
+            </div>
+            <Badge variant={realtimeStatusVariant(realtimeStatus)}>
+              {labelRealtimeStatus(realtimeStatus)}
+            </Badge>
+          </div>
+
+          <form className="grid gap-3 sm:grid-cols-[1fr_auto]" onSubmit={onRequestReport}>
+            <div>
+              <Label htmlFor="reportFormat">Formato</Label>
+              <Select
+                id="reportFormat"
+                className="mt-2"
+                value={reportFormat}
+                onChange={(event) => onReportFormatChange(event.target.value as ReportFormat)}
+              >
+                <option value="pdf">PDF</option>
+                <option value="csv">CSV</option>
+              </Select>
+            </div>
+            <Button type="submit" className="self-end" disabled={isRequestingReport}>
+              {isRequestingReport ? "Enfileirando..." : "Solicitar"}
+            </Button>
+          </form>
+
+          {reportsError ? <Alert variant="failure">{reportsError}</Alert> : null}
+          {reportNotice ? <Alert variant="info">{reportNotice}</Alert> : null}
+
+          {reports.length === 0 ? (
+            <Alert variant="warning">Nenhum relatório solicitado para este portfólio.</Alert>
+          ) : (
+            <div className="divide-y divide-border rounded-lg border border-border">
+              {reports.map((report) => (
+                <div key={report.id} className="flex items-center justify-between gap-3 p-4">
+                  <div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <strong className="text-sm uppercase text-stone-900">{report.format}</strong>
+                      <Badge variant={reportStatusVariant(report.status)}>
+                        {labelReportStatus(report.status)}
+                      </Badge>
+                    </div>
+                    <p className="mt-1 text-sm text-stone-600">
+                      {report.completedAt
+                        ? `Concluído em ${formatDateTime(report.completedAt)}`
+                        : `Solicitado em ${formatDateTime(report.createdAt)}`}
+                    </p>
+                    {report.failureCode ? (
+                      <p className="mt-1 text-sm text-red-600">
+                        {labelReportFailureCode(report.failureCode)}
+                      </p>
+                    ) : null}
+                  </div>
+                  {report.status === "failed" ? (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={isRequestingReport}
+                      onClick={() => onRetryReport(report.format)}
+                    >
+                      Solicitar novamente
+                    </Button>
+                  ) : (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={report.status !== "ready"}
+                      onClick={() => onDownloadReport(report)}
+                    >
+                      Baixar
+                    </Button>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </Card>
+
+        <Card>
+          <div>
+            <h2 className="text-xl font-semibold text-stone-900">Alertas</h2>
+            <p className="text-sm text-stone-600">Condições operacionais monitoradas.</p>
+          </div>
+
+          <form className="space-y-3" onSubmit={onCreateAlert}>
+            <div>
+              <Label htmlFor="alertTitle">Título</Label>
+              <Input
+                id="alertTitle"
+                className="mt-2"
+                value={alertTitle}
+                onChange={(event) => onAlertTitleChange(event.target.value)}
+                required
+              />
+            </div>
+            <div>
+              <Label htmlFor="alertSeverity">Severidade</Label>
+              <Select
+                id="alertSeverity"
+                className="mt-2"
+                value={alertSeverity}
+                onChange={(event) => onAlertSeverityChange(event.target.value as AlertSeverity)}
+              >
+                <option value="low">{labelAlertSeverity("low")}</option>
+                <option value="medium">{labelAlertSeverity("medium")}</option>
+                <option value="high">{labelAlertSeverity("high")}</option>
+              </Select>
+            </div>
+            <Button type="submit" disabled={isCreatingAlert}>
+              {isCreatingAlert ? "Criando..." : "Criar alerta"}
+            </Button>
+          </form>
+
+          {alertsError ? <Alert variant="failure">{alertsError}</Alert> : null}
+          {alertNotice ? <Alert variant="info">{alertNotice}</Alert> : null}
+
+          {alerts.length === 0 ? (
+            <Alert variant="warning">Nenhum alerta configurado.</Alert>
+          ) : (
+            <div className="divide-y divide-border rounded-lg border border-border">
+              {alerts.map((alert) => (
+                <div key={alert.id} className="p-4">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge variant={alertSeverityVariant(alert.severity)}>
+                      {labelAlertSeverity(alert.severity)}
+                    </Badge>
+                    <Badge variant={alertStatusVariant(alert.status)}>
+                      {labelAlertStatus(alert.status)}
+                    </Badge>
+                  </div>
+                  <strong className="mt-2 block text-stone-900">{alert.title}</strong>
+                  <p className="mt-1 text-sm text-stone-600">
+                    {formatAlertCondition(alert.condition)}
+                  </p>
+                  {alert.lastTriggeredAt ? (
+                    <p className="mt-1 text-xs text-stone-500">
+                      Último disparo {formatDateTime(alert.lastTriggeredAt)}
+                    </p>
+                  ) : null}
+                </div>
+              ))}
+            </div>
+          )}
+        </Card>
+      </div>
+
+      <Card>
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <h2 className="text-xl font-semibold text-stone-900">Notificações</h2>
+            <p className="text-sm text-stone-600">Eventos registrados pela plataforma.</p>
+          </div>
+          <Badge variant={unreadCount > 0 ? "warning" : "success"}>{unreadCount} novas</Badge>
+        </div>
+
+        {notificationsError ? <Alert variant="failure">{notificationsError}</Alert> : null}
+
+        {notifications.length === 0 ? (
+          <Alert variant="info">Sem notificações para este portfólio.</Alert>
+        ) : (
+          <div className="divide-y divide-border rounded-lg border border-border">
+            {notifications.slice(0, 8).map((notification) => (
+              <div key={notification.id} className="space-y-2 p-4">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge variant={notificationSeverityVariant(notification.severity)}>
+                    {labelNotificationSeverity(notification.severity)}
+                  </Badge>
+                  <Badge variant={notification.status === "unread" ? "warning" : "success"}>
+                    {labelNotificationStatus(notification.status)}
+                  </Badge>
+                </div>
+                <strong className="block text-sm text-stone-900">{notification.title}</strong>
+                <p className="text-sm text-stone-600">{notification.body}</p>
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-xs text-stone-500">
+                    {formatDateTime(notification.createdAt)}
+                  </span>
+                  {notification.status === "unread" ? (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => onMarkNotificationRead(notification)}
+                    >
+                      Marcar lida
+                    </Button>
+                  ) : null}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </Card>
+    </section>
+  );
+}
+
+function PortfolioChartsDashboard({
+  charts,
+  positions,
+  error,
+  isLoading,
+  range,
+  interval,
+  benchmark,
+  selectedSymbols,
+  onRangeChange,
+  onIntervalChange,
+  onBenchmarkChange,
+  onToggleSymbol,
+  onClearSymbols
+}: {
+  charts: PortfolioChartBundle | null;
+  positions: PortfolioPosition[];
+  error: string | null;
+  isLoading: boolean;
+  range: PortfolioChartRange;
+  interval: PortfolioChartInterval;
+  benchmark: string;
+  selectedSymbols: string[];
+  onRangeChange: (range: PortfolioChartRange) => void;
+  onIntervalChange: (interval: PortfolioChartInterval) => void;
+  onBenchmarkChange: (benchmark: string) => void;
+  onToggleSymbol: (symbol: string) => void;
+  onClearSymbols: () => void;
+}) {
+  const availableSymbols = Array.from(
+    new Set([
+      ...positions.map((position) => position.assetSymbol),
+      ...(charts?.charts.assetPrices.map((series) => series.symbol) ?? [])
+    ])
+  ).sort((left, right) => left.localeCompare(right));
+  const firstAssetSeries = charts?.charts.assetPrices[0];
+
+  return (
+    <section className="grid gap-4">
+      <Card>
+        <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+          <div className="space-y-1">
+            <p className="text-xs font-semibold uppercase text-moss">Gráficos</p>
+            <h2 className="text-2xl font-semibold text-stone-900">Evolução e composição</h2>
+            <p className="text-sm text-stone-600">
+              {charts
+                ? `Dados até ${formatDate(charts.asOfDate)} · base ${charts.baseCurrency}`
+                : "Aguardando o pacote de gráficos da plataforma."}
+            </p>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-3 xl:min-w-[620px]">
+            <div>
+              <Label htmlFor="chartRange">Período</Label>
+              <Select
+                id="chartRange"
+                className="mt-2"
+                value={range}
+                onChange={(event) => onRangeChange(event.target.value as PortfolioChartRange)}
+              >
+                <option value="1m">1 mês</option>
+                <option value="3m">3 meses</option>
+                <option value="6m">6 meses</option>
+                <option value="ytd">Ano atual</option>
+                <option value="1y">1 ano</option>
+                <option value="3y">3 anos</option>
+                <option value="5y">5 anos</option>
+                <option value="all">Tudo</option>
+              </Select>
+            </div>
+            <div>
+              <Label htmlFor="chartInterval">Intervalo</Label>
+              <Select
+                id="chartInterval"
+                className="mt-2"
+                value={interval}
+                onChange={(event) => onIntervalChange(event.target.value as PortfolioChartInterval)}
+              >
+                <option value="daily">Diário</option>
+                <option value="weekly">Semanal</option>
+                <option value="monthly">Mensal</option>
+              </Select>
+            </div>
+            <div>
+              <Label htmlFor="chartBenchmark">Referência</Label>
+              <Input
+                id="chartBenchmark"
+                className="mt-2"
+                value={benchmark}
+                onChange={(event) => onBenchmarkChange(event.target.value)}
+                placeholder="Ex.: SPY"
+              />
+            </div>
+          </div>
+        </div>
+
+        {availableSymbols.length > 0 ? (
+          <div className="mt-4 flex flex-wrap items-center gap-2">
+            <span className="text-sm font-medium text-stone-700">Ativos</span>
+            {availableSymbols.map((symbol) => (
+              <label
+                key={symbol}
+                className="inline-flex h-9 items-center gap-2 rounded-md border border-border px-3 text-sm text-stone-700"
+              >
+                <input
+                  type="checkbox"
+                  className="h-4 w-4 rounded border-border text-moss focus:ring-moss/25"
+                  checked={selectedSymbols.length === 0 || selectedSymbols.includes(symbol)}
+                  onChange={() => onToggleSymbol(symbol)}
+                />
+                {symbol}
+              </label>
+            ))}
+            {selectedSymbols.length > 0 ? (
+              <Button type="button" variant="outline" onClick={onClearSymbols}>
+                Mostrar todos
+              </Button>
+            ) : null}
+          </div>
+        ) : null}
+      </Card>
+
+      {error ? <Alert variant="failure">{error}</Alert> : null}
+      {isLoading && !charts ? (
+        <Alert variant="info">Carregando gráficos do portfólio.</Alert>
+      ) : null}
+      {charts?.dataQuality.status === "pending" ? (
+        <Alert variant="warning">
+          Os gráficos ainda dependem do primeiro retrato analítico ou do histórico de mercado.
+        </Alert>
+      ) : null}
+      {charts?.dataQuality.status === "failed" ? (
+        <Alert variant="failure">
+          A última recomputação falhou; a tela preserva o último pacote de gráficos disponível.
+        </Alert>
+      ) : null}
+      {charts?.dataQuality.status === "partial" ? (
+        <Alert variant="warning">
+          Alguns gráficos estão parciais:{" "}
+          {labelUnavailableChartKeys(charts.dataQuality.unavailableChartKeys)}.
+        </Alert>
+      ) : null}
+
+      {charts ? (
+        <>
+          <section className="grid gap-4 xl:grid-cols-2">
+            <LineChartCard
+              title="Preço dos ativos"
+              emptyLabel="Sem histórico de preços para os ativos selecionados."
+              series={(firstAssetSeries?.points ?? []).map((point) => ({
+                date: point.date,
+                value: point.adjustedClose || point.close
+              }))}
+              valueLabel={(value) =>
+                formatCurrency(value, firstAssetSeries?.currency ?? charts.baseCurrency)
+              }
+              strokeClassName="stroke-moss"
+            />
+            <LineChartCard
+              title="Valor do portfólio"
+              emptyLabel="Sem série de valor calculada para o período."
+              series={charts.charts.portfolioPerformance}
+              valueLabel={(value) => formatCurrency(value, charts.baseCurrency)}
+              strokeClassName="stroke-blue-600"
+            />
+          </section>
+
+          <section className="grid gap-4 xl:grid-cols-2">
+            <LineChartCard
+              title="Retorno acumulado"
+              emptyLabel="Sem retorno acumulado para o período."
+              series={charts.charts.cumulativeReturn.map((point) => ({
+                date: point.date,
+                value: point.returnPercent
+              }))}
+              valueLabel={(value) => formatPercentage(value)}
+              strokeClassName="stroke-emerald-600"
+            />
+            <LineChartCard
+              title="Drawdown"
+              emptyLabel="Sem drawdown calculado para o período."
+              series={charts.charts.drawdown.map((point) => ({
+                date: point.date,
+                value: point.drawdownPercent
+              }))}
+              valueLabel={(value) => formatPercentage(value)}
+              strokeClassName="stroke-rose-600"
+            />
+          </section>
+
+          <section className="grid gap-4 xl:grid-cols-2">
+            <BarPanel
+              title="Alocação por ativo"
+              emptyLabel="Sem alocação disponível."
+              rows={charts.charts.allocation.map((point) => ({
+                label: point.symbol,
+                detail: formatCurrency(point.marketValueUsd, charts.baseCurrency),
+                percent: point.weightPercent
+              }))}
+            />
+            <BarPanel
+              title="Exposição por setor"
+              emptyLabel="Sem exposição setorial disponível."
+              rows={charts.charts.sectorExposure.map((point) => ({
+                label: labelSector(point.sector),
+                detail: formatCurrency(point.marketValueUsd, charts.baseCurrency),
+                percent: point.weightPercent
+              }))}
+            />
+          </section>
+
+          <section className="grid gap-4 xl:grid-cols-2">
+            <LineChartCard
+              title="Risco móvel"
+              emptyLabel="Sem amostras suficientes para risco móvel."
+              series={charts.charts.rollingRisk.map((point) => ({
+                date: point.date,
+                value: point.volatilityPercent
+              }))}
+              valueLabel={(value) => formatPercentage(value)}
+              strokeClassName="stroke-amber-600"
+            />
+            <LineChartCard
+              title="Comparação com referência"
+              emptyLabel="Sem referência configurada ou histórico suficiente."
+              series={charts.charts.benchmarkComparison.map((point) => ({
+                date: point.date,
+                value: point.returnPercent
+              }))}
+              valueLabel={(value) => formatPercentage(value)}
+              strokeClassName="stroke-violet-600"
+            />
+          </section>
+
+          <section className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_380px]">
+            <CorrelationHeatmap charts={charts} />
+            <ChartDataQualityPanel charts={charts} />
+          </section>
+        </>
+      ) : null}
+    </section>
+  );
+}
+
+function LineChartCard({
+  title,
+  series,
+  emptyLabel,
+  valueLabel,
+  strokeClassName
+}: {
+  title: string;
+  series: Array<{ date: string; value: number }>;
+  emptyLabel: string;
+  valueLabel: (value: number) => string;
+  strokeClassName: string;
+}) {
+  const latest = series[series.length - 1];
+
+  return (
+    <Card>
+      <div className="flex items-start justify-between gap-3">
+        <h3 className="text-lg font-semibold text-stone-900">{title}</h3>
+        {latest ? (
+          <span className="text-sm font-medium text-stone-700">{valueLabel(latest.value)}</span>
+        ) : null}
+      </div>
+      {series.length < 2 ? (
+        <ChartEmptyState tone="warning">{emptyLabel}</ChartEmptyState>
+      ) : (
+        <div className="mt-3">
+          <ThemedLineChart
+            data={series.map((point) => ({
+              name: formatDate(point.date),
+              value: point.value
+            }))}
+            ariaLabel={title}
+            color={lineColor(strokeClassName)}
+            valueFormatter={valueLabel}
+            height={180}
+          />
+          <div className="mt-2 flex justify-between text-xs text-stone-500">
+            <span>{formatDate(series[0].date)}</span>
+            <span>{latest ? formatDate(latest.date) : "data indisponível"}</span>
+          </div>
+        </div>
+      )}
+    </Card>
+  );
+}
+
+function CorrelationHeatmap({ charts }: { charts: PortfolioChartBundle }) {
+  const symbols = charts.charts.correlation.symbols;
+  const cells = charts.charts.correlation.cells;
+
+  return (
+    <Card>
+      <h3 className="text-lg font-semibold text-stone-900">Correlação entre ativos</h3>
+      {symbols.length < 2 || cells.length === 0 ? (
+        <ChartEmptyState tone="warning">
+          Sem amostras suficientes para matriz de correlação.
+        </ChartEmptyState>
+      ) : (
+        <ThemedHeatmapChart
+          ariaLabel="Mapa de calor de correlação"
+          valueLabel="coeficiente"
+          valueFormatter={(value) => formatDecimal(value, 2)}
+          data={symbols.flatMap((rowSymbol) =>
+            symbols.map((columnSymbol) => {
+              const value = correlationValue(rowSymbol, columnSymbol, cells);
+              return {
+                x: columnSymbol,
+                y: rowSymbol,
+                value,
+                fill: correlationColor(value)
+              };
+            })
+          )}
+        />
+      )}
+    </Card>
+  );
+}
+
+function ChartDataQualityPanel({ charts }: { charts: PortfolioChartBundle }) {
+  return (
+    <Card>
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <h3 className="text-lg font-semibold text-stone-900">Qualidade dos gráficos</h3>
+        <Badge variant={chartQualityVariant(charts.dataQuality.status)}>
+          {labelChartQuality(charts.dataQuality.status)}
+        </Badge>
+      </div>
+      {charts.dataQuality.issues.length === 0 ? (
+        <Alert variant="success">Nenhum aviso de qualidade para o pacote atual.</Alert>
+      ) : (
+        <div className="space-y-3">
+          {charts.dataQuality.issues.slice(0, 6).map((issue, index) => (
+            <div key={`${issue.code}-${index}`} className="rounded-md border border-border p-3">
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge variant={dataQualitySeverityVariant(issue.severity)}>
+                  {labelDataQualitySeverity(issue.severity)}
+                </Badge>
+                <strong className="text-sm text-stone-900">
+                  {labelChartIssueCode(issue.code)}
+                </strong>
+              </div>
+              <p className="mt-1 text-sm text-stone-600">
+                {formatChartQualityMessage(issue.message)}
+              </p>
+            </div>
+          ))}
+        </div>
+      )}
+    </Card>
+  );
+}
+
+function AnalyticsDashboard({
+  analytics,
+  error,
+  isLoading,
+  isRecomputing,
+  recomputeNotice,
+  onRecompute
+}: {
+  analytics: PortfolioAnalyticsReadModel | null;
+  error: string | null;
+  isLoading: boolean;
+  isRecomputing: boolean;
+  recomputeNotice: string | null;
+  onRecompute: () => void;
+}) {
+  const snapshot = analytics?.snapshot ?? analytics?.lastSuccessfulSnapshot ?? null;
+  const isShowingLastSuccessful = analytics?.status === "failed" && Boolean(snapshot);
+
+  return (
+    <section className="grid gap-4">
+      <Card>
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <div className="space-y-1">
+            <p className="text-xs font-semibold uppercase text-moss">Análises</p>
+            <h2 className="text-2xl font-semibold text-stone-900">Motor de risco</h2>
+            <p className="text-sm text-stone-600">
+              {snapshot
+                ? `Retrato de risco ${formatDate(snapshot.asOfDate)} · ${formatDateTime(snapshot.generatedAt)}`
+                : "Retrato de risco pendente"}
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge variant={analyticsStatusVariant(analytics?.status ?? "pending")}>
+              {labelAnalyticsStatus(analytics?.status ?? "pending")}
+            </Badge>
+            <Badge variant="info">USD</Badge>
+            <Button onClick={onRecompute} disabled={isRecomputing}>
+              {isRecomputing ? "Enfileirando..." : "Recalcular"}
+            </Button>
+          </div>
+        </div>
+      </Card>
+
+      {error ? <Alert variant="failure">{error}</Alert> : null}
+      {recomputeNotice ? <Alert variant="info">{recomputeNotice}</Alert> : null}
+      {isLoading && !snapshot ? <Alert variant="info">Carregando análises.</Alert> : null}
+      {isShowingLastSuccessful ? (
+        <Alert variant="warning">
+          O último retrato de risco bem-sucedido continua visível após a falha mais recente.
+        </Alert>
+      ) : null}
+      {snapshot?.status === "partial" ? (
+        <Alert variant="warning">
+          Retrato de risco parcial com {snapshot.dataQuality.unavailableMetricCount} métricas
+          indisponíveis.
+        </Alert>
+      ) : null}
+      {!snapshot && !isLoading ? (
+        <Alert variant="warning">As análises ainda não possuem retrato de risco calculado.</Alert>
+      ) : null}
+
+      {snapshot ? (
+        <>
+          <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5">
+            {metricOrder.map((key) => (
+              <AnalyticsMetricCard key={key} metric={snapshot.metrics[key]} />
+            ))}
+          </section>
+
+          <section className="grid gap-4 xl:grid-cols-2">
+            <BarPanel
+              title="Alocação"
+              emptyLabel="Sem alocação calculada."
+              rows={snapshot.allocation.map((point) => ({
+                label: point.symbol,
+                detail: formatCurrency(point.marketValueUsd, "USD"),
+                percent: point.weightPercent
+              }))}
+            />
+            <BarPanel
+              title="Setores"
+              emptyLabel="Sem exposição setorial calculada."
+              rows={snapshot.sectorExposure.map((point) => ({
+                label: labelSector(point.sector),
+                detail: formatCurrency(point.marketValueUsd, "USD"),
+                percent: point.weightPercent
+              }))}
+            />
+          </section>
+
+          <section className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
+            <PerformancePanel snapshot={snapshot} />
+            <InsightPanel snapshot={snapshot} />
+          </section>
+
+          <section className="grid gap-4 xl:grid-cols-2">
+            <DrawdownPanel snapshot={snapshot} />
+            <CorrelationPanel snapshot={snapshot} />
+          </section>
+
+          {snapshot.dataQuality.issues.length > 0 ? (
+            <Card>
+              <h3 className="text-lg font-semibold text-stone-900">Qualidade dos dados</h3>
+              <div className="divide-y divide-border rounded-lg border border-border">
+                {snapshot.dataQuality.issues.slice(0, 6).map((issue, index) => (
+                  <div key={`${issue.code}-${index}`} className="p-3">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Badge variant={dataQualitySeverityVariant(issue.severity)}>
+                        {labelDataQualitySeverity(issue.severity)}
+                      </Badge>
+                      <strong className="text-sm text-stone-900">
+                        {labelDataQualityIssueCode(issue.code)}
+                      </strong>
+                    </div>
+                    <p className="mt-1 text-sm text-stone-600">
+                      {formatAnalyticsMessage(issue.message)}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          ) : null}
+        </>
+      ) : null}
+    </section>
+  );
+}
+
+const metricOrder: Array<AnalyticsMetric["key"]> = [
+  "totalReturn",
+  "annualizedReturn",
+  "maxDrawdown",
+  "volatility",
+  "beta",
+  "sharpeRatio",
+  "concentrationHhi",
+  "sectorExposure",
+  "assetCorrelation"
+];
+
+function AnalyticsMetricCard({ metric }: { metric: AnalyticsMetric }) {
+  return (
+    <Card>
+      <div className="flex items-start justify-between gap-3">
+        <span className="text-xs font-semibold uppercase text-stone-500">
+          {labelAnalyticsMetricKey(metric.key)}
+        </span>
+        <Badge variant={metric.status === "available" ? "success" : "warning"}>
+          {labelAnalyticsMetricStatus(metric.status)}
+        </Badge>
+      </div>
+      <strong className="text-2xl text-stone-900">{formatMetricValue(metric)}</strong>
+      {metric.reason ? (
+        <p className="text-sm text-stone-600">{formatAnalyticsMessage(metric.reason)}</p>
+      ) : null}
+      <p className="text-xs text-stone-500">
+        {metric.observationCount} observações · {metric.effectiveHorizonDays} dias · versão{" "}
+        {metric.calculationVersion}
+      </p>
+    </Card>
+  );
+}
+
+function BarPanel({
+  title,
+  rows,
+  emptyLabel
+}: {
+  title: string;
+  rows: Array<{ label: string; detail: string; percent: number }>;
+  emptyLabel: string;
+}) {
+  return (
+    <Card>
+      <h3 className="text-lg font-semibold text-stone-900">{title}</h3>
+      {rows.length === 0 ? (
+        <ChartEmptyState tone="warning">{emptyLabel}</ChartEmptyState>
+      ) : (
+        <ThemedHorizontalBarChart
+          ariaLabel={title}
+          color={chartPalette.moss}
+          valueFormatter={(value) => formatPercentage(value, 1)}
+          data={rows.map((row) => ({
+            name: row.label,
+            value: row.percent,
+            detail: row.detail
+          }))}
+        />
+      )}
+    </Card>
+  );
+}
+
+function PerformancePanel({ snapshot }: { snapshot: PortfolioAnalyticsSnapshot }) {
+  const latest = snapshot.performance[snapshot.performance.length - 1];
+
+  return (
+    <Card>
+      <div className="flex items-start justify-between gap-3">
+        <h3 className="text-lg font-semibold text-stone-900">Desempenho</h3>
+        {latest ? (
+          <span className="text-sm font-medium text-stone-700">
+            {formatCurrency(latest.value, "USD")}
+          </span>
+        ) : null}
+      </div>
+      {snapshot.performance.length === 0 ? (
+        <ChartEmptyState tone="warning">Sem série histórica calculada.</ChartEmptyState>
+      ) : (
+        <ThemedLineChart
+          ariaLabel="Desempenho histórico do portfólio"
+          color={chartPalette.moss}
+          valueFormatter={(value) => formatCurrency(value, "USD")}
+          data={snapshot.performance.map((point) => ({
+            name: point.date,
+            value: point.value
+          }))}
+        />
+      )}
+    </Card>
+  );
+}
+
+function DrawdownPanel({ snapshot }: { snapshot: PortfolioAnalyticsSnapshot }) {
+  return (
+    <Card>
+      <h3 className="text-lg font-semibold text-stone-900">Perda máxima</h3>
+      {snapshot.drawdown.length === 0 ? (
+        <ChartEmptyState tone="warning">Sem drawdown calculado.</ChartEmptyState>
+      ) : (
+        <ThemedHorizontalBarChart
+          ariaLabel="Perda máxima no período"
+          color={chartPalette.rose}
+          valueFormatter={(value) => formatPercentage(value)}
+          data={snapshot.drawdown.slice(-8).map((point) => ({
+            name: point.date,
+            value: Math.abs(point.drawdownPercent),
+            detail: formatPercentage(point.drawdownPercent)
+          }))}
+        />
+      )}
+    </Card>
+  );
+}
+
+function CorrelationPanel({ snapshot }: { snapshot: PortfolioAnalyticsSnapshot }) {
+  return (
+    <Card>
+      <h3 className="text-lg font-semibold text-stone-900">Correlação</h3>
+      {snapshot.correlation.length === 0 ? (
+        <ChartEmptyState tone="warning">Sem pares suficientes para correlação.</ChartEmptyState>
+      ) : (
+        <ThemedHeatmapChart
+          ariaLabel="Correlação entre ativos do retrato de risco"
+          valueLabel="coeficiente"
+          valueFormatter={(value) => formatDecimal(value, 3)}
+          data={snapshot.correlation.map((cell) => ({
+            x: cell.rightSymbol,
+            y: cell.leftSymbol,
+            value: cell.correlation,
+            fill: correlationColor(cell.correlation)
+          }))}
+        />
+      )}
+    </Card>
+  );
+}
+
+function InsightPanel({ snapshot }: { snapshot: PortfolioAnalyticsSnapshot }) {
+  return (
+    <Card>
+      <h3 className="text-lg font-semibold text-stone-900">Observações explicativas</h3>
+      {snapshot.insights.length === 0 ? (
+        <Alert variant="info">Nenhuma observação gerada para este retrato de risco.</Alert>
+      ) : (
+        <div className="space-y-3">
+          {snapshot.insights.map((insight) => (
+            <div key={insight.id} className="rounded-lg border border-border p-3">
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge variant={insightSeverityVariant(insight.severity)}>
+                  {labelInsightSeverity(insight.severity)}
+                </Badge>
+                <strong className="text-sm text-stone-900">{insight.title}</strong>
+              </div>
+              <p className="mt-2 text-sm text-stone-600">{insight.explanation}</p>
+            </div>
+          ))}
+        </div>
+      )}
+    </Card>
+  );
+}
+
+function AssetSearchState({
+  status,
+  results,
+  message,
+  selectedExchange,
+  onSelect
+}: {
+  status: AssetSearchStatus;
+  results: MarketAsset[];
+  message: string | null;
+  selectedExchange?: MarketExchange;
+  onSelect: (asset: MarketAsset) => void;
+}) {
+  if (status === "idle") {
+    return null;
+  }
+
+  if (status === "loading") {
+    return (
+      <p className="mt-2 text-sm text-stone-600" role="status">
+        Consultando dados de mercado para {selectedExchange?.code ?? "a bolsa selecionada"}...
+      </p>
+    );
+  }
+
+  if (status === "error") {
+    return (
+      <Alert variant="failure" className="mt-3">
+        {message ?? "Dados de mercado indisponíveis. Informe o ativo manualmente."}
+      </Alert>
+    );
+  }
+
+  if (status === "empty") {
+    return (
+      <Alert variant="warning" className="mt-3">
+        Nenhum ativo encontrado nos dados de mercado para a bolsa selecionada.
+      </Alert>
+    );
+  }
+
+  return (
+    <div className="mt-3 space-y-2 rounded-lg border border-gray-200 bg-gray-50 p-2">
+      {message ? <p className="px-2 text-sm text-amber-700">{message}</p> : null}
+      {results.map((asset) => (
+        <button
+          key={asset.id}
+          type="button"
+          className="flex w-full items-start justify-between gap-3 rounded-md px-3 py-2 text-left hover:bg-white focus:outline-none focus:ring-2 focus:ring-moss/25"
+          onClick={() => onSelect(asset)}
+        >
+          <span>
+            <span className="block font-semibold text-stone-900">{asset.symbol}</span>
+            <span className="block text-sm text-stone-600">{asset.name}</span>
+            {asset.latestQuote ? (
+              <span className="block text-xs text-stone-500">
+                Cotação {formatCurrency(asset.latestQuote.price, asset.latestQuote.currency)}
+              </span>
+            ) : null}
+          </span>
+          <span className="shrink-0 text-xs font-semibold uppercase text-stone-500">
+            {asset.exchange ?? selectedExchange?.code ?? asset.region ?? "mercado"} ·{" "}
+            {asset.currency}
+          </span>
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function TradePriceState({
+  status,
+  tradePrice,
+  error
+}: {
+  status: TradePriceStatus;
+  tradePrice: TradePriceQuote | null;
+  error: string | null;
+}) {
+  if (status === "idle") {
+    return null;
+  }
+
+  if (status === "loading") {
+    return (
+      <p className="mt-2 text-sm text-stone-600" role="status">
+        Calculando preço pelos dados de mercado...
+      </p>
+    );
+  }
+
+  if (status === "error") {
+    return <p className="mt-2 text-sm text-red-600">{error}</p>;
+  }
+
+  if (!tradePrice) {
+    return null;
+  }
+
+  return (
+    <p className="mt-2 text-sm text-stone-600">
+      Total calculado {formatCurrency(tradePrice.totalAmount, tradePrice.currency)} ·{" "}
+      {formatPriceSource(tradePrice.priceSource)} · {formatDateTime(tradePrice.asOf)}
+    </p>
+  );
+}
+
+function formatPriceSource(source: TradePriceQuote["priceSource"]) {
+  return source === "latest_quote" ? "cotação atual" : "fechamento histórico";
+}
+
+function formatMetricValue(metric: AnalyticsMetric) {
+  if (metric.status === "unavailable" || metric.value === undefined) {
+    return "Indisponível";
+  }
+
+  switch (metric.unit) {
+    case "percent":
+      return formatPercentage(metric.value * 100);
+    case "currency":
+      return formatCurrency(metric.value, "USD");
+    case "score":
+      return formatDecimal(metric.value, 3);
+    default:
+      return formatDecimal(metric.value, 3);
+  }
+}
+
+function formatAnalyticsMessage(message: string) {
+  const latestProviderQuote = message.match(
+    /^Latest provider quote unavailable for (.+); stored quote was used\.$/
+  );
+  if (latestProviderQuote) {
+    return `Cotação atual indisponível para ${latestProviderQuote[1]}; foi usada a cotação armazenada.`;
+  }
+
+  const latestQuote = message.match(/^Latest quote unavailable for (.+)\.$/);
+  if (latestQuote) {
+    return `Cotação atual indisponível para ${latestQuote[1]}.`;
+  }
+
+  const historicalProviderPrices = message.match(
+    /^Historical provider prices unavailable for (.+); stored history was used\.$/
+  );
+  if (historicalProviderPrices) {
+    return `Histórico de preços indisponível para ${historicalProviderPrices[1]}; foi usado o histórico armazenado.`;
+  }
+
+  const historicalPrices = message.match(/^Historical prices unavailable for (.+)\.$/);
+  if (historicalPrices) {
+    return `Histórico de preços indisponível para ${historicalPrices[1]}.`;
+  }
+
+  const conversionRate = message.match(/^USD conversion rate unavailable for (.+)\.$/);
+  if (conversionRate) {
+    return `Taxa de conversão para USD indisponível para ${conversionRate[1]}.`;
+  }
+
+  if (message === "Requires current market value and USD cost basis.") {
+    return "Exige valor de mercado atual e base de custo em USD.";
+  }
+  if (message === "Requires at least two historical portfolio value points.") {
+    return "Exige ao menos dois pontos históricos de valor do portfólio.";
+  }
+  if (message === "Requires at least two portfolio return observations.") {
+    return "Exige ao menos duas observações de retorno do portfólio.";
+  }
+  if (message === "Requires annualized return and volatility.") {
+    return "Exige retorno anualizado e volatilidade.";
+  }
+  if (message === "Requires current USD market values.") {
+    return "Exige valores de mercado atuais em USD.";
+  }
+  if (message === "Requires at least one position with current market value.") {
+    return "Exige ao menos uma posição com valor de mercado atual.";
+  }
+  if (message === "Requires at least two assets with historical return observations.") {
+    return "Exige ao menos dois ativos com observações históricas de retorno.";
+  }
+
+  const localized = message
+    .replace(/\bstale\b/gi, "desatualizada")
+    .replace(/\bprovider\b/gi, "provedor")
+    .replace(
+      /\bbenchmark history unavailable; beta cannot be calculated\b/gi,
+      "histórico do índice de referência indisponível; o beta não pode ser calculado"
+    )
+    .replace(/\blatest quotes\b/gi, "cotações atuais")
+    .replace(/\bhistorical prices\b/gi, "preços históricos")
+    .replace(/\bposition cost basis\b/gi, "base de custo da posição")
+    .replace(/\bUSD conversion rates\b/gi, "taxas de conversão para USD")
+    .replace(/\basset metadata\b/gi, "metadados do ativo");
+
+  return hasUntranslatedAnalyticsText(localized)
+    ? "Mensagem das análises registrada pela plataforma."
+    : localized;
+}
+
+function lineColor(strokeClassName: string) {
+  const colors: Record<string, string> = {
+    "stroke-moss": chartPalette.moss,
+    "stroke-blue-600": chartPalette.blue,
+    "stroke-emerald-600": chartPalette.emerald,
+    "stroke-rose-600": chartPalette.rose,
+    "stroke-amber-600": chartPalette.amber,
+    "stroke-violet-600": chartPalette.violet
+  };
+  return colors[strokeClassName] ?? chartPalette.moss;
+}
+
+function labelUnavailableChartKeys(keys: string[]) {
+  if (keys.length === 0) {
+    return "nenhum gráfico indisponível";
+  }
+
+  return keys.map(labelChartKey).join(", ");
+}
+
+function labelChartKey(key: string) {
+  const labels: Record<string, string> = {
+    assetPrices: "preços dos ativos",
+    portfolioPerformance: "valor do portfólio",
+    cumulativeReturn: "retorno acumulado",
+    allocation: "alocação",
+    sectorExposure: "exposição setorial",
+    drawdown: "drawdown",
+    rollingRisk: "risco móvel",
+    correlation: "correlação",
+    benchmarkComparison: "comparação com referência",
+    annotations: "anotações"
+  };
+
+  return labels[key] ?? "gráfico indisponível";
+}
+
+function chartQualityVariant(
+  status: PortfolioChartBundle["dataQuality"]["status"]
+): "success" | "warning" | "failure" | "info" {
+  switch (status) {
+    case "complete":
+      return "success";
+    case "failed":
+      return "failure";
+    case "pending":
+      return "info";
+    default:
+      return "warning";
+  }
+}
+
+function labelChartQuality(status: PortfolioChartBundle["dataQuality"]["status"]) {
+  switch (status) {
+    case "complete":
+      return "dados completos";
+    case "partial":
+      return "fontes parciais";
+    case "pending":
+      return "atualização pendente";
+    case "failed":
+      return "dados indisponíveis";
+  }
+}
+
+function labelChartIssueCode(code: string) {
+  const labels: Record<string, string> = {
+    "charts.asset_not_in_portfolio": "Ativo fora do portfólio",
+    "charts.asset_history_unavailable": "Histórico do ativo indisponível",
+    "charts.history_unavailable": "Histórico de preços indisponível",
+    "charts.correlation_insufficient_samples": "Correlação com amostras insuficientes",
+    "charts.benchmark_unavailable": "Referência indisponível",
+    "charts.benchmark_history_insufficient": "Histórico da referência insuficiente",
+    "market_data.history_unavailable": "Histórico de mercado indisponível"
+  };
+
+  return labels[code] ?? labelDataQualityIssueCode(code);
+}
+
+function formatChartQualityMessage(message: string) {
+  const requestedSymbol = message.match(/^Requested symbol (.+) is not held by this portfolio\.$/);
+  if (requestedSymbol) {
+    return `O ativo ${requestedSymbol[1]} não pertence a este portfólio.`;
+  }
+
+  const storedAsset = message.match(/^No stored market asset was found for (.+)\.$/);
+  if (storedAsset) {
+    return `Não há cadastro de mercado armazenado para ${storedAsset[1]}.`;
+  }
+
+  const history = message.match(/^No stored historical prices were available for (.+)\.$/);
+  if (history) {
+    return `Não há histórico de preços armazenado para ${history[1]}.`;
+  }
+
+  const benchmark = message.match(
+    /^Benchmark (.+) is unavailable in stored backend market data\.$/
+  );
+  if (benchmark) {
+    return `A referência ${benchmark[1]} não está disponível nos dados de mercado da plataforma.`;
+  }
+
+  const benchmarkHistory = message.match(
+    /^Benchmark (.+) does not have enough stored history for comparison\.$/
+  );
+  if (benchmarkHistory) {
+    return `A referência ${benchmarkHistory[1]} não tem histórico suficiente para comparação.`;
+  }
+
+  if (message === "Correlation needs at least two aligned return samples.") {
+    return "A correlação exige ao menos duas amostras alinhadas de retorno.";
+  }
+  if (message === "No stored historical prices are available for this asset.") {
+    return "Não há histórico de preços armazenado para este ativo.";
+  }
+
+  return formatAnalyticsMessage(message);
+}
+
+function correlationValue(
+  leftSymbol: string,
+  rightSymbol: string,
+  cells: PortfolioChartBundle["charts"]["correlation"]["cells"]
+) {
+  if (leftSymbol === rightSymbol) {
+    return 1;
+  }
+
+  return (
+    cells.find(
+      (cell) =>
+        (cell.leftSymbol === leftSymbol && cell.rightSymbol === rightSymbol) ||
+        (cell.leftSymbol === rightSymbol && cell.rightSymbol === leftSymbol)
+    )?.correlation ?? 0
+  );
+}
+
+function correlationColor(value: number) {
+  const intensity = Math.min(1, Math.abs(value));
+  if (value >= 0) {
+    return `rgba(16, 185, 129, ${0.12 + intensity * 0.48})`;
+  }
+
+  return `rgba(244, 63, 94, ${0.12 + intensity * 0.48})`;
+}
+
+interface ValidationDetails {
+  fields?: Array<{
+    path?: string;
+    message?: string;
+  }>;
+}
+
+function getFieldErrors(error: unknown): Record<string, string> {
+  if (!(error instanceof ApiError) || !error.details) {
+    return {};
+  }
+
+  const details = error.details as ValidationDetails;
+  return (details.fields ?? []).reduce<Record<string, string>>((fields, detail) => {
+    if (detail.path && detail.message) {
+      fields[detail.path] = detail.message;
+    }
+
+    return fields;
+  }, {});
+}
+
+function formatAlertCondition(condition: PortfolioAlert["condition"]) {
+  if (condition.eventType === "metric_threshold") {
+    const operator = condition.operator === "lte" ? "menor ou igual" : "maior ou igual";
+    const metricLabel = condition.metricKey
+      ? labelAnalyticsMetricKey(condition.metricKey)
+      : "métrica monitorada";
+
+    return `${metricLabel} ${operator} ${condition.threshold}`;
+  }
+
+  switch (condition.eventType) {
+    case "analytics.updated":
+      return "Dispara quando as análises são atualizadas.";
+    case "market_data.updated":
+      return "Dispara quando os dados de mercado são atualizados.";
+    default:
+      return "Dispara quando relatório é gerado.";
+  }
+}
+
+function hasUntranslatedAnalyticsText(value: string) {
+  return /\b(analytics|ledger|market data|snapshot|provider|failed|pending|portfolio|quote|refresh|unavailable|warning|stale)\b/i.test(
+    value
+  );
+}

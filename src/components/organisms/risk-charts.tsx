@@ -16,7 +16,7 @@ import {
   ZAxis
 } from "recharts";
 import type { ScatterShapeProps, TooltipContentProps, TooltipValueType } from "recharts";
-import { Alert } from "../ui/alert";
+import { Alert } from "../atoms/alert";
 
 export const chartPalette = {
   moss: "#0e5b50",

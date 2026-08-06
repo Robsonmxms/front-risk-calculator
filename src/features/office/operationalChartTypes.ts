@@ -1,4 +1,4 @@
-import { OfficeMembershipRole } from "../auth/types";
+import type { OfficeMembershipRole } from "../auth";
 
 export type OfficeAdminChartRange = "7d" | "30d" | "90d" | "ytd" | "1y" | "all";
 export type OfficeAdminSeverityFilter = "low" | "medium" | "high" | "info" | "warning" | "critical";

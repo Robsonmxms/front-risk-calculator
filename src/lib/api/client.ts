@@ -3,8 +3,8 @@ import {
   getAccessToken,
   getRefreshToken,
   saveSession
-} from "../../features/auth/sessionStore";
-import { AuthSession } from "../../features/auth/types";
+} from "../session/sessionStore";
+import type { AuthSession } from "../contracts/auth";
 import { API_BASE_URL } from "./config";
 
 export { API_BASE_URL } from "./config";

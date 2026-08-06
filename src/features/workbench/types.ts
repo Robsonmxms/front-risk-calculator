@@ -1,7 +1,6 @@
-import { ClientSummary } from "../client/types";
-import { ReportPackageStatus } from "../delivery/types";
-import { DataQualityIssue, PortfolioFreshness } from "../portfolio/types";
-import { PortfolioListItem } from "../portfolio/types";
+import type { ClientSummary } from "../client";
+import type { ReportPackageStatus } from "../delivery";
+import type { DataQualityIssue, PortfolioFreshness, PortfolioListItem } from "../portfolio";
 
 export type ReviewItemSeverity = "low" | "medium" | "high";
 export type ReviewItemStatus = "open" | "in_progress" | "closed";

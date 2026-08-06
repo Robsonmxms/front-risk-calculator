@@ -1,14 +1,20 @@
+import { fileURLToPath } from "node:url";
 import { defineConfig } from "vitest/config";
 
 export default defineConfig({
+  resolve: {
+    alias: {
+      "@": fileURLToPath(new URL("./src", import.meta.url))
+    }
+  },
   test: {
     coverage: {
       exclude: [".next/**", "next-env.d.ts", "tests/**", "src/app/layout.tsx", "src/app/page.tsx"],
       include: [
-        "src/components/layout/AppHeader.tsx",
-        "src/components/charts/risk-charts.tsx",
+        "src/components/organisms/AppHeader.tsx",
+        "src/components/organisms/risk-charts.tsx",
         "src/features/**/*Api.ts",
-        "src/features/auth/sessionStore.ts",
+        "src/lib/session/sessionStore.ts",
         "src/lib/api/config.ts",
         "src/lib/api/client.ts",
         "src/lib/presentation.ts",

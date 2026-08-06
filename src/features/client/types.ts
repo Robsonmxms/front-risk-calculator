@@ -1,4 +1,4 @@
-import { PortfolioListItem } from "../portfolio/types";
+import type { PortfolioListItem } from "../portfolio";
 
 export type ClientStatus = "active" | "inactive" | "archived";
 export type ClientOnboardingStatus = "invited" | "onboarding" | "complete" | "paused";
