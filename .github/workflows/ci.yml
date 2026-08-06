@@ -55,8 +55,11 @@ jobs:
       - name: Test
         run: yarn test
 
+      - name: Risk-based regression
+        run: yarn test:risk
+
       - name: Coverage
-        run: yarn test:coverage --testTimeout=20000
+        run: yarn test:coverage
 
       - name: Coverage summary
         if: always()
@@ -65,6 +68,9 @@ jobs:
           const fs = require("node:fs");
           const coverageSummaryPath = "./coverage/coverage-summary.json";
           console.log("## Frontend Coverage");
+          console.log("Threshold scope: HTTP/API clients, session storage, presentation/date helpers, realtime client, authenticated header, and shared risk charts.");
+          console.log("Thresholds: 80% statements/functions/lines and 60% branches for this expanded risk scope.");
+          console.log("Page-level authorization and workflow regressions run in the separate risk-based regression step; generated framework entrypoints and test fixtures are excluded.");
           if (!fs.existsSync(coverageSummaryPath)) {
             console.log("Coverage summary was not generated.");
             process.exit(0);

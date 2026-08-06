@@ -131,6 +131,7 @@ describe("apiFetch session behavior", () => {
       meta: { count: 0 }
     });
     expect(fetchMock.mock.calls[0][1]?.cache).toBe("no-store");
+    expect(fetchMock.mock.calls[0][1]?.headers).not.toHaveProperty("Content-Type");
   });
 
   it("returns undefined data for no-content responses", async () => {
@@ -138,7 +139,21 @@ describe("apiFetch session behavior", () => {
     vi.stubGlobal("fetch", fetchMock);
 
     await expect(apiFetch<void>("/auth/logout")).resolves.toBeUndefined();
-    expect(fetchMock.mock.calls[0][1].headers).toMatchObject({
+    expect(fetchMock.mock.calls[0][1].headers).not.toHaveProperty("Content-Type");
+  });
+
+  it("sends JSON Content-Type only when a request carries a body", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse(200, { data: { ok: true } }))
+      .mockResolvedValueOnce(jsonResponse(200, { data: { ok: true } }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await apiFetch("/read-only");
+    await apiFetch("/write", { method: "POST", body: JSON.stringify({ value: 1 }) });
+
+    expect(fetchMock.mock.calls[0][1].headers).not.toHaveProperty("Content-Type");
+    expect(fetchMock.mock.calls[1][1].headers).toMatchObject({
       "Content-Type": "application/json"
     });
   });

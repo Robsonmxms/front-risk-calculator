@@ -79,9 +79,12 @@ import {
   analyticsStatusVariant,
   dataQualitySeverityVariant,
   formatCurrency,
+  formatDate,
+  formatDateInputValue,
   formatDateTime,
   formatDecimal,
   formatInputDecimal,
+  formatPercentage,
   formatPortfolioWarning,
   getApiErrorMessage,
   insightSeverityVariant,
@@ -102,6 +105,7 @@ import {
   labelRealtimeStatus,
   labelReportFailureCode,
   labelReportStatus,
+  labelSector,
   labelTransactionType,
   notificationSeverityVariant,
   portfolioFreshnessVariant,
@@ -182,7 +186,7 @@ export default function PortfolioDetailPage() {
     exchangeCode: "NASDAQ",
     assetSymbol: "",
     assetName: "",
-    tradeDate: new Date().toISOString().slice(0, 10),
+    tradeDate: formatDateInputValue(),
     type: "buy",
     quantity: "",
     unitPrice: "",
@@ -641,7 +645,7 @@ export default function PortfolioDetailPage() {
         exchangeCode: "NASDAQ",
         assetSymbol: "",
         assetName: "",
-        tradeDate: new Date().toISOString().slice(0, 10),
+        tradeDate: formatDateInputValue(),
         type: "buy",
         quantity: "",
         unitPrice: "",
@@ -1225,7 +1229,7 @@ export default function PortfolioDetailPage() {
                               <TableCell>
                                 {formatCurrency(position.totalCostBasis, position.currency)}
                               </TableCell>
-                              <TableCell>{position.lastTransactionDate}</TableCell>
+                              <TableCell>{formatDate(position.lastTransactionDate)}</TableCell>
                             </TableRow>
                           ))}
                         </TableBody>
@@ -1254,7 +1258,7 @@ export default function PortfolioDetailPage() {
                                 {labelTransactionType(transaction.type)} {transaction.assetSymbol}
                               </strong>
                               <p className="text-sm text-stone-600">
-                                {transaction.assetName} · {transaction.tradeDate}
+                                {transaction.assetName} · {formatDate(transaction.tradeDate)}
                               </p>
                               {transaction.notes ? (
                                 <p className="mt-1 text-sm text-stone-500">{transaction.notes}</p>
@@ -1285,7 +1289,7 @@ export default function PortfolioDetailPage() {
                         {snapshots.map((snapshot) => (
                           <div key={snapshot.id} className="flex items-start justify-between gap-3 p-4">
                             <div>
-                              <strong className="text-stone-900">{snapshot.asOfDate}</strong>
+                              <strong className="text-stone-900">{formatDate(snapshot.asOfDate)}</strong>
                               <p className="text-sm text-stone-600">
                                 {snapshot.positions.length} posições · {snapshot.transactionCount} transações
                               </p>
@@ -1618,7 +1622,7 @@ function PortfolioChartsDashboard({
             <h2 className="text-2xl font-semibold text-stone-900">Evolução e composição</h2>
             <p className="text-sm text-stone-600">
               {charts
-                ? `Dados até ${charts.asOfDate} · base ${charts.baseCurrency}`
+                ? `Dados até ${formatDate(charts.asOfDate)} · base ${charts.baseCurrency}`
                 : "Aguardando o pacote de gráficos da plataforma."}
             </p>
           </div>
@@ -1746,7 +1750,7 @@ function PortfolioChartsDashboard({
                 date: point.date,
                 value: point.returnPercent
               }))}
-              valueLabel={(value) => `${value.toFixed(2)}%`}
+              valueLabel={(value) => formatPercentage(value)}
               strokeClassName="stroke-emerald-600"
             />
             <LineChartCard
@@ -1756,7 +1760,7 @@ function PortfolioChartsDashboard({
                 date: point.date,
                 value: point.drawdownPercent
               }))}
-              valueLabel={(value) => `${value.toFixed(2)}%`}
+              valueLabel={(value) => formatPercentage(value)}
               strokeClassName="stroke-rose-600"
             />
           </section>
@@ -1775,7 +1779,7 @@ function PortfolioChartsDashboard({
               title="Exposição por setor"
               emptyLabel="Sem exposição setorial disponível."
               rows={charts.charts.sectorExposure.map((point) => ({
-                label: point.sector,
+                label: labelSector(point.sector),
                 detail: formatCurrency(point.marketValueUsd, charts.baseCurrency),
                 percent: point.weightPercent
               }))}
@@ -1790,7 +1794,7 @@ function PortfolioChartsDashboard({
                 date: point.date,
                 value: point.volatilityPercent
               }))}
-              valueLabel={(value) => `${value.toFixed(2)}%`}
+              valueLabel={(value) => formatPercentage(value)}
               strokeClassName="stroke-amber-600"
             />
             <LineChartCard
@@ -1800,7 +1804,7 @@ function PortfolioChartsDashboard({
                 date: point.date,
                 value: point.returnPercent
               }))}
-              valueLabel={(value) => `${value.toFixed(2)}%`}
+              valueLabel={(value) => formatPercentage(value)}
               strokeClassName="stroke-violet-600"
             />
           </section>
@@ -1855,7 +1859,7 @@ function LineChartCard({
         <div className="mt-3">
           <ThemedLineChart
             data={series.map((point) => ({
-              name: point.date,
+              name: formatDate(point.date),
               value: point.value
             }))}
             ariaLabel={title}
@@ -1864,8 +1868,8 @@ function LineChartCard({
             height={180}
           />
           <div className="mt-2 flex justify-between text-xs text-stone-500">
-            <span>{series[0].date}</span>
-            <span>{latest?.date}</span>
+            <span>{formatDate(series[0].date)}</span>
+            <span>{latest ? formatDate(latest.date) : "data indisponível"}</span>
           </div>
         </div>
       )}
@@ -1888,7 +1892,7 @@ function CorrelationHeatmap({ charts }: { charts: PortfolioChartBundle }) {
         <ThemedHeatmapChart
           ariaLabel="Mapa de calor de correlação"
           valueLabel="coeficiente"
-          valueFormatter={(value) => value.toFixed(2)}
+          valueFormatter={(value) => formatDecimal(value, 2)}
           data={symbols.flatMap((rowSymbol) =>
             symbols.map((columnSymbol) => {
               const value = correlationValue(rowSymbol, columnSymbol, cells);
@@ -1967,7 +1971,7 @@ function AnalyticsDashboard({
             <h2 className="text-2xl font-semibold text-stone-900">Motor de risco</h2>
             <p className="text-sm text-stone-600">
               {snapshot
-                ? `Retrato de risco ${snapshot.asOfDate} · ${formatDateTime(snapshot.generatedAt)}`
+                ? `Retrato de risco ${formatDate(snapshot.asOfDate)} · ${formatDateTime(snapshot.generatedAt)}`
                 : "Retrato de risco pendente"}
             </p>
           </div>
@@ -2022,7 +2026,7 @@ function AnalyticsDashboard({
               title="Setores"
               emptyLabel="Sem exposição setorial calculada."
               rows={snapshot.sectorExposure.map((point) => ({
-                label: point.sector,
+                label: labelSector(point.sector),
                 detail: formatCurrency(point.marketValueUsd, "USD"),
                 percent: point.weightPercent
               }))}
@@ -2094,6 +2098,9 @@ function MetricCard({ metric }: { metric: AnalyticsMetric }) {
       {metric.reason ? (
         <p className="text-sm text-stone-600">{formatAnalyticsMessage(metric.reason)}</p>
       ) : null}
+      <p className="text-xs text-stone-500">
+        {metric.observationCount} observações · {metric.effectiveHorizonDays} dias · versão {metric.calculationVersion}
+      </p>
     </Card>
   );
 }
@@ -2116,7 +2123,7 @@ function BarPanel({
         <ThemedHorizontalBarChart
           ariaLabel={title}
           color={chartPalette.moss}
-          valueFormatter={(value) => `${value.toFixed(1)}%`}
+          valueFormatter={(value) => formatPercentage(value, 1)}
           data={rows.map((row) => ({
             name: row.label,
             value: row.percent,
@@ -2168,11 +2175,11 @@ function DrawdownPanel({ snapshot }: { snapshot: PortfolioAnalyticsSnapshot }) {
         <ThemedHorizontalBarChart
           ariaLabel="Perda máxima no período"
           color={chartPalette.rose}
-          valueFormatter={(value) => `${value.toFixed(2)}%`}
+          valueFormatter={(value) => formatPercentage(value)}
           data={snapshot.drawdown.slice(-8).map((point) => ({
             name: point.date,
             value: Math.abs(point.drawdownPercent),
-            detail: `${point.drawdownPercent.toFixed(2)}%`
+            detail: formatPercentage(point.drawdownPercent)
           }))}
         />
       )}
@@ -2190,7 +2197,7 @@ function CorrelationPanel({ snapshot }: { snapshot: PortfolioAnalyticsSnapshot }
         <ThemedHeatmapChart
           ariaLabel="Correlação entre ativos do retrato de risco"
           valueLabel="coeficiente"
-          valueFormatter={(value) => value.toFixed(3)}
+          valueFormatter={(value) => formatDecimal(value, 3)}
           data={snapshot.correlation.map((cell) => ({
             x: cell.rightSymbol,
             y: cell.leftSymbol,
@@ -2346,13 +2353,13 @@ function formatMetricValue(metric: AnalyticsMetric) {
 
   switch (metric.unit) {
     case "percent":
-      return `${(metric.value * 100).toFixed(2)}%`;
+      return formatPercentage(metric.value * 100);
     case "currency":
       return formatCurrency(metric.value, "USD");
     case "score":
-      return metric.value.toFixed(3);
+      return formatDecimal(metric.value, 3);
     default:
-      return metric.value.toFixed(3);
+      return formatDecimal(metric.value, 3);
   }
 }
 

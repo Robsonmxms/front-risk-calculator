@@ -236,6 +236,10 @@ export interface AnalyticsMetric {
   status: AnalyticsMetricStatus;
   value?: number;
   reason?: string;
+  reasonCode?: string;
+  observationCount: number;
+  effectiveHorizonDays: number;
+  calculationVersion: string;
   assumptions: string[];
   requiredData: string[];
 }
@@ -310,6 +314,7 @@ export interface CurrencyConversionAudit {
   rate: number;
   providerName: string;
   asOf: string;
+  updatedAt: string;
 }
 
 export interface PortfolioAnalyticsSnapshot {
@@ -359,6 +364,9 @@ export interface CurrencyConversion {
   updatedAt: string;
   amount: number;
   convertedAmount: number;
+  freshness: PortfolioFreshness;
+  sourceAgeSeconds: number;
+  sourceType: "live" | "fallback" | "deterministic";
 }
 
 export type ReportFormat = "pdf" | "csv";
