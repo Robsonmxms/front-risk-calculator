@@ -30,15 +30,24 @@ export function AppHeader({
   const { actor, activeOffice, officeMemberships, selectOffice } = useAuth();
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   const isClientOffice = activeOffice?.role === "client";
-  const canOpenOfficeSettings =
-    actor?.role === "admin" || activeOffice?.role === "office_admin";
+  const canOpenOfficeSettings = actor?.role === "admin" || activeOffice?.role === "office_admin";
   const canOpenCompliance = actor?.role === "admin" || activeOffice?.role === "office_admin";
   const canOpenReportDelivery = Boolean(activeOffice && !isClientOffice);
   const canOpenTeamAreas = Boolean(activeOffice && !isClientOffice);
   const navItems = [
     { href: "/dashboard", active: active === "dashboard", label: "Painel", visible: true },
-    { href: "/admin", active: active === "admin", label: "Administração", visible: Boolean(showAdmin) },
-    { href: "/dashboard/workbench", active: active === "workbench", label: "Mesa", visible: canOpenTeamAreas },
+    {
+      href: "/admin",
+      active: active === "admin",
+      label: "Administração",
+      visible: Boolean(showAdmin)
+    },
+    {
+      href: "/dashboard/workbench",
+      active: active === "workbench",
+      label: "Mesa",
+      visible: canOpenTeamAreas
+    },
     {
       href: "/dashboard/analytics-diagnostics",
       active: active === "analyticsDiagnostics",

@@ -16,7 +16,10 @@ export function TableBody({ className, ...props }: HTMLAttributes<HTMLTableSecti
 export function TableRow({ className, ...props }: HTMLAttributes<HTMLTableRowElement>) {
   return (
     <tr
-      className={cn("transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted", className)}
+      className={cn(
+        "transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted",
+        className
+      )}
       {...props}
     />
   );

@@ -86,8 +86,7 @@ export default function OfficeSettingsPage() {
   const [assignmentResourceType, setAssignmentResourceType] =
     useState<AssignmentResourceType>("portfolio");
   const [assignmentResourceId, setAssignmentResourceId] = useState("");
-  const [assignmentPermission, setAssignmentPermission] =
-    useState<PermissionKey>("ledger.write");
+  const [assignmentPermission, setAssignmentPermission] = useState<PermissionKey>("ledger.write");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
@@ -180,7 +179,9 @@ export default function OfficeSettingsPage() {
         description: teamDescription,
         memberUserIds: teamMemberIds
       });
-      setTeams((current) => [...current, team].sort((left, right) => left.name.localeCompare(right.name)));
+      setTeams((current) =>
+        [...current, team].sort((left, right) => left.name.localeCompare(right.name))
+      );
       setTeamName("");
       setTeamDescription("");
       setTeamMemberIds([]);
@@ -236,9 +237,7 @@ export default function OfficeSettingsPage() {
 
   function toggleTeamMember(userId: string) {
     setTeamMemberIds((current) =>
-      current.includes(userId)
-        ? current.filter((entry) => entry !== userId)
-        : [...current, userId]
+      current.includes(userId) ? current.filter((entry) => entry !== userId) : [...current, userId]
     );
   }
 
@@ -256,7 +255,9 @@ export default function OfficeSettingsPage() {
           showAdmin={actor?.role === "admin"}
           actions={
             <>
-              {activeOffice ? <Badge variant="outline">{labelOfficeRole(activeOffice.role)}</Badge> : null}
+              {activeOffice ? (
+                <Badge variant="outline">{labelOfficeRole(activeOffice.role)}</Badge>
+              ) : null}
               <LogoutButton />
             </>
           }
@@ -337,7 +338,9 @@ export default function OfficeSettingsPage() {
                     <div className="flex items-start justify-between gap-3">
                       <div>
                         <p className="text-xs font-semibold uppercase text-moss">Membros</p>
-                        <h2 className="text-xl font-semibold text-stone-900">Equipe do escritório</h2>
+                        <h2 className="text-xl font-semibold text-stone-900">
+                          Equipe do escritório
+                        </h2>
                       </div>
                       <Badge variant="outline">{members.length} membros</Badge>
                     </div>
@@ -370,12 +373,17 @@ export default function OfficeSettingsPage() {
                     <div className="flex items-start justify-between gap-3">
                       <div>
                         <p className="text-xs font-semibold uppercase text-moss">Times</p>
-                        <h2 className="text-xl font-semibold text-stone-900">Times de assessoria</h2>
+                        <h2 className="text-xl font-semibold text-stone-900">
+                          Times de assessoria
+                        </h2>
                       </div>
                       <Badge variant="outline">{teams.length} times</Badge>
                     </div>
 
-                    <form className="mt-5 grid gap-4 lg:grid-cols-[1fr_1fr_auto]" onSubmit={handleCreateTeam}>
+                    <form
+                      className="mt-5 grid gap-4 lg:grid-cols-[1fr_1fr_auto]"
+                      onSubmit={handleCreateTeam}
+                    >
                       <div>
                         <Label htmlFor="teamName">Nome do time</Label>
                         <Input
@@ -407,13 +415,13 @@ export default function OfficeSettingsPage() {
                               key={member.id}
                               className="flex items-center gap-2 rounded-md border border-border px-3 py-2 text-sm text-stone-700"
                             >
-	                              <input
-	                                type="checkbox"
-	                                name="teamMemberIds"
-	                                value={member.userId}
-	                                checked={teamMemberIds.includes(member.userId)}
-	                                onChange={() => toggleTeamMember(member.userId)}
-	                              />
+                              <input
+                                type="checkbox"
+                                name="teamMemberIds"
+                                value={member.userId}
+                                checked={teamMemberIds.includes(member.userId)}
+                                onChange={() => toggleTeamMember(member.userId)}
+                              />
                               {member.userName}
                             </label>
                           ))}
@@ -433,13 +441,17 @@ export default function OfficeSettingsPage() {
                         <TableBody>
                           {teams.map((team) => (
                             <TableRow key={team.id}>
-                              <TableCell className="font-medium text-stone-900">{team.name}</TableCell>
+                              <TableCell className="font-medium text-stone-900">
+                                {team.name}
+                              </TableCell>
                               <TableCell>
                                 <Badge variant={officeStatusVariant(team.status)}>
                                   {labelOfficeStatus(team.status)}
                                 </Badge>
                               </TableCell>
-                              <TableCell>{team.members.map((member) => member.userName).join(", ")}</TableCell>
+                              <TableCell>
+                                {team.members.map((member) => member.userName).join(", ")}
+                              </TableCell>
                             </TableRow>
                           ))}
                         </TableBody>
@@ -450,13 +462,20 @@ export default function OfficeSettingsPage() {
                   <Card>
                     <div className="flex items-start justify-between gap-3">
                       <div>
-                        <p className="text-xs font-semibold uppercase text-moss">Permissões por recurso</p>
-                        <h2 className="text-xl font-semibold text-stone-900">Permissões por recurso</h2>
+                        <p className="text-xs font-semibold uppercase text-moss">
+                          Permissões por recurso
+                        </p>
+                        <h2 className="text-xl font-semibold text-stone-900">
+                          Permissões por recurso
+                        </h2>
                       </div>
                       <Badge variant="outline">{activeAssignments.length} ativos</Badge>
                     </div>
 
-                    <form className="mt-5 grid gap-4 lg:grid-cols-5" onSubmit={handleCreateAssignment}>
+                    <form
+                      className="mt-5 grid gap-4 lg:grid-cols-5"
+                      onSubmit={handleCreateAssignment}
+                    >
                       <div>
                         <Label htmlFor="assignmentUser">Usuário</Label>
                         <Select
@@ -500,33 +519,37 @@ export default function OfficeSettingsPage() {
                         <Select
                           id="assignmentResourceType"
                           className="mt-2"
-	                          value={assignmentResourceType}
-	                          onChange={(event) =>
-	                            handleAssignmentResourceTypeChange(event.target.value as AssignmentResourceType)
-	                          }
+                          value={assignmentResourceType}
+                          onChange={(event) =>
+                            handleAssignmentResourceTypeChange(
+                              event.target.value as AssignmentResourceType
+                            )
+                          }
                         >
                           <option value="client">{labelResourceType("client")}</option>
                           <option value="household">{labelResourceType("household")}</option>
                           <option value="account">{labelResourceType("account")}</option>
                           <option value="portfolio">{labelResourceType("portfolio")}</option>
                         </Select>
-	                      </div>
-	                      <div>
-	                        <Label htmlFor="assignmentResourceId">Referência</Label>
-	                        <Input
-	                          id="assignmentResourceId"
-	                          className="mt-2"
-	                          value={assignmentResourceId}
-	                          onChange={(event) => setAssignmentResourceId(event.target.value)}
-	                        />
-	                      </div>
+                      </div>
+                      <div>
+                        <Label htmlFor="assignmentResourceId">Referência</Label>
+                        <Input
+                          id="assignmentResourceId"
+                          className="mt-2"
+                          value={assignmentResourceId}
+                          onChange={(event) => setAssignmentResourceId(event.target.value)}
+                        />
+                      </div>
                       <div>
                         <Label htmlFor="assignmentPermission">Permissão</Label>
                         <Select
                           id="assignmentPermission"
                           className="mt-2"
                           value={assignmentPermission}
-                          onChange={(event) => setAssignmentPermission(event.target.value as PermissionKey)}
+                          onChange={(event) =>
+                            setAssignmentPermission(event.target.value as PermissionKey)
+                          }
                         >
                           {ASSIGNABLE_PERMISSIONS.map((permission) => (
                             <option key={permission} value={permission}>
@@ -562,15 +585,15 @@ export default function OfficeSettingsPage() {
                         </TableHeader>
                         <TableBody>
                           {assignments.map((assignment) => (
-	                            <TableRow key={assignment.id}>
-	                              <TableCell>
-	                                {formatAssignmentResource(assignment)}
-	                              </TableCell>
+                            <TableRow key={assignment.id}>
+                              <TableCell>{formatAssignmentResource(assignment)}</TableCell>
                               <TableCell>
                                 {getAssignmentTarget(assignment, members, teams)}
                               </TableCell>
                               <TableCell>
-                                {assignment.permissions.map((permission) => labelPermission(permission)).join(", ")}
+                                {assignment.permissions
+                                  .map((permission) => labelPermission(permission))
+                                  .join(", ")}
                               </TableCell>
                               <TableCell>{assignment.revokedAt ? "revogado" : "ativo"}</TableCell>
                               <TableCell>
@@ -605,7 +628,10 @@ function getAssignmentTarget(
   teams: AdvisoryTeam[]
 ) {
   if (assignment.assigneeUserId) {
-    return members.find((member) => member.userId === assignment.assigneeUserId)?.userName ?? assignment.assigneeUserId;
+    return (
+      members.find((member) => member.userId === assignment.assigneeUserId)?.userName ??
+      assignment.assigneeUserId
+    );
   }
   if (assignment.teamId) {
     return teams.find((team) => team.id === assignment.teamId)?.name ?? assignment.teamId;

@@ -381,7 +381,9 @@ describe("workbench page", () => {
     );
 
     expect(
-      await screen.findByText("Esta área é restrita à equipe. Os pacotes disponíveis para cliente ficam no portal.")
+      await screen.findByText(
+        "Esta área é restrita à equipe. Os pacotes disponíveis para cliente ficam no portal."
+      )
     ).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Abrir portal do cliente" })).toHaveAttribute(
       "href",

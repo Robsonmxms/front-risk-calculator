@@ -8,8 +8,8 @@
     "start": "next start",
     "build": "next build",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "lint": "eslint .",
-    "lint:fix": "eslint . --fix",
+    "lint": "eslint . && prettier --check \"src/**/*.{ts,tsx}\" \"tests/**/*.{ts,tsx}\" \"*.ts\"",
+    "lint:fix": "eslint . --fix && prettier --write \"src/**/*.{ts,tsx}\" \"tests/**/*.{ts,tsx}\" \"*.ts\"",
     "check:public-config": "node scripts/check-public-runtime-config.mjs",
     "check:runtime-data": "node scripts/check-runtime-mock-data.mjs",
     "lint-staged": "lint-staged",
@@ -48,6 +48,7 @@
     "jsdom": "^29.1.1",
     "lint-staged": "^17.0.8",
     "postcss": "8.5.16",
+    "prettier": "^3.9.6",
     "tailwindcss": "^3.4.17",
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.63.0",
@@ -58,7 +59,8 @@
   },
   "lint-staged": {
     "*.{ts,tsx}": [
-      "eslint --fix"
+      "eslint --fix",
+      "prettier --write"
     ]
   },
   "overrides": {}

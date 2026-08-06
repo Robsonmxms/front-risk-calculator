@@ -76,7 +76,9 @@ describe("realtime client", () => {
     vi.mocked(fetch).mockImplementation(
       (_url, init) =>
         new Promise((_resolve, reject) => {
-          init?.signal?.addEventListener("abort", () => reject(new DOMException("aborted", "AbortError")));
+          init?.signal?.addEventListener("abort", () =>
+            reject(new DOMException("aborted", "AbortError"))
+          );
         })
     );
     const onError = vi.fn();

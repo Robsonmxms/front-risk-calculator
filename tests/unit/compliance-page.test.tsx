@@ -214,7 +214,9 @@ describe("compliance page", () => {
       </AuthProvider>
     );
 
-    expect((await screen.findAllByText("Falha na entrega do relatório")).length).toBeGreaterThanOrEqual(2);
+    expect(
+      (await screen.findAllByText("Falha na entrega do relatório")).length
+    ).toBeGreaterThanOrEqual(2);
     expect(screen.queryByText("delivery.report.failed")).not.toBeInTheDocument();
     expect(screen.queryByText("entrega: rpt_001")).not.toBeInTheDocument();
     expect(screen.queryByText(/delivery_timeout/)).not.toBeInTheDocument();

@@ -1,23 +1,14 @@
 import { PortfolioListItem } from "../portfolio/types";
 
 export type ReportPackageStatus =
-  | "draft"
-  | "pending_approval"
-  | "approved"
-  | "delivered"
-  | "viewed"
-  | "revoked";
+  "draft" | "pending_approval" | "approved" | "delivered" | "viewed" | "revoked";
 
 export type DeliveryChartRange = "7d" | "30d" | "90d" | "ytd" | "1y" | "all";
 export type DeliveryDataQualityStatus = "complete" | "partial" | "empty";
 export type ReportStatus = "pending" | "running" | "ready" | "failed";
 export type NotificationStatus = "unread" | "read";
 export type DeliveryStatusFilter =
-  | ReportPackageStatus
-  | ReportStatus
-  | NotificationStatus
-  | "success"
-  | "failure";
+  ReportPackageStatus | ReportStatus | NotificationStatus | "success" | "failure";
 
 export interface DataQualityIssue {
   code: string;
@@ -72,8 +63,10 @@ export interface ReportPackage {
   revokedAt?: string;
 }
 
-export interface ClientPortalPackage
-  extends Omit<ReportPackage, "internalNotes" | "createdBy" | "approvedBy" | "deliveredBy" | "revokedBy"> {
+export interface ClientPortalPackage extends Omit<
+  ReportPackage,
+  "internalNotes" | "createdBy" | "approvedBy" | "deliveredBy" | "revokedBy"
+> {
   status: "delivered" | "viewed";
   portfolios: PortfolioListItem[];
 }

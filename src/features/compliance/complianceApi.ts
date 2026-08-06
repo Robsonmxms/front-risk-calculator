@@ -22,11 +22,14 @@ export async function listAuditEvents(
     }
   }
   const query = params.toString();
-  const envelope = await apiFetchEnvelope<{ auditEvents: AuditEvent[] }, {
-    total: number;
-    page: number;
-    pageSize: number;
-  }>(`/offices/${officeId}/audit-events${query ? `?${query}` : ""}`);
+  const envelope = await apiFetchEnvelope<
+    { auditEvents: AuditEvent[] },
+    {
+      total: number;
+      page: number;
+      pageSize: number;
+    }
+  >(`/offices/${officeId}/audit-events${query ? `?${query}` : ""}`);
   return {
     auditEvents: envelope.data.auditEvents,
     total: envelope.meta?.total ?? envelope.data.auditEvents.length,

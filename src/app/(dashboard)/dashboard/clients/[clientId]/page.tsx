@@ -139,7 +139,11 @@ export default function ClientDetailPage() {
                 {client.notes ? <p>{client.notes}</p> : null}
               </div>
 
-              {notice ? <Alert variant="info" className="mt-5">{notice}</Alert> : null}
+              {notice ? (
+                <Alert variant="info" className="mt-5">
+                  {notice}
+                </Alert>
+              ) : null}
               <Button
                 type="button"
                 className="mt-5"
@@ -182,7 +186,10 @@ export default function ClientDetailPage() {
                       {client.portfolios.map((portfolio) => (
                         <TableRow key={portfolio.id}>
                           <TableCell className="font-medium text-stone-900">
-                            <Link href={`/dashboard/portfolios/${portfolio.id}`} className="hover:text-moss">
+                            <Link
+                              href={`/dashboard/portfolios/${portfolio.id}`}
+                              className="hover:text-moss"
+                            >
                               {portfolio.name}
                             </Link>
                             <p className="text-xs text-stone-500">{portfolio.accountName}</p>
@@ -217,7 +224,9 @@ export default function ClientDetailPage() {
                     <TableBody>
                       {client.accounts.map((account) => (
                         <TableRow key={account.id}>
-                          <TableCell className="font-medium text-stone-900">{account.name}</TableCell>
+                          <TableCell className="font-medium text-stone-900">
+                            {account.name}
+                          </TableCell>
                           <TableCell>{account.portfolioCount}</TableCell>
                         </TableRow>
                       ))}

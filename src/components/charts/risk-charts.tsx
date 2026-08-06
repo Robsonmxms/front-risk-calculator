@@ -86,11 +86,7 @@ export function ThemedLineChart({
 
   return (
     <div style={{ height }}>
-      <ResponsiveContainer
-        width="100%"
-        height="100%"
-        initialDimension={{ width: 640, height }}
-      >
+      <ResponsiveContainer width="100%" height="100%" initialDimension={{ width: 640, height }}>
         <LineChart
           accessibilityLayer
           data={data}
@@ -113,7 +109,9 @@ export function ThemedLineChart({
             tick={{ fill: chartPalette.slate, fontSize: 12 }}
             tickFormatter={(value) => compactNumber(Number(value))}
           />
-          <Tooltip content={(props) => <ThemedTooltip {...props} valueFormatter={valueFormatter} />} />
+          <Tooltip
+            content={(props) => <ThemedTooltip {...props} valueFormatter={valueFormatter} />}
+          />
           <Line
             type="monotone"
             dataKey="value"
@@ -152,11 +150,7 @@ export function ThemedScatterChart({
 
   return (
     <div style={{ height }}>
-      <ResponsiveContainer
-        width="100%"
-        height="100%"
-        initialDimension={{ width: 640, height }}
-      >
+      <ResponsiveContainer width="100%" height="100%" initialDimension={{ width: 640, height }}>
         <ScatterChart
           accessibilityLayer
           data={data}
@@ -254,7 +248,9 @@ export function ThemedHorizontalBarChart({
             axisLine={false}
             tick={{ fill: chartPalette.slate, fontSize: 12 }}
           />
-          <Tooltip content={(props) => <ThemedTooltip {...props} valueFormatter={valueFormatter} />} />
+          <Tooltip
+            content={(props) => <ThemedTooltip {...props} valueFormatter={valueFormatter} />}
+          />
           <Bar dataKey="value" radius={[0, 6, 6, 0]} fill={color} isAnimationActive={false} />
         </BarChart>
       </ResponsiveContainer>
@@ -337,11 +333,7 @@ export function ThemedInlineBarChart({
 
   return (
     <div className="h-7 w-full min-w-28">
-      <ResponsiveContainer
-        width="100%"
-        height="100%"
-        initialDimension={{ width: 140, height: 28 }}
-      >
+      <ResponsiveContainer width="100%" height="100%" initialDimension={{ width: 140, height: 28 }}>
         <BarChart
           accessibilityLayer
           data={[{ name: ariaLabel, value }]}
@@ -412,11 +404,7 @@ export function ThemedHeatmapChart({
           <ZAxis type="number" dataKey="value" range={[320, 320]} />
           <Tooltip
             content={(props) => (
-              <HeatmapTooltip
-                {...props}
-                valueLabel={valueLabel}
-                valueFormatter={valueFormatter}
-              />
+              <HeatmapTooltip {...props} valueLabel={valueLabel} valueFormatter={valueFormatter} />
             )}
           />
           <Scatter data={data} shape={HeatmapSymbol} isAnimationActive={false} />
@@ -431,7 +419,9 @@ function ThemedTooltip({
   payload,
   label,
   valueFormatter
-}: TooltipContentProps<TooltipValueType, string | number> & { valueFormatter: (value: number) => string }) {
+}: TooltipContentProps<TooltipValueType, string | number> & {
+  valueFormatter: (value: number) => string;
+}) {
   if (!active || !payload?.length) {
     return null;
   }
@@ -531,7 +521,11 @@ function HeatmapTooltip({
 
   return (
     <TooltipShell title={`${point.y} · ${point.x}`}>
-      <TooltipLine label={valueLabel} value={valueFormatter(point.value)} color={point.fill ?? chartPalette.moss} />
+      <TooltipLine
+        label={valueLabel}
+        value={valueFormatter(point.value)}
+        color={point.fill ?? chartPalette.moss}
+      />
       {point.detail ? <p className="mt-1 text-xs text-stone-500">{point.detail}</p> : null}
     </TooltipShell>
   );
@@ -540,7 +534,10 @@ function HeatmapTooltip({
 function TooltipShell({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="rounded-md border border-border bg-card px-3 py-2 text-sm shadow-sm">
-      <p className="mb-1 max-w-72 break-words font-semibold leading-snug text-stone-900" title={title}>
+      <p
+        className="mb-1 max-w-72 break-words font-semibold leading-snug text-stone-900"
+        title={title}
+      >
         {title}
       </p>
       <div className="grid gap-1">{children}</div>
@@ -548,15 +545,7 @@ function TooltipShell({ title, children }: { title: string; children: React.Reac
   );
 }
 
-function TooltipLine({
-  label,
-  value,
-  color
-}: {
-  label: string;
-  value: string;
-  color: string;
-}) {
+function TooltipLine({ label, value, color }: { label: string; value: string; color: string }) {
   return (
     <div className="flex items-center justify-between gap-3">
       <span className="inline-flex items-center gap-2 text-stone-600">
@@ -597,10 +586,7 @@ function HeatmapSymbol(props: ScatterShapeProps) {
 
 function ChartEmptyState({ children }: { children: React.ReactNode }) {
   return (
-    <Alert
-      variant="info"
-      className="flex min-h-40 items-center rounded-md bg-blue-50/70"
-    >
+    <Alert variant="info" className="flex min-h-40 items-center rounded-md bg-blue-50/70">
       <div className="space-y-1">
         <p className="font-semibold text-blue-950">Dados insuficientes</p>
         <p>{children}</p>

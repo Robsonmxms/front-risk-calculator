@@ -6,8 +6,16 @@ import type {
   UserStatus
 } from "../../src/features/auth/types";
 import type { ClientOnboardingStatus, ClientStatus } from "../../src/features/client/types";
-import type { AuditOutcome, AuditResourceType, AuditSeverity } from "../../src/features/compliance/types";
-import type { ReportPackageItemStatus, ReportPackageItemType, ReportPackageStatus } from "../../src/features/delivery/types";
+import type {
+  AuditOutcome,
+  AuditResourceType,
+  AuditSeverity
+} from "../../src/features/compliance/types";
+import type {
+  ReportPackageItemStatus,
+  ReportPackageItemType,
+  ReportPackageStatus
+} from "../../src/features/delivery/types";
 import type {
   AlertSeverity,
   AlertStatus,
@@ -73,16 +81,34 @@ describe("presentation contract", () => {
     expectLocalized(["active", "disabled"] satisfies UserStatus[], labelUserStatus);
     expectLocalized(["owner", "analyst", "viewer"] satisfies AccountMemberRole[], labelAccountRole);
     expectLocalized(
-      ["office_admin", "advisor", "analyst", "assistant", "client"] satisfies OfficeMembershipRole[],
+      [
+        "office_admin",
+        "advisor",
+        "analyst",
+        "assistant",
+        "client"
+      ] satisfies OfficeMembershipRole[],
       labelOfficeRole
     );
     expectLocalized(["active", "archived", "disabled"], labelOfficeStatus);
-    expectLocalized(["fresh", "partial", "stale"] satisfies PortfolioFreshness[], labelPortfolioFreshness);
-    expectLocalized(["ready", "syncing", "degraded"] satisfies PortfolioStatus[], labelPortfolioStatus);
+    expectLocalized(
+      ["fresh", "partial", "stale"] satisfies PortfolioFreshness[],
+      labelPortfolioFreshness
+    );
+    expectLocalized(
+      ["ready", "syncing", "degraded"] satisfies PortfolioStatus[],
+      labelPortfolioStatus
+    );
     expectLocalized(["ready", "pending"] satisfies ProcessingState[], labelProcessingState);
     expectLocalized(["buy", "sell"] satisfies PortfolioTransactionType[], labelTransactionType);
-    expectLocalized(["complete", "partial", "pending", "failed"] satisfies AnalyticsReadStatus[], labelAnalyticsStatus);
-    expectLocalized(["available", "unavailable"] satisfies AnalyticsMetricStatus[], labelAnalyticsMetricStatus);
+    expectLocalized(
+      ["complete", "partial", "pending", "failed"] satisfies AnalyticsReadStatus[],
+      labelAnalyticsStatus
+    );
+    expectLocalized(
+      ["available", "unavailable"] satisfies AnalyticsMetricStatus[],
+      labelAnalyticsMetricStatus
+    );
     expectLocalized(
       [
         "totalReturn",
@@ -100,15 +126,34 @@ describe("presentation contract", () => {
     expectLocalized(["info", "warning", "blocking"], labelDataQualitySeverity);
     expect(labelDataQualityIssueCode("market_data.stale")).toBe("Dados de mercado desatualizados");
     expect(labelSector("Technology")).toBe("Tecnologia");
-    expectLocalized(["info", "watch", "high"] satisfies RiskInsightSeverity[], labelInsightSeverity);
-    expectLocalized(["connected", "connecting", "disconnected"] satisfies RealtimeConnectionStatus[], labelRealtimeStatus);
-    expectLocalized(["pending", "running", "ready", "failed"] satisfies ReportStatus[], labelReportStatus);
+    expectLocalized(
+      ["info", "watch", "high"] satisfies RiskInsightSeverity[],
+      labelInsightSeverity
+    );
+    expectLocalized(
+      ["connected", "connecting", "disconnected"] satisfies RealtimeConnectionStatus[],
+      labelRealtimeStatus
+    );
+    expectLocalized(
+      ["pending", "running", "ready", "failed"] satisfies ReportStatus[],
+      labelReportStatus
+    );
     expect(labelReportFailureCode("generation_failed")).toBe("Falha na geração do relatório.");
     expectLocalized(
-      ["draft", "pending_approval", "approved", "delivered", "viewed", "revoked"] satisfies ReportPackageStatus[],
+      [
+        "draft",
+        "pending_approval",
+        "approved",
+        "delivered",
+        "viewed",
+        "revoked"
+      ] satisfies ReportPackageStatus[],
       labelReportPackageStatus
     );
-    expectLocalized(["ready", "pending", "unavailable"] satisfies ReportPackageItemStatus[], labelReportPackageItemStatus);
+    expectLocalized(
+      ["ready", "pending", "unavailable"] satisfies ReportPackageItemStatus[],
+      labelReportPackageItemStatus
+    );
     expectLocalized(
       ["report", "analytics_snapshot", "portfolio_summary"] satisfies ReportPackageItemType[],
       labelReportPackageItemType
@@ -141,14 +186,27 @@ describe("presentation contract", () => {
       ] satisfies AuditResourceType[],
       labelResourceType
     );
-    expectLocalized(["open", "in_progress", "closed"] satisfies ReviewItemStatus[], labelReviewStatus);
+    expectLocalized(
+      ["open", "in_progress", "closed"] satisfies ReviewItemStatus[],
+      labelReviewStatus
+    );
     expectLocalized(["assigned", "resolved"], labelReviewStatus);
     expectLocalized(
-      ["client", "portfolio", "analytics", "report", "alert", "notification"] satisfies ReviewResourceType[],
+      [
+        "client",
+        "portfolio",
+        "analytics",
+        "report",
+        "alert",
+        "notification"
+      ] satisfies ReviewResourceType[],
       labelResourceType
     );
     expectLocalized(["active", "inactive", "archived"] satisfies ClientStatus[], labelClientStatus);
-    expectLocalized(["invited", "onboarding", "complete", "paused"] satisfies ClientOnboardingStatus[], labelOnboardingStatus);
+    expectLocalized(
+      ["invited", "onboarding", "complete", "paused"] satisfies ClientOnboardingStatus[],
+      labelOnboardingStatus
+    );
   });
 
   it("localizes stable backend error codes instead of showing backend English messages", () => {
@@ -182,7 +240,9 @@ describe("presentation contract", () => {
   });
 
   it("uses localized safe fallbacks for unknown technical diagnostics", () => {
-    expect(labelDataQualityIssueCode("market_data.provider_failed")).toBe("Qualidade de dados pendente");
+    expect(labelDataQualityIssueCode("market_data.provider_failed")).toBe(
+      "Qualidade de dados pendente"
+    );
     expect(labelReportFailureCode("provider_failed")).toBe("Falha operacional registrada.");
     expect(labelAuditAction("delivery.provider_failed")).toBe("Evento auditável registrado");
     expect(formatPortfolioWarning("Provider failed while refreshing market data.")).toBe(
@@ -195,18 +255,13 @@ describe("presentation contract", () => {
     expect(formatDate("2026-02-30")).toBe("data inválida");
     expect(formatDate("not-a-date")).toBe("data inválida");
     expect(formatPercentage(4.69)).toBe("4,69%");
-    expect(formatDateTime("2026-07-15T03:00:00.000Z")).toMatch(
-      /^15\/07\/2026,? 00:00$/
-    );
+    expect(formatDateTime("2026-07-15T03:00:00.000Z")).toMatch(/^15\/07\/2026,? 00:00$/);
     expect(formatDateTime("not-a-date")).toBe("data e hora inválidas");
     expect(formatDateInputValue(new Date(2026, 6, 15, 23, 30))).toBe("2026-07-15");
   });
 });
 
-function expectLocalized<T extends string>(
-  values: readonly T[],
-  label: (value: T) => string
-) {
+function expectLocalized<T extends string>(values: readonly T[], label: (value: T) => string) {
   for (const value of values) {
     const rendered = label(value);
 

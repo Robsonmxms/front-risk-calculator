@@ -30,7 +30,10 @@ vi.mock("next/navigation", () => ({
 }));
 
 vi.mock("../../src/features/auth/authApi", () => authApiMocks);
-vi.mock("../../src/features/analytics-diagnostics/analyticsDiagnosticsApi", () => diagnosticsApiMocks);
+vi.mock(
+  "../../src/features/analytics-diagnostics/analyticsDiagnosticsApi",
+  () => diagnosticsApiMocks
+);
 
 const actor: Actor = {
   id: "usr_analyst",

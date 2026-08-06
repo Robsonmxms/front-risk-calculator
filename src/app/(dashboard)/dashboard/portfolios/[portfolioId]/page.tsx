@@ -113,10 +113,7 @@ import {
   realtimeStatusVariant,
   reportStatusVariant
 } from "../../../../../lib/presentation";
-import {
-  connectRealtime,
-  RealtimeConnectionStatus
-} from "../../../../../lib/realtime/client";
+import { connectRealtime, RealtimeConnectionStatus } from "../../../../../lib/realtime/client";
 
 interface TransactionFormState {
   exchangeCode: string;
@@ -133,6 +130,9 @@ interface TransactionFormState {
 type AssetSearchStatus = "idle" | "loading" | "success" | "empty" | "error";
 type TradePriceStatus = "idle" | "loading" | "success" | "error";
 
+const TRANSACTIONS_PER_PAGE = 20;
+const SNAPSHOTS_PER_PAGE = 10;
+
 export default function PortfolioDetailPage() {
   const { actor } = useAuth();
   const routeParams = useParams<{ portfolioId: string }>();
@@ -141,6 +141,8 @@ export default function PortfolioDetailPage() {
   const [positions, setPositions] = useState<PortfolioPosition[]>([]);
   const [transactions, setTransactions] = useState<PortfolioTransaction[]>([]);
   const [snapshots, setSnapshots] = useState<PortfolioSnapshot[]>([]);
+  const [transactionPage, setTransactionPage] = useState(1);
+  const [snapshotPage, setSnapshotPage] = useState(1);
   const [analytics, setAnalytics] = useState<PortfolioAnalyticsReadModel | null>(null);
   const [charts, setCharts] = useState<PortfolioChartBundle | null>(null);
   const [reports, setReports] = useState<PortfolioReport[]>([]);
@@ -206,10 +208,11 @@ export default function PortfolioDetailPage() {
         setMarketExchanges(response.exchanges);
         setForm((current) => ({
           ...current,
-          exchangeCode:
-            response.exchanges.some((exchange) => exchange.code === current.exchangeCode)
-              ? current.exchangeCode
-              : response.exchanges[0]?.code ?? current.exchangeCode
+          exchangeCode: response.exchanges.some(
+            (exchange) => exchange.code === current.exchangeCode
+          )
+            ? current.exchangeCode
+            : (response.exchanges[0]?.code ?? current.exchangeCode)
         }));
       })
       .catch(() => undefined);
@@ -300,7 +303,9 @@ export default function PortfolioDetailPage() {
       const response = await listNotifications();
       setNotifications(response.notifications);
     } catch (requestError) {
-      setNotificationsError(getApiErrorMessage(requestError, "Não foi possível carregar notificações."));
+      setNotificationsError(
+        getApiErrorMessage(requestError, "Não foi possível carregar notificações.")
+      );
     }
   }, []);
 
@@ -312,6 +317,8 @@ export default function PortfolioDetailPage() {
     let isActive = true;
     setIsLoading(true);
     setError(null);
+    setTransactionPage(1);
+    setSnapshotPage(1);
 
     Promise.all([
       getPortfolio(portfolioId),
@@ -323,32 +330,36 @@ export default function PortfolioDetailPage() {
       listPortfolioAlerts(portfolioId),
       listNotifications()
     ])
-      .then(([
-        portfolioData,
-        positionsData,
-        transactionsData,
-        snapshotsData,
-        analyticsData,
-        reportsData,
-        alertsData,
-        notificationsData
-      ]) => {
-        if (!isActive) {
-          return;
-        }
+      .then(
+        ([
+          portfolioData,
+          positionsData,
+          transactionsData,
+          snapshotsData,
+          analyticsData,
+          reportsData,
+          alertsData,
+          notificationsData
+        ]) => {
+          if (!isActive) {
+            return;
+          }
 
-        setPortfolio(portfolioData);
-        setPositions(positionsData.positions);
-        setTransactions(transactionsData.transactions);
-        setSnapshots(snapshotsData.snapshots);
-        setAnalytics(analyticsData.data);
-        setReports(reportsData.reports);
-        setAlerts(alertsData.alerts);
-        setNotifications(notificationsData.notifications);
-      })
+          setPortfolio(portfolioData);
+          setPositions(positionsData.positions);
+          setTransactions(transactionsData.transactions);
+          setSnapshots(snapshotsData.snapshots);
+          setAnalytics(analyticsData.data);
+          setReports(reportsData.reports);
+          setAlerts(alertsData.alerts);
+          setNotifications(notificationsData.notifications);
+        }
+      )
       .catch((requestError: unknown) => {
         if (isActive) {
-          setError(getApiErrorMessage(requestError, "Não foi possível carregar o detalhe do portfólio."));
+          setError(
+            getApiErrorMessage(requestError, "Não foi possível carregar o detalhe do portfólio.")
+          );
         }
       })
       .finally(() => {
@@ -390,7 +401,9 @@ export default function PortfolioDetailPage() {
           void reloadNotifications();
         }
         if (message.type === "market_data.updated" || message.type === "portfolio.updated") {
-          void getPortfolio(portfolioId).then(setPortfolio).catch(() => undefined);
+          void getPortfolio(portfolioId)
+            .then(setPortfolio)
+            .catch(() => undefined);
           void reloadCharts();
         }
       },
@@ -411,9 +424,7 @@ export default function PortfolioDetailPage() {
       (report) => report.status === "pending" || report.status === "running"
     );
     const shouldPoll =
-      realtimeStatus !== "connected" ||
-      hasPendingReports ||
-      analytics?.status === "pending";
+      realtimeStatus !== "connected" || hasPendingReports || analytics?.status === "pending";
 
     if (!shouldPoll) {
       return;
@@ -509,7 +520,10 @@ export default function PortfolioDetailPage() {
           setAssetSearchResults([]);
           setAssetSearchStatus("error");
           setAssetSearchMessage(
-            getApiErrorMessage(requestError, "Dados de mercado indisponíveis. Informe o ativo manualmente.")
+            getApiErrorMessage(
+              requestError,
+              "Dados de mercado indisponíveis. Informe o ativo manualmente."
+            )
           );
         });
     }, 250);
@@ -522,12 +536,7 @@ export default function PortfolioDetailPage() {
 
   useEffect(() => {
     const quantity = Number(form.quantity);
-    if (
-      !selectedAssetId ||
-      !form.tradeDate ||
-      !Number.isFinite(quantity) ||
-      quantity <= 0
-    ) {
+    if (!selectedAssetId || !form.tradeDate || !Number.isFinite(quantity) || quantity <= 0) {
       setTradePrice(null);
       setTradePriceStatus("idle");
       setTradePriceError(null);
@@ -567,7 +576,10 @@ export default function PortfolioDetailPage() {
           setTradePrice(null);
           setTradePriceStatus("error");
           setTradePriceError(
-            getApiErrorMessage(requestError, "Não foi possível calcular o preço pelos dados de mercado.")
+            getApiErrorMessage(
+              requestError,
+              "Não foi possível calcular o preço pelos dados de mercado."
+            )
           );
         });
     }, 250);
@@ -635,10 +647,12 @@ export default function PortfolioDetailPage() {
       setPositions(positionsData.positions);
       setTransactions(transactionsData.transactions);
       setSnapshots(snapshotsData.snapshots);
+      setTransactionPage(1);
+      setSnapshotPage(1);
       setSubmissionNotice(
         portfolioData.marketDataState === "pending"
-            ? "Transação registrada. Os dados de mercado deste ativo serão atualizados na fila de acompanhamento."
-            : null
+          ? "Transação registrada. Os dados de mercado deste ativo serão atualizados na fila de acompanhamento."
+          : null
       );
       await reloadAnalytics();
       setForm({
@@ -684,6 +698,17 @@ export default function PortfolioDetailPage() {
       setIsRecomputing(false);
     }
   }
+
+  const transactionPageCount = Math.max(1, Math.ceil(transactions.length / TRANSACTIONS_PER_PAGE));
+  const snapshotPageCount = Math.max(1, Math.ceil(snapshots.length / SNAPSHOTS_PER_PAGE));
+  const visibleTransactions = transactions.slice(
+    (transactionPage - 1) * TRANSACTIONS_PER_PAGE,
+    transactionPage * TRANSACTIONS_PER_PAGE
+  );
+  const visibleSnapshots = snapshots.slice(
+    (snapshotPage - 1) * SNAPSHOTS_PER_PAGE,
+    snapshotPage * SNAPSHOTS_PER_PAGE
+  );
 
   async function handleRequestReport(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -814,9 +839,7 @@ export default function PortfolioDetailPage() {
             <Card>
               <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                 <div className="space-y-1">
-                  <p className="text-xs font-semibold uppercase text-moss">
-                    Detalhe do portfólio
-                  </p>
+                  <p className="text-xs font-semibold uppercase text-moss">Detalhe do portfólio</p>
                   <h1 className="text-3xl font-semibold text-stone-900">{portfolio.name}</h1>
                   <p className="text-stone-600">
                     {portfolio.accountName} · perfil {labelAccountRole(portfolio.membershipRole)}
@@ -844,38 +867,31 @@ export default function PortfolioDetailPage() {
 
             <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
               <Card className="grid gap-1">
-                <span className="text-xs font-semibold uppercase text-stone-500">
-                  Posições
-                </span>
+                <span className="text-xs font-semibold uppercase text-stone-500">Posições</span>
                 <strong className="block text-3xl leading-tight text-stone-900">
                   {portfolio.holdingsCount}
                 </strong>
                 <p className="text-sm text-stone-600">ativas nesta visão</p>
               </Card>
               <Card className="grid gap-1">
-                <span className="text-xs font-semibold uppercase text-stone-500">
-                  Transações
-                </span>
+                <span className="text-xs font-semibold uppercase text-stone-500">Transações</span>
                 <strong className="block text-3xl leading-tight text-stone-900">
                   {portfolio.transactionCount}
                 </strong>
                 <p className="text-sm text-stone-600">registradas no histórico</p>
               </Card>
               <Card className="grid gap-1">
-                <span className="text-xs font-semibold uppercase text-stone-500">
-                  Custo
-                </span>
+                <span className="text-xs font-semibold uppercase text-stone-500">Custo</span>
                 <strong className="block break-words text-3xl leading-tight text-stone-900">
                   {formatCurrency(portfolio.totalCostBasis, portfolio.baseCurrency)}
                 </strong>
                 <p className="text-sm text-stone-600">base histórica agregada</p>
               </Card>
               <Card className="grid gap-1">
-                <span className="text-xs font-semibold uppercase text-stone-500">
-                  Estado
-                </span>
+                <span className="text-xs font-semibold uppercase text-stone-500">Estado</span>
                 <strong className="block text-lg leading-tight text-stone-900">
-                  {labelProcessingState(portfolio.analyticsState)} / {labelProcessingState(portfolio.marketDataState)}
+                  {labelProcessingState(portfolio.analyticsState)} /{" "}
+                  {labelProcessingState(portfolio.marketDataState)}
                 </strong>
                 <p className="text-sm text-stone-600">análises e dados de mercado</p>
               </Card>
@@ -904,9 +920,7 @@ export default function PortfolioDetailPage() {
                     const activeSymbols = current.length > 0 ? current : allSymbols;
                     const nextSymbols = activeSymbols.includes(symbol)
                       ? activeSymbols.filter((entry) => entry !== symbol)
-                      : [...activeSymbols, symbol].sort((left, right) =>
-                          left.localeCompare(right)
-                        );
+                      : [...activeSymbols, symbol].sort((left, right) => left.localeCompare(right));
 
                     return nextSymbols.length === allSymbols.length ? [] : nextSymbols;
                   })
@@ -931,7 +945,8 @@ export default function PortfolioDetailPage() {
                 reports={reports}
                 alerts={alerts}
                 notifications={notifications.filter(
-                  (notification) => !notification.portfolioId || notification.portfolioId === portfolioId
+                  (notification) =>
+                    !notification.portfolioId || notification.portfolioId === portfolioId
                 )}
                 reportFormat={reportFormat}
                 alertTitle={alertTitle}
@@ -959,7 +974,9 @@ export default function PortfolioDetailPage() {
               <Card id="portfolio-transacao">
                 <div className="space-y-1">
                   <h2 className="text-xl font-semibold text-stone-900">Registrar transação</h2>
-                  <p className="text-sm text-stone-600">Somente compra e venda nesta primeira versão do histórico.</p>
+                  <p className="text-sm text-stone-600">
+                    Somente compra e venda nesta primeira versão do histórico.
+                  </p>
                 </div>
 
                 <form className="space-y-4" onSubmit={handleSubmit}>
@@ -1021,20 +1038,18 @@ export default function PortfolioDetailPage() {
                       id="assetSymbol"
                       className="mt-2"
                       value={form.assetSymbol}
-                      onChange={(event) =>
-                        {
-                          setSelectedAssetId(null);
-                          setTradePrice(null);
-                          setTradePriceStatus("idle");
-                          setTradePriceError(null);
-                          setForm((current) => ({
-                            ...current,
-                            assetSymbol: event.target.value,
-                            assetName: "",
-                            unitPrice: ""
-                          }));
-                        }
-                      }
+                      onChange={(event) => {
+                        setSelectedAssetId(null);
+                        setTradePrice(null);
+                        setTradePriceStatus("idle");
+                        setTradePriceError(null);
+                        setForm((current) => ({
+                          ...current,
+                          assetSymbol: event.target.value,
+                          assetName: "",
+                          unitPrice: ""
+                        }));
+                      }}
                       placeholder="Ex.: MSFT, Petrobras, PETR4"
                       required
                       aria-invalid={Boolean(formErrors.assetSymbol)}
@@ -1047,21 +1062,19 @@ export default function PortfolioDetailPage() {
                       selectedExchange={marketExchanges.find(
                         (exchange) => exchange.code === form.exchangeCode
                       )}
-                      onSelect={(asset) =>
-                        {
-                          setSelectedAssetId(asset.id);
-                          setTradePrice(null);
-                          setTradePriceStatus("idle");
-                          setTradePriceError(null);
-                          setForm((current) => ({
-                            ...current,
-                            assetSymbol: asset.symbol,
-                            assetName: asset.name,
-                            currency: asset.latestQuote?.currency ?? asset.currency,
-                            unitPrice: ""
-                          }));
-                        }
-                      }
+                      onSelect={(asset) => {
+                        setSelectedAssetId(asset.id);
+                        setTradePrice(null);
+                        setTradePriceStatus("idle");
+                        setTradePriceError(null);
+                        setForm((current) => ({
+                          ...current,
+                          assetSymbol: asset.symbol,
+                          assetName: asset.name,
+                          currency: asset.latestQuote?.currency ?? asset.currency,
+                          unitPrice: ""
+                        }));
+                      }}
                     />
                   </div>
 
@@ -1165,10 +1178,7 @@ export default function PortfolioDetailPage() {
 
                   {submitError ? <Alert variant="failure">{submitError}</Alert> : null}
 
-                  <Button
-                    type="submit"
-                    disabled={transactionSubmitBlocked}
-                  >
+                  <Button type="submit" disabled={transactionSubmitBlocked}>
                     {isSubmitting ? "Registrando..." : "Registrar transação"}
                   </Button>
                   {transactionSubmitHelp ? (
@@ -1184,7 +1194,9 @@ export default function PortfolioDetailPage() {
                   <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
                     <div>
                       <h2 className="text-xl font-semibold text-stone-900">Posições</h2>
-                      <p className="text-sm text-stone-600">Reconstrução atual ou por data do histórico.</p>
+                      <p className="text-sm text-stone-600">
+                        Reconstrução atual ou por data do histórico.
+                      </p>
                     </div>
                     <div className="w-full md:max-w-52">
                       <Label htmlFor="asOf">Data base</Label>
@@ -1242,7 +1254,9 @@ export default function PortfolioDetailPage() {
                   <Card id="portfolio-transacoes" className="scroll-mt-6">
                     <div>
                       <h2 className="text-xl font-semibold text-stone-900">Transações</h2>
-                      <p className="text-sm text-stone-600">Histórico de movimentações do portfólio.</p>
+                      <p className="text-sm text-stone-600">
+                        Histórico de movimentações do portfólio.
+                      </p>
                     </div>
 
                     {transactions.length === 0 ? (
@@ -1251,8 +1265,11 @@ export default function PortfolioDetailPage() {
                       </Alert>
                     ) : (
                       <div className="divide-y divide-border rounded-lg border border-border">
-                        {transactions.map((transaction) => (
-                          <div key={transaction.id} className="flex items-start justify-between gap-3 p-4">
+                        {visibleTransactions.map((transaction) => (
+                          <div
+                            key={transaction.id}
+                            className="flex items-start justify-between gap-3 p-4"
+                          >
                             <div>
                               <strong className="text-stone-900">
                                 {labelTransactionType(transaction.type)} {transaction.assetSymbol}
@@ -1266,18 +1283,33 @@ export default function PortfolioDetailPage() {
                             </div>
                             <div className="text-right text-sm text-stone-700">
                               <div>{formatDecimal(transaction.quantity)}</div>
-                              <div>{formatCurrency(transaction.totalAmount, transaction.currency)}</div>
+                              <div>
+                                {formatCurrency(transaction.totalAmount, transaction.currency)}
+                              </div>
                             </div>
                           </div>
                         ))}
                       </div>
                     )}
+                    {transactions.length > TRANSACTIONS_PER_PAGE ? (
+                      <ListPagination
+                        label="Paginação de transações"
+                        itemLabel="transações"
+                        page={transactionPage}
+                        pageSize={TRANSACTIONS_PER_PAGE}
+                        totalItems={transactions.length}
+                        totalPages={transactionPageCount}
+                        onPageChange={setTransactionPage}
+                      />
+                    ) : null}
                   </Card>
 
                   <Card id="portfolio-historicos" className="scroll-mt-6">
                     <div>
                       <h2 className="text-xl font-semibold text-stone-900">Históricos</h2>
-                      <p className="text-sm text-stone-600">Estados históricos reconstruídos por data.</p>
+                      <p className="text-sm text-stone-600">
+                        Estados históricos reconstruídos por data.
+                      </p>
                     </div>
 
                     {snapshots.length === 0 ? (
@@ -1286,12 +1318,18 @@ export default function PortfolioDetailPage() {
                       </Alert>
                     ) : (
                       <div className="divide-y divide-border rounded-lg border border-border">
-                        {snapshots.map((snapshot) => (
-                          <div key={snapshot.id} className="flex items-start justify-between gap-3 p-4">
+                        {visibleSnapshots.map((snapshot) => (
+                          <div
+                            key={snapshot.id}
+                            className="flex items-start justify-between gap-3 p-4"
+                          >
                             <div>
-                              <strong className="text-stone-900">{formatDate(snapshot.asOfDate)}</strong>
+                              <strong className="text-stone-900">
+                                {formatDate(snapshot.asOfDate)}
+                              </strong>
                               <p className="text-sm text-stone-600">
-                                {snapshot.positions.length} posições · {snapshot.transactionCount} transações
+                                {snapshot.positions.length} posições · {snapshot.transactionCount}{" "}
+                                transações
                               </p>
                             </div>
                             <div className="text-right text-sm text-stone-700">
@@ -1301,6 +1339,17 @@ export default function PortfolioDetailPage() {
                         ))}
                       </div>
                     )}
+                    {snapshots.length > SNAPSHOTS_PER_PAGE ? (
+                      <ListPagination
+                        label="Paginação de históricos"
+                        itemLabel="históricos"
+                        page={snapshotPage}
+                        pageSize={SNAPSHOTS_PER_PAGE}
+                        totalItems={snapshots.length}
+                        totalPages={snapshotPageCount}
+                        onPageChange={setSnapshotPage}
+                      />
+                    ) : null}
                   </Card>
                 </section>
               </div>
@@ -1309,6 +1358,67 @@ export default function PortfolioDetailPage() {
         )}
       </main>
     </ProtectedRoute>
+  );
+}
+
+function ListPagination({
+  label,
+  itemLabel,
+  page,
+  pageSize,
+  totalItems,
+  totalPages,
+  onPageChange
+}: {
+  label: string;
+  itemLabel: string;
+  page: number;
+  pageSize: number;
+  totalItems: number;
+  totalPages: number;
+  onPageChange: (page: number) => void;
+}) {
+  const firstItem = (page - 1) * pageSize + 1;
+  const lastItem = Math.min(page * pageSize, totalItems);
+
+  return (
+    <nav
+      aria-label={label}
+      className="flex flex-col gap-3 rounded-lg border border-border bg-muted/30 p-3 sm:flex-row sm:items-center sm:justify-between"
+    >
+      <div className="text-sm text-stone-600" aria-live="polite">
+        <span className="font-medium text-stone-800">
+          Exibindo {firstItem}–{lastItem}
+        </span>{" "}
+        de {totalItems} {itemLabel}
+        <span className="block text-xs text-stone-500 sm:inline">
+          {" "}
+          · Página {page} de {totalPages}
+        </span>
+      </div>
+      <div className="flex gap-2">
+        <Button
+          aria-label={`Página anterior de ${itemLabel}`}
+          className="flex-1 sm:flex-none"
+          disabled={page === 1}
+          onClick={() => onPageChange(page - 1)}
+          size="sm"
+          variant="outline"
+        >
+          Anterior
+        </Button>
+        <Button
+          aria-label={`Próxima página de ${itemLabel}`}
+          className="flex-1 sm:flex-none"
+          disabled={page === totalPages}
+          onClick={() => onPageChange(page + 1)}
+          size="sm"
+          variant="outline"
+        >
+          Próxima
+        </Button>
+      </div>
+    </nav>
   );
 }
 
@@ -1372,7 +1482,9 @@ function ReportsAlertsNotificationsPanel({
   onCreateAlert: (event: FormEvent<HTMLFormElement>) => void;
   onMarkNotificationRead: (notification: NotificationRecord) => void;
 }) {
-  const unreadCount = notifications.filter((notification) => notification.status === "unread").length;
+  const unreadCount = notifications.filter(
+    (notification) => notification.status === "unread"
+  ).length;
 
   return (
     <section className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
@@ -1381,7 +1493,7 @@ function ReportsAlertsNotificationsPanel({
           <div className="flex items-start justify-between gap-3">
             <div>
               <h2 className="text-xl font-semibold text-stone-900">Relatórios</h2>
-            <p className="text-sm text-stone-600">Arquivos gerados pela plataforma.</p>
+              <p className="text-sm text-stone-600">Arquivos gerados pela plataforma.</p>
             </div>
             <Badge variant={realtimeStatusVariant(realtimeStatus)}>
               {labelRealtimeStatus(realtimeStatus)}
@@ -1652,9 +1764,7 @@ function PortfolioChartsDashboard({
                 id="chartInterval"
                 className="mt-2"
                 value={interval}
-                onChange={(event) =>
-                  onIntervalChange(event.target.value as PortfolioChartInterval)
-                }
+                onChange={(event) => onIntervalChange(event.target.value as PortfolioChartInterval)}
               >
                 <option value="daily">Diário</option>
                 <option value="weekly">Semanal</option>
@@ -1701,7 +1811,9 @@ function PortfolioChartsDashboard({
       </Card>
 
       {error ? <Alert variant="failure">{error}</Alert> : null}
-      {isLoading && !charts ? <Alert variant="info">Carregando gráficos do portfólio.</Alert> : null}
+      {isLoading && !charts ? (
+        <Alert variant="info">Carregando gráficos do portfólio.</Alert>
+      ) : null}
       {charts?.dataQuality.status === "pending" ? (
         <Alert variant="warning">
           Os gráficos ainda dependem do primeiro retrato analítico ou do histórico de mercado.
@@ -1714,7 +1826,8 @@ function PortfolioChartsDashboard({
       ) : null}
       {charts?.dataQuality.status === "partial" ? (
         <Alert variant="warning">
-          Alguns gráficos estão parciais: {labelUnavailableChartKeys(charts.dataQuality.unavailableChartKeys)}.
+          Alguns gráficos estão parciais:{" "}
+          {labelUnavailableChartKeys(charts.dataQuality.unavailableChartKeys)}.
         </Alert>
       ) : null}
 
@@ -1997,7 +2110,8 @@ function AnalyticsDashboard({
       ) : null}
       {snapshot?.status === "partial" ? (
         <Alert variant="warning">
-          Retrato de risco parcial com {snapshot.dataQuality.unavailableMetricCount} métricas indisponíveis.
+          Retrato de risco parcial com {snapshot.dataQuality.unavailableMetricCount} métricas
+          indisponíveis.
         </Alert>
       ) : null}
       {!snapshot && !isLoading ? (
@@ -2099,7 +2213,8 @@ function MetricCard({ metric }: { metric: AnalyticsMetric }) {
         <p className="text-sm text-stone-600">{formatAnalyticsMessage(metric.reason)}</p>
       ) : null}
       <p className="text-xs text-stone-500">
-        {metric.observationCount} observações · {metric.effectiveHorizonDays} dias · versão {metric.calculationVersion}
+        {metric.observationCount} observações · {metric.effectiveHorizonDays} dias · versão{" "}
+        {metric.calculationVersion}
       </p>
     </Card>
   );
@@ -2364,7 +2479,9 @@ function formatMetricValue(metric: AnalyticsMetric) {
 }
 
 function formatAnalyticsMessage(message: string) {
-  const latestProviderQuote = message.match(/^Latest provider quote unavailable for (.+); stored quote was used\.$/);
+  const latestProviderQuote = message.match(
+    /^Latest provider quote unavailable for (.+); stored quote was used\.$/
+  );
   if (latestProviderQuote) {
     return `Cotação atual indisponível para ${latestProviderQuote[1]}; foi usada a cotação armazenada.`;
   }
@@ -2416,7 +2533,10 @@ function formatAnalyticsMessage(message: string) {
   const localized = message
     .replace(/\bstale\b/gi, "desatualizada")
     .replace(/\bprovider\b/gi, "provedor")
-    .replace(/\bbenchmark history unavailable; beta cannot be calculated\b/gi, "histórico do índice de referência indisponível; o beta não pode ser calculado")
+    .replace(
+      /\bbenchmark history unavailable; beta cannot be calculated\b/gi,
+      "histórico do índice de referência indisponível; o beta não pode ser calculado"
+    )
     .replace(/\blatest quotes\b/gi, "cotações atuais")
     .replace(/\bhistorical prices\b/gi, "preços históricos")
     .replace(/\bposition cost basis\b/gi, "base de custo da posição")
@@ -2523,7 +2643,9 @@ function formatChartQualityMessage(message: string) {
     return `Não há histórico de preços armazenado para ${history[1]}.`;
   }
 
-  const benchmark = message.match(/^Benchmark (.+) is unavailable in stored backend market data\.$/);
+  const benchmark = message.match(
+    /^Benchmark (.+) is unavailable in stored backend market data\.$/
+  );
   if (benchmark) {
     return `A referência ${benchmark[1]} não está disponível nos dados de mercado da plataforma.`;
   }

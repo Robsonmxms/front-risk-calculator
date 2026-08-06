@@ -3,9 +3,7 @@ import { API_BASE_URL } from "../../lib/api/config";
 import { clearSession, getRefreshToken, saveSession } from "./sessionStore";
 import { AuthSession, CurrentUserResponse, LoginCredentials } from "./types";
 
-export async function loginWithPassword(
-  credentials: LoginCredentials
-): Promise<AuthSession> {
+export async function loginWithPassword(credentials: LoginCredentials): Promise<AuthSession> {
   const session = await postPublic<AuthSession>("/auth/login", credentials);
   saveSession(session);
   return session;

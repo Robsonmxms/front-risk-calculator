@@ -2231,6 +2231,7 @@ __metadata:
     lint-staged: "npm:^17.0.8"
     next: "npm:^16.2.10"
     postcss: "npm:8.5.16"
+    prettier: "npm:^3.9.6"
     react: "npm:^19.2.7"
     react-dom: "npm:^19.2.7"
     react-is: "npm:19.2.8"
@@ -3269,6 +3270,15 @@ __metadata:
   version: 1.2.1
   resolution: "prelude-ls@npm:1.2.1"
   checksum: 10c0/b00d617431e7886c520a6f498a2e14c75ec58f6d93ba48c3b639cf241b54232d90daa05d83a9e9b9fef6baa63cb7e1e4602c2372fea5bc169668401eb127d0cd
+  languageName: node
+  linkType: hard
+
+"prettier@npm:^3.9.6":
+  version: 3.9.6
+  resolution: "prettier@npm:3.9.6"
+  bin:
+    prettier: bin/prettier.cjs
+  checksum: 10c0/9f7ddae234035868f3daab3dc34e6de7e54622185afb017378029f0c09a9c023248ccf6f34def0b17a0538e18c47aa1b3188bab72965d1bf735919baa0747e99
   languageName: node
   linkType: hard
 

@@ -106,7 +106,9 @@ describe("office operations page", () => {
       </AuthProvider>
     );
 
-    expect(await screen.findByRole("heading", { name: "Indicadores administrativos" })).toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", { name: "Indicadores administrativos" })
+    ).toBeInTheDocument();
     expect(screen.getByText("Crescimento")).toBeInTheDocument();
     expect(screen.getByText("Onboarding")).toBeInTheDocument();
     expect(screen.getByText("Dados de mercado")).toBeInTheDocument();
@@ -233,7 +235,13 @@ const officeCharts: OfficeAdminChartBundle = {
       }
     ],
     portfolioCoverage: [
-      { status: "ready", freshness: "fresh", count: 1, totalCostBasis: 162199.2, portfolioIds: ["prt_main"] }
+      {
+        status: "ready",
+        freshness: "fresh",
+        count: 1,
+        totalCostBasis: 162199.2,
+        portfolioIds: ["prt_main"]
+      }
     ],
     assetCoverage: [
       {
@@ -333,7 +341,9 @@ const platformCharts: PlatformAdminChartBundle = {
     providerHealth: [],
     jobHealth: [{ kind: "analytics", status: "failed", count: 1 }],
     reportThroughput: [{ status: "ready", count: 1, portfolioCount: 1 }],
-    alertNotificationVolume: [{ date: "2026-07-15", low: 0, medium: 0, high: 1, info: 0, total: 1 }],
+    alertNotificationVolume: [
+      { date: "2026-07-15", low: 0, medium: 0, high: 1, info: 0, total: 1 }
+    ],
     permissionActivity: [{ date: "2026-07-09", created: 1, revoked: 0, roleChanges: 0, total: 1 }]
   },
   dataQuality: {

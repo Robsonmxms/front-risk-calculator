@@ -129,7 +129,9 @@ export default function WorkbenchPage() {
       })
       .catch((caught) => {
         if (isActive) {
-          setError(getApiErrorMessage(caught, "Não foi possível carregar a mesa de acompanhamento."));
+          setError(
+            getApiErrorMessage(caught, "Não foi possível carregar a mesa de acompanhamento.")
+          );
         }
       })
       .finally(() => {
@@ -163,7 +165,8 @@ export default function WorkbenchPage() {
     setChartError(null);
 
     getAdvisorCharts(officeId, {
-      advisorUserId: activeOffice?.role === "office_admin" ? selectedAdvisorUserId || undefined : undefined,
+      advisorUserId:
+        activeOffice?.role === "office_admin" ? selectedAdvisorUserId || undefined : undefined,
       range: chartRange,
       riskBand: chartRiskBand,
       freshness: chartFreshness
@@ -175,7 +178,9 @@ export default function WorkbenchPage() {
       })
       .catch((caught) => {
         if (isActive) {
-          setChartError(getApiErrorMessage(caught, "Não foi possível carregar os gráficos da carteira."));
+          setChartError(
+            getApiErrorMessage(caught, "Não foi possível carregar os gráficos da carteira.")
+          );
         }
       })
       .finally(() => {
@@ -296,14 +301,18 @@ export default function WorkbenchPage() {
           showAdmin={actor?.role === "admin"}
           actions={
             <>
-              {activeOffice ? <Badge variant="outline">{labelOfficeRole(activeOffice.role)}</Badge> : null}
+              {activeOffice ? (
+                <Badge variant="outline">{labelOfficeRole(activeOffice.role)}</Badge>
+              ) : null}
               <LogoutButton />
             </>
           }
         />
 
         {!officeId ? (
-          <Alert variant="warning">Selecione um escritório para abrir a mesa de acompanhamento.</Alert>
+          <Alert variant="warning">
+            Selecione um escritório para abrir a mesa de acompanhamento.
+          </Alert>
         ) : isClientOffice ? (
           <section className="grid gap-4">
             <Alert variant="warning">
@@ -369,8 +378,12 @@ export default function WorkbenchPage() {
               <Card id="workbench-fila" className="scroll-mt-4">
                 <div className="flex items-start justify-between gap-3">
                   <div>
-                    <p className="text-xs font-semibold uppercase text-moss">Fila de acompanhamento</p>
-                    <h1 className="text-2xl font-semibold text-stone-900">Itens de acompanhamento</h1>
+                    <p className="text-xs font-semibold uppercase text-moss">
+                      Fila de acompanhamento
+                    </p>
+                    <h1 className="text-2xl font-semibold text-stone-900">
+                      Itens de acompanhamento
+                    </h1>
                   </div>
                   <div className="flex gap-2">
                     <Select
@@ -389,7 +402,9 @@ export default function WorkbenchPage() {
                     <Select
                       aria-label="Filtrar status"
                       value={statusFilter}
-                      onChange={(event) => setStatusFilter(event.target.value as ReviewItemStatus | "")}
+                      onChange={(event) =>
+                        setStatusFilter(event.target.value as ReviewItemStatus | "")
+                      }
                     >
                       {STATUSES.map((entry) => (
                         <option key={entry || "all"} value={entry}>
@@ -401,7 +416,9 @@ export default function WorkbenchPage() {
                 </div>
 
                 {reviewItems.length === 0 ? (
-                  <Alert variant="info" className="mt-5">Nenhum item de acompanhamento neste filtro.</Alert>
+                  <Alert variant="info" className="mt-5">
+                    Nenhum item de acompanhamento neste filtro.
+                  </Alert>
                 ) : (
                   <div className="mt-5 divide-y divide-border rounded-lg border border-border">
                     <div className="hidden grid-cols-[minmax(180px,1.4fr)_minmax(160px,1fr)_120px_120px_minmax(150px,.9fr)] gap-3 bg-muted/40 px-3 py-2 text-xs font-semibold uppercase text-stone-500 md:grid">
@@ -456,7 +473,9 @@ export default function WorkbenchPage() {
                               }
                             >
                               <option value="open">{labelReviewStatus("open")}</option>
-                              <option value="in_progress">{labelReviewStatus("in_progress")}</option>
+                              <option value="in_progress">
+                                {labelReviewStatus("in_progress")}
+                              </option>
                               <option value="closed">{labelReviewStatus("closed")}</option>
                             </Select>
                           )}
@@ -471,7 +490,9 @@ export default function WorkbenchPage() {
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <p className="text-xs font-semibold uppercase text-moss">Clientes</p>
-                    <h2 className="text-xl font-semibold text-stone-900">Carteira de clientes atribuída</h2>
+                    <h2 className="text-xl font-semibold text-stone-900">
+                      Carteira de clientes atribuída
+                    </h2>
                   </div>
                   <Badge variant="outline">{workbench.assignedClients.length} clientes</Badge>
                 </div>
@@ -480,7 +501,9 @@ export default function WorkbenchPage() {
                     isClientOffice ? (
                       <div key={client.id} className="rounded-md border border-border p-3 text-sm">
                         <span className="block font-medium text-stone-900">{client.name}</span>
-                        <span className="text-stone-500">{client.householdName ?? "Sem grupo familiar"}</span>
+                        <span className="text-stone-500">
+                          {client.householdName ?? "Sem grupo familiar"}
+                        </span>
                       </div>
                     ) : (
                       <Link
@@ -489,7 +512,9 @@ export default function WorkbenchPage() {
                         className="rounded-md border border-border p-3 text-sm hover:border-moss"
                       >
                         <span className="block font-medium text-stone-900">{client.name}</span>
-                        <span className="text-stone-500">{client.householdName ?? "Sem grupo familiar"}</span>
+                        <span className="text-stone-500">
+                          {client.householdName ?? "Sem grupo familiar"}
+                        </span>
                       </Link>
                     )
                   )}
@@ -500,9 +525,13 @@ export default function WorkbenchPage() {
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <p className="text-xs font-semibold uppercase text-moss">Atenção operacional</p>
-                    <h2 className="text-xl font-semibold text-stone-900">Portfólios pedindo atenção</h2>
+                    <h2 className="text-xl font-semibold text-stone-900">
+                      Portfólios pedindo atenção
+                    </h2>
                   </div>
-                  <Badge variant="outline">{workbench.portfoliosNeedingAttention.length} portfólios</Badge>
+                  <Badge variant="outline">
+                    {workbench.portfoliosNeedingAttention.length} portfólios
+                  </Badge>
                 </div>
                 <div className="mt-5 grid gap-3 md:grid-cols-2">
                   {workbench.portfoliosNeedingAttention.length === 0 ? (
@@ -510,10 +539,14 @@ export default function WorkbenchPage() {
                   ) : (
                     workbench.portfoliosNeedingAttention.map((portfolio) =>
                       isClientOffice ? (
-                        <div key={portfolio.id} className="rounded-md border border-border p-3 text-sm">
+                        <div
+                          key={portfolio.id}
+                          className="rounded-md border border-border p-3 text-sm"
+                        >
                           <span className="block font-medium text-stone-900">{portfolio.name}</span>
                           <span className="text-stone-500">
-                            {labelPortfolioStatus(portfolio.status)} · {labelPortfolioFreshness(portfolio.freshness)}
+                            {labelPortfolioStatus(portfolio.status)} ·{" "}
+                            {labelPortfolioFreshness(portfolio.freshness)}
                           </span>
                         </div>
                       ) : (
@@ -524,7 +557,8 @@ export default function WorkbenchPage() {
                         >
                           <span className="block font-medium text-stone-900">{portfolio.name}</span>
                           <span className="text-stone-500">
-                            {labelPortfolioStatus(portfolio.status)} · {labelPortfolioFreshness(portfolio.freshness)}
+                            {labelPortfolioStatus(portfolio.status)} ·{" "}
+                            {labelPortfolioFreshness(portfolio.freshness)}
                           </span>
                         </Link>
                       )
@@ -589,7 +623,8 @@ export default function WorkbenchPage() {
                         ))}
                       </Select>
                     </div>
-                  ) : resourceType === "portfolio" && workbench.portfoliosNeedingAttention.length > 0 ? (
+                  ) : resourceType === "portfolio" &&
+                    workbench.portfoliosNeedingAttention.length > 0 ? (
                     <div>
                       <Label htmlFor="resourceId">Portfólio</Label>
                       <Select
@@ -690,12 +725,8 @@ export default function WorkbenchPage() {
 function MetricCard({ label, value }: { label: string; value: ReactNode }) {
   return (
     <Card className="grid h-full gap-1">
-      <span className="text-xs font-semibold uppercase leading-tight text-stone-500">
-        {label}
-      </span>
-      <strong className="block break-words text-2xl leading-tight text-stone-900">
-        {value}
-      </strong>
+      <span className="text-xs font-semibold uppercase leading-tight text-stone-500">{label}</span>
+      <strong className="block break-words text-2xl leading-tight text-stone-900">{value}</strong>
     </Card>
   );
 }
@@ -730,12 +761,18 @@ function AdvisorChartsDashboard({
   onAdvisorChange: (value: string) => void;
 }) {
   return (
-    <section id="workbench-graficos" className="scroll-mt-4 grid gap-4" aria-label="Gráficos da carteira do assessor">
+    <section
+      id="workbench-graficos"
+      className="scroll-mt-4 grid gap-4"
+      aria-label="Gráficos da carteira do assessor"
+    >
       <Card>
         <div className="grid gap-5">
           <div>
             <p className="text-xs font-semibold uppercase text-moss">Carteira do assessor</p>
-            <h2 className="text-xl font-semibold text-stone-900">Monitoramento do livro de clientes</h2>
+            <h2 className="text-xl font-semibold text-stone-900">
+              Monitoramento do livro de clientes
+            </h2>
           </div>
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             {canSelectAdvisor ? (
@@ -813,7 +850,11 @@ function AdvisorChartsDashboard({
             <ChartShell
               eyebrow="Evolução"
               title="Valor do livro"
-              aside={<Badge variant={qualityVariant(charts.dataQuality.status)}>{labelAdvisorQualityStatus(charts.dataQuality.status)}</Badge>}
+              aside={
+                <Badge variant={qualityVariant(charts.dataQuality.status)}>
+                  {labelAdvisorQualityStatus(charts.dataQuality.status)}
+                </Badge>
+              }
             >
               <LineChart points={charts.charts.bookValueTrend} />
             </ChartShell>
@@ -934,7 +975,11 @@ function ScatterChart({ points }: { points: AdvisorChartBundle["charts"]["riskRe
       />
       <div className="grid gap-2 text-xs text-stone-600 sm:grid-cols-2">
         {points.slice(0, 4).map((point) => (
-          <Link key={point.portfolioId} href={`/dashboard/portfolios/${point.portfolioId}`} className="rounded-md border border-border px-2 py-1 hover:border-moss">
+          <Link
+            key={point.portfolioId}
+            href={`/dashboard/portfolios/${point.portfolioId}`}
+            className="rounded-md border border-border px-2 py-1 hover:border-moss"
+          >
             {point.portfolioName} · {labelRiskBand(point.riskBand)}
           </Link>
         ))}
@@ -943,7 +988,11 @@ function ScatterChart({ points }: { points: AdvisorChartBundle["charts"]["riskRe
   );
 }
 
-function AllocationBars({ points }: { points: AdvisorChartBundle["charts"]["allocationBreakdown"] }) {
+function AllocationBars({
+  points
+}: {
+  points: AdvisorChartBundle["charts"]["allocationBreakdown"];
+}) {
   return (
     <ThemedHorizontalBarChart
       ariaLabel="Alocação agregada"
@@ -958,7 +1007,11 @@ function AllocationBars({ points }: { points: AdvisorChartBundle["charts"]["allo
   );
 }
 
-function SectorHeatmap({ cells }: { cells: AdvisorChartBundle["charts"]["sectorExposureHeatmap"] }) {
+function SectorHeatmap({
+  cells
+}: {
+  cells: AdvisorChartBundle["charts"]["sectorExposureHeatmap"];
+}) {
   return (
     <ThemedHeatmapChart
       ariaLabel="Mapa setorial por cliente"
@@ -973,7 +1026,11 @@ function SectorHeatmap({ cells }: { cells: AdvisorChartBundle["charts"]["sectorE
   );
 }
 
-function SeverityTimeline({ points }: { points: AdvisorChartBundle["charts"]["alertSeverityTimeline"] }) {
+function SeverityTimeline({
+  points
+}: {
+  points: AdvisorChartBundle["charts"]["alertSeverityTimeline"];
+}) {
   if (points.length === 0) {
     return <EmptyChartState>Nenhum alerta no período.</EmptyChartState>;
   }
@@ -1054,7 +1111,9 @@ function StaleBacklog({ items }: { items: AdvisorChartBundle["charts"]["staleDat
           className="rounded-md border border-border p-3 text-sm hover:border-moss"
         >
           <span className="block font-medium text-stone-900">{item.portfolioName}</span>
-          <span className="block text-stone-500">{item.clientName ?? "Cliente vinculado"} · {labelPortfolioFreshness(item.freshness)}</span>
+          <span className="block text-stone-500">
+            {item.clientName ?? "Cliente vinculado"} · {labelPortfolioFreshness(item.freshness)}
+          </span>
           <span className="block text-xs text-stone-500">{item.reason}</span>
         </Link>
       ))}
@@ -1062,7 +1121,11 @@ function StaleBacklog({ items }: { items: AdvisorChartBundle["charts"]["staleDat
   );
 }
 
-function NeedsAttentionTable({ items }: { items: AdvisorChartBundle["rankings"]["needsAttention"] }) {
+function NeedsAttentionTable({
+  items
+}: {
+  items: AdvisorChartBundle["rankings"]["needsAttention"];
+}) {
   if (items.length === 0) {
     return <EmptyChartState>Nenhum cliente priorizado nos filtros.</EmptyChartState>;
   }
@@ -1136,7 +1199,10 @@ function DataQualityPanel({ charts }: { charts: AdvisorChartBundle }) {
       ) : (
         <div className="grid gap-2">
           {charts.dataQuality.issues.slice(0, 4).map((issue) => (
-            <Alert key={`${issue.code}-${issue.message}`} variant={issue.severity === "blocking" ? "failure" : "warning"}>
+            <Alert
+              key={`${issue.code}-${issue.message}`}
+              variant={issue.severity === "blocking" ? "failure" : "warning"}
+            >
               {labelDataQualityIssueCode(issue.code)}
             </Alert>
           ))}
@@ -1158,8 +1224,7 @@ function EmptyChartState({ children }: { children: ReactNode }) {
 }
 
 function totalBookValue(charts: AdvisorChartBundle) {
-  const latestTrend =
-    charts.charts.bookValueTrend[charts.charts.bookValueTrend.length - 1]?.value;
+  const latestTrend = charts.charts.bookValueTrend[charts.charts.bookValueTrend.length - 1]?.value;
   if (latestTrend !== undefined) {
     return latestTrend;
   }
@@ -1239,7 +1304,8 @@ function labelAgingBucket(value: AdvisorChartBundle["charts"]["workbenchAging"][
 }
 
 function resourceLink(item: ReviewItem, workbench: StaffWorkbench, readOnly = false) {
-  const clientReferenceId = item.clientId ?? (item.resourceType === "client" ? item.resourceId : undefined);
+  const clientReferenceId =
+    item.clientId ?? (item.resourceType === "client" ? item.resourceId : undefined);
   const portfolioReferenceId =
     item.portfolioId ?? (item.resourceType === "portfolio" ? item.resourceId : undefined);
   const label = formatWorkbenchResource(item, workbench);
@@ -1257,7 +1323,10 @@ function resourceLink(item: ReviewItem, workbench: StaffWorkbench, readOnly = fa
   }
   if (portfolioReferenceId) {
     return (
-      <Link href={`/dashboard/portfolios/${portfolioReferenceId}`} className="font-medium text-moss">
+      <Link
+        href={`/dashboard/portfolios/${portfolioReferenceId}`}
+        className="font-medium text-moss"
+      >
         {label}
       </Link>
     );
@@ -1266,10 +1335,13 @@ function resourceLink(item: ReviewItem, workbench: StaffWorkbench, readOnly = fa
 }
 
 function formatWorkbenchResource(item: ReviewItem, workbench: StaffWorkbench) {
-  const clientReferenceId = item.clientId ?? (item.resourceType === "client" ? item.resourceId : undefined);
+  const clientReferenceId =
+    item.clientId ?? (item.resourceType === "client" ? item.resourceId : undefined);
   const portfolioReferenceId =
     item.portfolioId ?? (item.resourceType === "portfolio" ? item.resourceId : undefined);
-  const clientName = workbench.assignedClients.find((client) => client.id === clientReferenceId)?.name;
+  const clientName = workbench.assignedClients.find(
+    (client) => client.id === clientReferenceId
+  )?.name;
   const portfolioName = workbench.portfoliosNeedingAttention.find(
     (portfolio) => portfolio.id === portfolioReferenceId
   )?.name;

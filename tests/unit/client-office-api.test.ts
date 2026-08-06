@@ -225,9 +225,7 @@ describe("client and office api clients", () => {
     expect(fetchMock.mock.calls[3][0]).toBe(
       "http://localhost:8000/api/v1/me/permissions?officeId=ofc%20main"
     );
-    expect(fetchMock.mock.calls[5][0]).toBe(
-      "http://localhost:8000/api/v1/offices/ofc_main/teams"
-    );
+    expect(fetchMock.mock.calls[5][0]).toBe("http://localhost:8000/api/v1/offices/ofc_main/teams");
     expect(fetchMock.mock.calls[5][1]).toMatchObject({ method: "POST" });
     expect(fetchMock.mock.calls[7][0]).toBe(
       "http://localhost:8000/api/v1/clients/client_assignment/assignments"

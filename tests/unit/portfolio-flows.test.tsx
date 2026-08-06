@@ -36,9 +36,12 @@ const authApiMocks = vi.hoisted(() => ({
 const portfolioApiMocks = vi.hoisted(() => ({
   convertCurrency: vi.fn(),
   createPortfolio: vi.fn(),
+  createPortfolioImport: vi.fn(),
   createPortfolioAlert: vi.fn(),
   createPortfolioTransaction: vi.fn(),
   downloadPortfolioReport: vi.fn(),
+  downloadPortfolioImportErrorReport: vi.fn(),
+  downloadPortfolioImportTemplate: vi.fn(),
   getPortfolio: vi.fn(),
   getPortfolioAnalytics: vi.fn(),
   getPortfolioCharts: vi.fn(),
@@ -46,6 +49,7 @@ const portfolioApiMocks = vi.hoisted(() => ({
   listMarketExchanges: vi.fn(),
   listNotifications: vi.fn(),
   listPortfolioAlerts: vi.fn(),
+  listPortfolioImports: vi.fn(),
   listPortfolioPositions: vi.fn(),
   listPortfolioReports: vi.fn(),
   listPortfolioSnapshots: vi.fn(),
@@ -215,6 +219,19 @@ beforeEach(() => {
     refreshToken: "refresh-token",
     actor
   });
+  portfolioApiMocks.listPortfolioImports.mockResolvedValue({
+    data: { imports: [] },
+    meta: {
+      pagination: {
+        page: 1,
+        per_page: 20,
+        total_items: 0,
+        total_pages: 1,
+        has_next: false,
+        has_prev: false
+      }
+    }
+  });
 });
 
 afterEach(() => {
@@ -254,8 +271,12 @@ describe("dashboard portfolio creation flow", () => {
 
     renderWithAuth(<DashboardPage />);
 
-    expect(await screen.findByRole("heading", { name: "Investidor Principal" })).toBeInTheDocument();
-    expect(await screen.findByText("Fonte: Yahoo Finance · fonte principal atualizada")).toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", { name: "Investidor Principal" })
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByText("Fonte: Yahoo Finance · fonte principal atualizada")
+    ).toBeInTheDocument();
     expect(screen.getByText(/Cotação da fonte:/)).toHaveTextContent("16/07/2026");
     expect(screen.getByText(/Consulta da plataforma:/)).toHaveTextContent("16/07/2026");
     expect(document.querySelector("#app-header-mobile-nav")).toBeNull();
@@ -306,9 +327,123 @@ describe("dashboard portfolio creation flow", () => {
     await new Promise((resolve) => window.setTimeout(resolve, 300));
     expect(portfolioApiMocks.convertCurrency).not.toHaveBeenCalled();
   });
+
+  it("downloads the template and starts an asynchronous spreadsheet import", async () => {
+    portfolioApiMocks.listPortfolios.mockResolvedValue({ portfolios: [] });
+    portfolioApiMocks.downloadPortfolioImportTemplate.mockResolvedValue({
+      blob: new Blob(["xlsx"], {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+      }),
+      filename: "modelo-importacao-portfolio-v1.xlsx"
+    });
+    portfolioApiMocks.createPortfolioImport.mockResolvedValue({
+      data: {
+        id: "import-1",
+        type: "portfolio_spreadsheet_import",
+        accountId: "acc_main",
+        status: "queued",
+        phase: "upload_complete",
+        originalFileName: "carteira.xlsx",
+        portfolioId: null,
+        progress: {
+          totalRows: null,
+          processedRows: 0,
+          succeededRows: 0,
+          failedRows: 0,
+          percent: 0
+        },
+        failure: null,
+        errorReportAvailable: false,
+        createdAt: "2026-08-06T15:00:00.000Z",
+        updatedAt: "2026-08-06T15:00:00.000Z",
+        completedAt: null
+      },
+      meta: { pollAfterMs: 1000 }
+    });
+    const createObjectUrl = vi.fn(() => "blob:template");
+    const revokeObjectUrl = vi.fn();
+    Object.defineProperty(URL, "createObjectURL", { configurable: true, value: createObjectUrl });
+    Object.defineProperty(URL, "revokeObjectURL", { configurable: true, value: revokeObjectUrl });
+    const anchorClick = vi
+      .spyOn(HTMLAnchorElement.prototype, "click")
+      .mockImplementation(() => undefined);
+
+    renderWithAuth(<DashboardPage />);
+    expect(await screen.findByRole("heading", { name: "Importar planilha" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Baixar modelo XLSX" }));
+    await waitFor(() =>
+      expect(portfolioApiMocks.downloadPortfolioImportTemplate).toHaveBeenCalled()
+    );
+
+    const file = new File(["PK spreadsheet"], "carteira.xlsx", {
+      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    });
+    fireEvent.change(screen.getByLabelText("Planilha XLSX"), {
+      target: { files: [file] }
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Iniciar importação" }));
+
+    await waitFor(() => {
+      expect(portfolioApiMocks.createPortfolioImport).toHaveBeenCalledWith(
+        expect.objectContaining({
+          accountId: "acc_main",
+          file,
+          idempotencyKey: expect.any(String)
+        })
+      );
+    });
+    expect(await screen.findByText("Na fila")).toBeInTheDocument();
+    anchorClick.mockRestore();
+  });
 });
 
 describe("portfolio detail ledger and market-data flow", () => {
+  it("paginates imported transaction and snapshot histories instead of rendering the full ledger", async () => {
+    const transactions = Array.from({ length: 45 }, (_, index) => ({
+      ...recordedTransaction,
+      id: `txn_${index + 1}`,
+      assetSymbol: `AT${String(index + 1).padStart(2, "0")}`,
+      assetName: `Ativo ${index + 1}`,
+      notes: `Linha importada ${index + 1}`
+    }));
+    const snapshots = Array.from({ length: 12 }, (_, index) =>
+      makeSnapshot({
+        id: `snp_${index + 1}`,
+        asOfDate: `2026-07-${String(31 - index).padStart(2, "0")}`,
+        transactionCount: (index + 1) * 10
+      })
+    );
+    mockPortfolioDetailApi({
+      listTransactions: () => ({ transactions }),
+      listSnapshots: () => ({ snapshots })
+    });
+
+    renderWithAuth(<PortfolioDetailPage />);
+
+    const transactionPagination = await screen.findByRole("navigation", {
+      name: "Paginação de transações"
+    });
+    const snapshotPagination = screen.getByRole("navigation", {
+      name: "Paginação de históricos"
+    });
+    expect(transactionPagination).toHaveTextContent("Exibindo 1–20 de 45 transações");
+    expect(screen.getByText("Linha importada 20")).toBeInTheDocument();
+    expect(screen.queryByText("Linha importada 21")).not.toBeInTheDocument();
+    expect(snapshotPagination).toHaveTextContent("Exibindo 1–10 de 12 históricos");
+
+    fireEvent.click(screen.getByRole("button", { name: "Próxima página de transações" }));
+    await waitFor(() => {
+      expect(transactionPagination).toHaveTextContent("Exibindo 21–40 de 45 transações");
+    });
+    expect(screen.getByText("Linha importada 21")).toBeInTheDocument();
+    expect(screen.queryByText("Linha importada 20")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Próxima página de históricos" }));
+    await waitFor(() => {
+      expect(snapshotPagination).toHaveTextContent("Exibindo 11–12 de 12 históricos");
+    });
+  });
+
   it("searches a backend market asset, uses backend trade price, records a transaction, and reloads ledger data", async () => {
     let transactionRecorded = false;
     const preciseTradePrice = {
@@ -455,10 +590,14 @@ describe("portfolio detail ledger and market-data flow", () => {
     fireEvent.submit(submitButton.closest("form") as HTMLFormElement);
 
     expect(
-      await screen.findAllByText("Selecione um ativo retornado pelos dados de mercado antes de registrar.")
+      await screen.findAllByText(
+        "Selecione um ativo retornado pelos dados de mercado antes de registrar."
+      )
     ).toHaveLength(2);
     expect(
-      screen.getByText("Selecione um ativo retornado pelos dados de mercado para liberar o registro.")
+      screen.getByText(
+        "Selecione um ativo retornado pelos dados de mercado para liberar o registro."
+      )
     ).toBeInTheDocument();
     expect(portfolioApiMocks.createPortfolioTransaction).not.toHaveBeenCalled();
   });
@@ -486,7 +625,9 @@ describe("portfolio analytics states", () => {
     renderWithAuth(<PortfolioDetailPage />);
 
     expect(await screen.findByText("atualização pendente")).toBeInTheDocument();
-    expect(screen.getByText("As análises ainda não possuem retrato de risco calculado.")).toBeInTheDocument();
+    expect(
+      screen.getByText("As análises ainda não possuem retrato de risco calculado.")
+    ).toBeInTheDocument();
   });
 
   it("renders partial analytics with explicit insufficient-sample metadata", async () => {
@@ -531,11 +672,15 @@ describe("portfolio analytics states", () => {
     renderWithAuth(<PortfolioDetailPage />);
 
     expect(await screen.findByText("fontes parciais")).toBeInTheDocument();
-    expect(screen.getByText("Retrato de risco parcial com 1 métricas indisponíveis.")).toBeInTheDocument();
+    expect(
+      screen.getByText("Retrato de risco parcial com 1 métricas indisponíveis.")
+    ).toBeInTheDocument();
     expect(screen.getByText("Indisponível")).toBeInTheDocument();
     expect(screen.getByText("Dados de mercado desatualizados")).toBeInTheDocument();
     expect(screen.getByText("Amostra insuficiente")).toBeInTheDocument();
-    expect(screen.getByText("8 observações · 7 dias · versão risk-v2-minimum-sample")).toBeInTheDocument();
+    expect(
+      screen.getByText("8 observações · 7 dias · versão risk-v2-minimum-sample")
+    ).toBeInTheDocument();
     expect(screen.queryByText("market_data.stale")).not.toBeInTheDocument();
     expect(screen.getByText("Cotação desatualizada para MSFT.")).toBeInTheDocument();
   });
@@ -557,7 +702,9 @@ describe("portfolio analytics states", () => {
 
     expect(await screen.findByText("dados indisponíveis")).toBeInTheDocument();
     expect(
-      screen.getByText("O último retrato de risco bem-sucedido continua visível após a falha mais recente.")
+      screen.getByText(
+        "O último retrato de risco bem-sucedido continua visível após a falha mais recente."
+      )
     ).toBeInTheDocument();
     expect(screen.getByText("Retorno total")).toBeInTheDocument();
   });
@@ -569,7 +716,9 @@ describe("portfolio charting states", () => {
 
     renderWithAuth(<PortfolioDetailPage />);
 
-    expect(await screen.findByRole("heading", { name: "Evolução e composição" })).toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", { name: "Evolução e composição" })
+    ).toBeInTheDocument();
     expect(screen.getByLabelText("Período")).toHaveValue("1y");
     expect(screen.getByLabelText("Intervalo")).toHaveValue("daily");
     expect(screen.getByLabelText("Referência")).toBeInTheDocument();
@@ -612,8 +761,12 @@ describe("portfolio charting states", () => {
 
     expect(await screen.findByText(/Alguns gráficos estão parciais/)).toBeInTheDocument();
     expect(screen.getByText("Histórico de preços indisponível")).toBeInTheDocument();
-    expect(screen.getByText("Não há histórico de preços armazenado para MSFT.")).toBeInTheDocument();
-    expect(screen.queryByText("No stored historical prices were available for MSFT.")).not.toBeInTheDocument();
+    expect(
+      screen.getByText("Não há histórico de preços armazenado para MSFT.")
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText("No stored historical prices were available for MSFT.")
+    ).not.toBeInTheDocument();
   });
 
   it("renders proportional chart empty states and portfolio section navigation", async () => {
@@ -638,7 +791,9 @@ describe("portfolio charting states", () => {
 
     renderWithAuth(<PortfolioDetailPage />);
 
-    expect(await screen.findByRole("navigation", { name: "Seções do portfólio" })).toBeInTheDocument();
+    expect(
+      await screen.findByRole("navigation", { name: "Seções do portfólio" })
+    ).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Registrar" })).toHaveAttribute(
       "href",
       "#portfolio-transacao"
@@ -731,9 +886,7 @@ function mockPortfolioDetailApi({
   portfolioApiMocks.markNotificationRead.mockResolvedValue(undefined);
 }
 
-function makePortfolioListItem(
-  overrides: Partial<PortfolioListItem> = {}
-): PortfolioListItem {
+function makePortfolioListItem(overrides: Partial<PortfolioListItem> = {}): PortfolioListItem {
   return {
     id: "prt_main",
     officeId: "ofc_main",

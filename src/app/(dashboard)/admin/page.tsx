@@ -18,11 +18,7 @@ import { useAuth } from "../../../features/auth/AuthProvider";
 import { LogoutButton } from "../../../features/auth/LogoutButton";
 import { SafeUser, UserRole } from "../../../features/auth/types";
 import { ApiError, apiFetch } from "../../../lib/api/client";
-import {
-  getApiErrorMessage,
-  labelUserRole,
-  labelUserStatus
-} from "../../../lib/presentation";
+import { getApiErrorMessage, labelUserRole, labelUserStatus } from "../../../lib/presentation";
 
 const ADMIN_ROLES: UserRole[] = ["admin"];
 

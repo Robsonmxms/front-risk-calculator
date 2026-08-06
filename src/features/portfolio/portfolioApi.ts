@@ -20,6 +20,7 @@ import {
   PortfolioReport,
   PortfolioSnapshot,
   PortfolioTransaction,
+  PortfolioImportJob,
   ReportFormat,
   TradePriceQuote
 } from "./types";
@@ -84,11 +85,59 @@ export async function createPortfolioTransaction(
 
 export async function listPortfolioPositions(portfolioId: string, asOf?: string) {
   const query = asOf ? `?asOf=${encodeURIComponent(asOf)}` : "";
-  return apiFetch<{ positions: PortfolioPosition[] }>(`/portfolios/${portfolioId}/positions${query}`);
+  return apiFetch<{ positions: PortfolioPosition[] }>(
+    `/portfolios/${portfolioId}/positions${query}`
+  );
 }
 
 export async function listPortfolioSnapshots(portfolioId: string) {
   return apiFetch<{ snapshots: PortfolioSnapshot[] }>(`/portfolios/${portfolioId}/snapshots`);
+}
+
+export async function downloadPortfolioImportTemplate() {
+  return apiFetchBlob("/portfolio-imports/template");
+}
+
+export async function createPortfolioImport(input: {
+  accountId: string;
+  file: File;
+  idempotencyKey: string;
+}) {
+  const body = new FormData();
+  body.append("accountId", input.accountId);
+  body.append("file", input.file);
+  return apiFetchEnvelope<PortfolioImportJob, { pollAfterMs: number }>("/portfolio-imports", {
+    method: "POST",
+    headers: { "Idempotency-Key": input.idempotencyKey },
+    body
+  });
+}
+
+export async function listPortfolioImports(accountId: string) {
+  const query = new URLSearchParams({ accountId, page: "1", per_page: "20" });
+  return apiFetchEnvelope<
+    { imports: PortfolioImportJob[] },
+    {
+      pagination: {
+        page: number;
+        per_page: number;
+        total_items: number;
+        total_pages: number;
+        has_next: boolean;
+        has_prev: boolean;
+      };
+    }
+  >(`/portfolio-imports?${query.toString()}`);
+}
+
+export async function getPortfolioImport(importId: string) {
+  return apiFetchEnvelope<PortfolioImportJob, { pollAfterMs: number | null }>(
+    `/portfolio-imports/${importId}`
+  );
+}
+
+export async function downloadPortfolioImportErrorReport(importId: string) {
+  return apiFetchBlob(`/portfolio-imports/${importId}/error-report`);
 }
 
 export async function searchMarketAssets(query: string, exchangeCode?: string) {
@@ -169,12 +218,11 @@ export async function requestPortfolioAnalyticsRecompute(portfolioId: string) {
   );
 }
 
-export async function convertCurrency(input: {
-  from: string;
-  to: string;
-  amount: number;
-}) {
-  return apiFetchEnvelope<{ conversion: CurrencyConversion }, { providerName: string; asOf: string }>(
+export async function convertCurrency(input: { from: string; to: string; amount: number }) {
+  return apiFetchEnvelope<
+    { conversion: CurrencyConversion },
+    { providerName: string; asOf: string }
+  >(
     `/market-data/fx-rate?from=${encodeURIComponent(input.from)}&to=${encodeURIComponent(
       input.to
     )}&amount=${encodeURIComponent(String(input.amount))}`
