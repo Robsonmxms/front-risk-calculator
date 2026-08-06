@@ -1,4 +1,4 @@
-import { OfficeMembershipRole } from "../auth/types";
+import type { OfficeMembershipRole } from "../auth";
 
 export type OfficeStatus = "active" | "disabled";
 export type PermissionKey =

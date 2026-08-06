@@ -1,5 +1,5 @@
-import { LinkButton } from "../../../components/ui/button";
-import { Card } from "../../../components/ui/card";
+import { LinkButton } from "../../../components/atoms/button";
+import { Card } from "../../../components/atoms/card";
 import { SessionExpiredCleanup } from "../../../features/auth/SessionExpiredCleanup";
 
 export default function SessionExpiredPage() {

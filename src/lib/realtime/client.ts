@@ -1,5 +1,5 @@
-import { getAccessToken } from "../../features/auth/sessionStore";
-import { RealtimeMessage } from "../../features/portfolio/types";
+import { getAccessToken } from "../session/sessionStore";
+import type { RealtimeMessage } from "../contracts/portfolio";
 import { API_BASE_URL } from "../api/client";
 
 export type RealtimeConnectionStatus = "connecting" | "connected" | "disconnected";

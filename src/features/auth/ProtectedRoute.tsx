@@ -2,7 +2,7 @@
 
 import { ReactNode, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { Card } from "../../components/ui/card";
+import { Card } from "../../components/atoms/card";
 import { useAuth } from "./AuthProvider";
 import { UserRole } from "./types";
 

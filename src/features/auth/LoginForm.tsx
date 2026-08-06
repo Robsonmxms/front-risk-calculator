@@ -2,11 +2,11 @@
 
 import { FormEvent, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Alert } from "../../components/ui/alert";
-import { Button } from "../../components/ui/button";
-import { Card } from "../../components/ui/card";
-import { FieldError, Label } from "../../components/ui/form";
-import { Input } from "../../components/ui/input";
+import { Alert } from "../../components/atoms/alert";
+import { Button } from "../../components/atoms/button";
+import { Card } from "../../components/atoms/card";
+import { FieldError, Label } from "../../components/atoms/form";
+import { Input } from "../../components/atoms/input";
 import { useAuth } from "./AuthProvider";
 
 export function LoginForm() {

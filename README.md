@@ -63,6 +63,7 @@ mercado. O boot normal do backend permanece vazio.
 ```bash
 yarn check:runtime-data
 yarn check:public-config
+yarn architecture:check
 yarn lint
 yarn typecheck
 yarn test
@@ -71,7 +72,9 @@ yarn test:coverage
 yarn build
 ```
 
-`yarn lint` também verifica a formatação Prettier com largura de 100 caracteres. `yarn lint:fix`
+`yarn architecture:check` valida dependências entre App Router, features, componentes atômicos e
+fundamentos, além de ciclos e componentes declarados dentro de rotas. `yarn lint` inclui esse gate
+e também verifica a formatação Prettier com largura de 100 caracteres. `yarn lint:fix`
 aplica automaticamente as quebras de linha e demais ajustes mecânicos.
 
 Vitest usa um worker e timeout uniforme de 20 segundos para reduzir flutuação sob carga.
@@ -85,12 +88,17 @@ para branches.
 
 ```text
 src/
-  app/              rotas de auth e dashboard
-  components/       layout, navegação, UI shadcn/Radix e gráficos
-  features/         tipos e clientes de API por domínio
-  lib/              cliente HTTP, sessão, realtime e apresentação
+  app/              rotas e composição externa do App Router
+  components/
+    atoms/           primitivas shadcn/Radix
+    molecules/       pequenas composições reutilizáveis
+    organisms/       navegação, gráficos, estados e seções completas
+    templates/       estrutura responsiva por slots
+  features/         containers, estado, serviços e APIs públicas por domínio
+  lib/              contratos neutros, HTTP, sessão, realtime e apresentação
 tests/unit/          contratos, componentes, páginas e fluxos
 ```
 
-Veja também [prontidão AWS](docs/aws-frontend-readiness.md) e
+Veja também [Atomic Design e inventário de duplicações](docs/architecture/atomic-design.md),
+[prontidão AWS](docs/aws-frontend-readiness.md) e
 [branch protection](docs/branch-protection.md). Licença MIT em [LICENSE](LICENSE).

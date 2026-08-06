@@ -78,9 +78,10 @@ front-risk-calculator/
       (auth)/
       (dashboard)/
     components/
-      charts/
-      layout/
-      ui/
+      atoms/
+      molecules/
+      organisms/
+      templates/
     features/
       analytics-diagnostics/
       auth/
@@ -92,10 +93,34 @@ front-risk-calculator/
       workbench/
     lib/
       api/
+      contracts/
       realtime/
+      session/
   tests/
     unit/
 ```
+
+## Enforced Dependency Matrix
+
+```text
+app/pages -> feature containers + templates
+feature containers -> feature services/public contracts + templates/organisms
+templates -> organisms -> molecules -> atoms -> lib foundations
+feature services/contracts -> lib API/contracts/session foundations
+```
+
+- `src/app` is the outer route/composition layer. Route files bind to feature containers and do not
+  declare reusable components.
+- Atomic components are feature-neutral and receive content, state, slots, and callbacks through
+  typed props. They never fetch, inspect session storage, implement RBAC, or import features.
+- Atomic levels import only their own or lower-complexity levels; upward imports are forbidden.
+- Cross-feature dependencies must resolve through the target feature's `index.ts` public entrypoint.
+  Shared backend/API shapes live canonically in `src/lib/contracts`; feature `types.ts` files may
+  re-export them but must not duplicate them.
+- shadcn generation is configured in `components.json` to place primitives under
+  `src/components/atoms`; do not recreate `components/ui`.
+- `yarn architecture:check` enforces these rules, route-local component rejection, and a cycle-free
+  production graph from lint, pre-commit, and CI.
 
 ## Design Direction
 

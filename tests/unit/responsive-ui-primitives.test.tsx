@@ -1,7 +1,7 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it } from "vitest";
-import { PageSectionNavigation } from "../../src/components/layout/PageSectionNavigation";
-import { Table, TableViewport } from "../../src/components/ui/table";
+import { PageSectionNavigation } from "../../src/components/organisms/PageSectionNavigation";
+import { Table, TableViewport } from "../../src/components/atoms/table";
 
 describe("responsive UI primitives", () => {
   beforeEach(() => {
