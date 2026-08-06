@@ -14,7 +14,8 @@ import {
   TableCell,
   TableHead,
   TableHeader,
-  TableRow
+  TableRow,
+  TableViewport
 } from "../../../../../components/ui/table";
 import { useAuth } from "../../../../../features/auth/AuthProvider";
 import { LogoutButton } from "../../../../../features/auth/LogoutButton";
@@ -166,7 +167,7 @@ export default function ClientDetailPage() {
                   <Badge variant="outline">{client.portfolios.length} portfólios</Badge>
                 </div>
 
-                <div className="mt-5 overflow-x-auto">
+                <TableViewport className="mt-5" label="Portfólios vinculados ao cliente">
                   <Table>
                     <TableHeader>
                       <TableRow>
@@ -194,7 +195,7 @@ export default function ClientDetailPage() {
                       ))}
                     </TableBody>
                   </Table>
-                </div>
+                </TableViewport>
               </Card>
 
               <Card>
@@ -205,7 +206,7 @@ export default function ClientDetailPage() {
                   </div>
                   <Badge variant="outline">{client.accounts.length} contas</Badge>
                 </div>
-                <div className="mt-5 overflow-x-auto">
+                <TableViewport className="mt-5" label="Contas vinculadas ao cliente">
                   <Table>
                     <TableHeader>
                       <TableRow>
@@ -222,7 +223,7 @@ export default function ClientDetailPage() {
                       ))}
                     </TableBody>
                   </Table>
-                </div>
+                </TableViewport>
               </Card>
             </div>
           </section>

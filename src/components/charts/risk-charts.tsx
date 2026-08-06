@@ -540,7 +540,9 @@ function HeatmapTooltip({
 function TooltipShell({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="rounded-md border border-border bg-card px-3 py-2 text-sm shadow-sm">
-      <p className="mb-1 max-w-56 truncate font-semibold text-stone-900">{title}</p>
+      <p className="mb-1 max-w-72 break-words font-semibold leading-snug text-stone-900" title={title}>
+        {title}
+      </p>
       <div className="grid gap-1">{children}</div>
     </div>
   );

@@ -1,4 +1,4 @@
-import { HTMLAttributes, TdHTMLAttributes, ThHTMLAttributes } from "react";
+import { HTMLAttributes, ReactNode, TdHTMLAttributes, ThHTMLAttributes } from "react";
 import { cn } from "../../lib/utils";
 
 export function Table({ className, ...props }: HTMLAttributes<HTMLTableElement>) {
@@ -36,4 +36,33 @@ export function TableHead({ className, ...props }: ThHTMLAttributes<HTMLTableCel
 
 export function TableCell({ className, ...props }: TdHTMLAttributes<HTMLTableCellElement>) {
   return <td className={cn("px-4 py-3 align-middle text-foreground", className)} {...props} />;
+}
+
+export function TableViewport({
+  children,
+  className,
+  label
+}: {
+  children: ReactNode;
+  className?: string;
+  label: string;
+}) {
+  return (
+    <div className={cn("min-w-0", className)}>
+      <p className="mb-2 text-xs text-muted-foreground sm:hidden">
+        Deslize horizontalmente para consultar todas as colunas.
+      </p>
+      <div
+        aria-label={label}
+        role="region"
+        tabIndex={0}
+        className={cn(
+          "overflow-x-auto rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-moss/25",
+          "[scrollbar-gutter:stable]"
+        )}
+      >
+        {children}
+      </div>
+    </div>
+  );
 }

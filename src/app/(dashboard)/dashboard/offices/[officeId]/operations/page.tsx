@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import { AppHeader } from "../../../../../../components/layout/AppHeader";
+import { PageSectionNavigation } from "../../../../../../components/layout/PageSectionNavigation";
 import { Alert } from "../../../../../../components/ui/alert";
 import { Badge } from "../../../../../../components/ui/badge";
 import { LinkButton } from "../../../../../../components/ui/button";
@@ -17,7 +18,8 @@ import {
   TableCell,
   TableHead,
   TableHeader,
-  TableRow
+  TableRow,
+  TableViewport
 } from "../../../../../../components/ui/table";
 import {
   chartPalette,
@@ -206,6 +208,21 @@ export default function OfficeOperationsPage() {
           <Alert variant="warning">Operação disponível apenas para administração do escritório.</Alert>
         ) : (
           <>
+            <PageSectionNavigation
+              label="Seções da operação do escritório"
+              links={
+                isGlobalAdmin
+                  ? [
+                      { href: "#operacao-filtros", label: "Filtros" },
+                      { href: "#operacao-escritorio", label: "Escritório" },
+                      { href: "#operacao-plataforma", label: "Plataforma" }
+                    ]
+                  : [
+                      { href: "#operacao-filtros", label: "Filtros" },
+                      { href: "#operacao-escritorio", label: "Escritório" }
+                    ]
+              }
+            />
             <OperationalFilters
               range={range}
               role={role}
@@ -267,7 +284,7 @@ function OperationalFilters({
   onSeverityChange: (value: string) => void;
 }) {
   return (
-    <Card>
+    <Card id="operacao-filtros" className="scroll-mt-4">
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
         <div>
           <Label htmlFor="operationRange">Período</Label>
@@ -316,7 +333,7 @@ function OperationalFilters({
           </Select>
         </div>
         <div>
-          <Label htmlFor="operationProvider">Provider</Label>
+          <Label htmlFor="operationProvider">Provedor</Label>
           <Input
             id="operationProvider"
             className="mt-2"
@@ -356,7 +373,7 @@ function OfficeChartsView({
   const latestGrowth = charts.charts.clientGrowth[charts.charts.clientGrowth.length - 1];
 
   return (
-    <>
+    <section id="operacao-escritorio" className="scroll-mt-4 grid gap-4">
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
         <MetricCard label="Clientes" value={counts.clients} detail={`${counts.households} grupos`} />
         <MetricCard label="Contas" value={counts.accounts} detail={`${counts.portfolios} portfólios`} />
@@ -513,7 +530,7 @@ function OfficeChartsView({
           </ChartPanel>
         </section>
       )}
-    </>
+    </section>
   );
 }
 
@@ -525,7 +542,7 @@ function PlatformChartsView({
   meta: OperationalChartsMeta | null;
 }) {
   return (
-    <section className="grid gap-4">
+    <section id="operacao-plataforma" className="scroll-mt-4 grid gap-4">
       <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
         <div>
           <p className="text-xs font-semibold uppercase text-moss">Administração global</p>
@@ -657,15 +674,15 @@ function ChartPanel({
 
 function ProviderTable({ rows }: { rows: OfficeAdminChartBundle["charts"]["marketDataFreshness"] }) {
   if (rows.length === 0) {
-    return <Alert variant="info">Sem leitura de provider para os ativos filtrados.</Alert>;
+    return <Alert variant="info">Sem leitura de provedor para os ativos filtrados.</Alert>;
   }
 
   return (
-    <div className="overflow-x-auto">
+    <TableViewport label="Estado dos provedores de dados de mercado">
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Provider</TableHead>
+            <TableHead>Provedor</TableHead>
             <TableHead>Status</TableHead>
             <TableHead>Falhas</TableHead>
             <TableHead>Latência</TableHead>
@@ -682,7 +699,7 @@ function ProviderTable({ rows }: { rows: OfficeAdminChartBundle["charts"]["marke
           ))}
         </TableBody>
       </Table>
-    </div>
+    </TableViewport>
   );
 }
 
@@ -692,7 +709,7 @@ function FailureTable({ rows }: { rows: OfficeAdminChartBundle["charts"]["report
   }
 
   return (
-    <div className="overflow-x-auto">
+    <TableViewport label="Falhas de relatórios">
       <Table>
         <TableHeader>
           <TableRow>
@@ -711,7 +728,7 @@ function FailureTable({ rows }: { rows: OfficeAdminChartBundle["charts"]["report
           ))}
         </TableBody>
       </Table>
-    </div>
+    </TableViewport>
   );
 }
 
@@ -765,8 +782,8 @@ function labelIssueCode(code: string) {
   const labels: Record<string, string> = {
     "office_charts.audit_events_truncated": "Auditoria agregada parcialmente",
     "office_charts.analytics_snapshot_missing": "Retrato de risco ausente",
-    "office_charts.provider_status_failed": "Status de provider indisponível",
-    "office_charts.provider_status_unavailable": "Provider sem status operacional"
+    "office_charts.provider_status_failed": "Status do provedor indisponível",
+    "office_charts.provider_status_unavailable": "Provedor sem status operacional"
   };
   return labels[code] ?? "Qualidade operacional pendente";
 }
@@ -811,7 +828,7 @@ function labelWorkflowStatus(value: string) {
     failed: "falhou",
     queued: "em fila",
     succeeded: "concluído",
-    missing: "sem job",
+    missing: "sem processamento",
     open: "aberto",
     monitoring: "monitorando",
     disabled: "desativado",

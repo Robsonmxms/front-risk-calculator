@@ -16,7 +16,8 @@ import {
   TableCell,
   TableHead,
   TableHeader,
-  TableRow
+  TableRow,
+  TableViewport
 } from "../../../../components/ui/table";
 import { useAuth } from "../../../../features/auth/AuthProvider";
 import { LogoutButton } from "../../../../features/auth/LogoutButton";
@@ -373,7 +374,7 @@ export default function CompliancePage() {
                 {auditEvents.length === 0 ? (
                   <Alert variant="info" className="mt-5">Nenhum evento neste filtro.</Alert>
                 ) : (
-                  <div className="mt-5 overflow-x-auto">
+                  <TableViewport className="mt-5" label="Eventos de auditoria">
                     <Table>
                       <TableHeader>
                         <TableRow>
@@ -406,7 +407,7 @@ export default function CompliancePage() {
                         ))}
                       </TableBody>
                     </Table>
-                  </div>
+                  </TableViewport>
                 )}
               </Card>
             </div>
@@ -549,14 +550,14 @@ function ComplianceChartsPanel({
         <div className="flex items-start justify-between gap-3">
           <div>
             <p className="text-xs font-semibold uppercase text-moss">Supervisão</p>
-            <h2 className="text-xl font-semibold text-stone-900">Aging de revisões</h2>
+            <h2 className="text-xl font-semibold text-stone-900">Tempo em aberto das revisões</h2>
           </div>
           <Badge variant="outline">{charts.dataQuality.sourceCounts.supervisionReviews}</Badge>
         </div>
         <div className="mt-4">
           <ThemedHorizontalBarChart
             data={agingData}
-            ariaLabel="Aging das revisões de supervisão"
+            ariaLabel="Tempo em aberto das revisões de supervisão"
             color={chartPalette.blue}
           />
         </div>
@@ -591,9 +592,9 @@ function ComplianceChartsPanel({
 
 function MetricCard({ label, value }: { label: string; value: number }) {
   return (
-    <Card>
-      <span className="text-xs font-semibold uppercase text-stone-500">{label}</span>
-      <strong className="text-3xl text-stone-900">{value}</strong>
+    <Card className="grid gap-2">
+      <span className="block text-xs font-semibold uppercase leading-tight text-stone-500">{label}</span>
+      <strong className="block text-3xl leading-none text-stone-900">{value}</strong>
     </Card>
   );
 }

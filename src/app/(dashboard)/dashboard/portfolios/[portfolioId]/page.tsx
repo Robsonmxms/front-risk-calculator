@@ -4,6 +4,7 @@ import { FormEvent, ReactNode, useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { AppHeader } from "../../../../../components/layout/AppHeader";
+import { PageSectionNavigation } from "../../../../../components/layout/PageSectionNavigation";
 import { Alert } from "../../../../../components/ui/alert";
 import { Badge } from "../../../../../components/ui/badge";
 import { Button, LinkButton } from "../../../../../components/ui/button";
@@ -24,6 +25,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  TableViewport
 } from "../../../../../components/ui/table";
 import { Textarea } from "../../../../../components/ui/textarea";
 import { ProtectedRoute } from "../../../../../features/auth/ProtectedRoute";
@@ -1197,7 +1199,7 @@ export default function PortfolioDetailPage() {
                       Ainda não existem ativos abertos para a data selecionada.
                     </Alert>
                   ) : (
-                    <div className="overflow-x-auto">
+                    <TableViewport label="Posições do portfólio">
                       <Table>
                         <TableHeader>
                           <TableRow>
@@ -1228,7 +1230,7 @@ export default function PortfolioDetailPage() {
                           ))}
                         </TableBody>
                       </Table>
-                    </div>
+                    </TableViewport>
                   )}
                 </Card>
 
@@ -1316,25 +1318,7 @@ function PortfolioSectionNavigation() {
     { href: "#portfolio-transacoes", label: "Transações" },
     { href: "#portfolio-historicos", label: "Históricos" }
   ];
-
-  return (
-    <nav
-      aria-label="Seções do portfólio"
-      className="overflow-x-auto rounded-lg border border-border bg-card p-2 shadow-sm"
-    >
-      <div className="flex min-w-max gap-2">
-        {links.map((link) => (
-          <a
-            key={link.href}
-            href={link.href}
-            className="inline-flex min-h-11 items-center rounded-md px-3 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-moss/25"
-          >
-            {link.label}
-          </a>
-        ))}
-      </div>
-    </nav>
-  );
+  return <PageSectionNavigation label="Seções do portfólio" links={links} />;
 }
 
 function ReportsAlertsNotificationsPanel({
