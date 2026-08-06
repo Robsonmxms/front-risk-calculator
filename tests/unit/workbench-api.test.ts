@@ -231,9 +231,7 @@ describe("workbench api client", () => {
       "http://localhost:8000/api/v1/offices/ofc_main/review-items"
     );
     expect(fetchMock.mock.calls[2][1]).toMatchObject({ method: "POST" });
-    expect(fetchMock.mock.calls[3][0]).toBe(
-      "http://localhost:8000/api/v1/review-items/rev-item-1"
-    );
+    expect(fetchMock.mock.calls[3][0]).toBe("http://localhost:8000/api/v1/review-items/rev-item-1");
     expect(fetchMock.mock.calls[3][1]).toMatchObject({ method: "PATCH" });
   });
 });

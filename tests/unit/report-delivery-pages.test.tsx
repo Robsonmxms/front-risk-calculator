@@ -325,7 +325,9 @@ describe("report delivery pages", () => {
     expect(
       await screen.findByText("Revisão de alocação pendente", {}, { timeout: 3000 })
     ).toBeInTheDocument();
-    expect(await screen.findByText("Pacotes por status", {}, { timeout: 3000 })).toBeInTheDocument();
+    expect(
+      await screen.findByText("Pacotes por status", {}, { timeout: 3000 })
+    ).toBeInTheDocument();
     expect(clientApiMocks.listClients).toHaveBeenCalledWith("ofc_main", { status: "active" });
     expect(deliveryApiMocks.getDeliveryCharts).toHaveBeenCalledWith(
       "ofc_main",
@@ -384,7 +386,9 @@ describe("report delivery pages", () => {
     );
 
     expect(await screen.findByText("Resumo de risco de julho")).toBeInTheDocument();
-    expect(screen.getByText("Resumo do portfólio preparado para o ciclo de revisão de julho.")).toBeInTheDocument();
+    expect(
+      screen.getByText("Resumo do portfólio preparado para o ciclo de revisão de julho.")
+    ).toBeInTheDocument();
     expect(screen.queryByText("Acompanhamento restrito à equipe.")).not.toBeInTheDocument();
     expect(screen.getByText("Core Growth")).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: /Core Growth/i })).not.toBeInTheDocument();

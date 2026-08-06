@@ -1,12 +1,7 @@
 export type UserRole = "admin" | "analyst" | "user";
 export type UserStatus = "active" | "disabled";
 export type AccountMemberRole = "owner" | "analyst" | "viewer";
-export type OfficeMembershipRole =
-  | "office_admin"
-  | "advisor"
-  | "analyst"
-  | "assistant"
-  | "client";
+export type OfficeMembershipRole = "office_admin" | "advisor" | "analyst" | "assistant" | "client";
 
 export interface OfficeMembershipSummary {
   officeId: string;

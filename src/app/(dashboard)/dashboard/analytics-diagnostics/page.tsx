@@ -117,10 +117,10 @@ export default function AnalyticsDiagnosticsPage() {
   const officeId = activeOffice?.officeId;
   const canOpenDiagnostics = Boolean(
     officeId &&
-      (actor?.role === "admin" ||
-        actor?.role === "analyst" ||
-        activeOffice?.role === "office_admin" ||
-        activeOffice?.role === "analyst")
+    (actor?.role === "admin" ||
+      actor?.role === "analyst" ||
+      activeOffice?.role === "office_admin" ||
+      activeOffice?.role === "analyst")
   );
   const [draftFilters, setDraftFilters] = useState<DiagnosticFilterState>(DEFAULT_FILTERS);
   const [appliedFilters, setAppliedFilters] = useState<DiagnosticFilterState>(DEFAULT_FILTERS);
@@ -183,7 +183,9 @@ export default function AnalyticsDiagnosticsPage() {
       const job = await createAnalystChartJob(officeId, apiFilters, idempotencyKey.trim());
       setChartJob(job);
     } catch (caught) {
-      setJobError(getApiErrorMessage(caught, "Não foi possível solicitar o diagnóstico assíncrono."));
+      setJobError(
+        getApiErrorMessage(caught, "Não foi possível solicitar o diagnóstico assíncrono.")
+      );
     } finally {
       setJobLoading(false);
     }
@@ -200,7 +202,9 @@ export default function AnalyticsDiagnosticsPage() {
       const job = await getAnalystChartJob(officeId, chartJob.data.id);
       setChartJob(job);
     } catch (caught) {
-      setJobError(getApiErrorMessage(caught, "Não foi possível atualizar o status do processamento."));
+      setJobError(
+        getApiErrorMessage(caught, "Não foi possível atualizar o status do processamento.")
+      );
     } finally {
       setJobLoading(false);
     }
@@ -215,7 +219,9 @@ export default function AnalyticsDiagnosticsPage() {
           showAdmin={actor?.role === "admin"}
           actions={
             <>
-              {activeOffice ? <Badge variant="outline">{labelOfficeRole(activeOffice.role)}</Badge> : null}
+              {activeOffice ? (
+                <Badge variant="outline">{labelOfficeRole(activeOffice.role)}</Badge>
+              ) : null}
               <LogoutButton />
             </>
           }
@@ -224,7 +230,9 @@ export default function AnalyticsDiagnosticsPage() {
         {!officeId ? (
           <Alert variant="warning">Selecione um escritório para abrir os diagnósticos.</Alert>
         ) : !canOpenDiagnostics ? (
-          <Alert variant="failure">Seu perfil não possui acesso aos diagnósticos de analista.</Alert>
+          <Alert variant="failure">
+            Seu perfil não possui acesso aos diagnósticos de analista.
+          </Alert>
         ) : (
           <section className="grid gap-4">
             <PageSectionNavigation
@@ -241,12 +249,17 @@ export default function AnalyticsDiagnosticsPage() {
               onSubmit={handleSubmitFilters}
             />
 
-            <section id="diagnosticos-processamento" className="scroll-mt-4 grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
+            <section
+              id="diagnosticos-processamento"
+              className="scroll-mt-4 grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]"
+            >
               <Card>
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
                   <div>
                     <p className="text-xs font-semibold uppercase text-moss">Processamento</p>
-                    <h2 className="text-xl font-semibold text-stone-900">Processamento do diagnóstico</h2>
+                    <h2 className="text-xl font-semibold text-stone-900">
+                      Processamento do diagnóstico
+                    </h2>
                   </div>
                   <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto_auto]">
                     <Input
@@ -254,7 +267,10 @@ export default function AnalyticsDiagnosticsPage() {
                       value={idempotencyKey}
                       onChange={(event) => setIdempotencyKey(event.target.value)}
                     />
-                    <Button onClick={handleCreateJob} disabled={jobLoading || !idempotencyKey.trim()}>
+                    <Button
+                      onClick={handleCreateJob}
+                      disabled={jobLoading || !idempotencyKey.trim()}
+                    >
                       {jobLoading ? "Solicitando..." : "Solicitar processamento"}
                     </Button>
                     <Button
@@ -266,7 +282,11 @@ export default function AnalyticsDiagnosticsPage() {
                     </Button>
                   </div>
                 </div>
-                {jobError ? <Alert variant="failure" className="mt-4">{jobError}</Alert> : null}
+                {jobError ? (
+                  <Alert variant="failure" className="mt-4">
+                    {jobError}
+                  </Alert>
+                ) : null}
                 <JobStatusPanel job={chartJob} loading={jobLoading} />
               </Card>
 
@@ -302,7 +322,10 @@ function DiagnosticsFilters({
   onChange: (filters: DiagnosticFilterState) => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
 }) {
-  function setField<K extends keyof DiagnosticFilterState>(key: K, value: DiagnosticFilterState[K]) {
+  function setField<K extends keyof DiagnosticFilterState>(
+    key: K,
+    value: DiagnosticFilterState[K]
+  ) {
     onChange({ ...filters, [key]: value });
   }
 
@@ -441,15 +464,17 @@ function DiagnosticsCharts({ diagnostics }: { diagnostics: DiagnosticsEnvelope }
         <MetricCard label="Qualidade" value={labelQualityStatus(data.dataQuality.status)} />
       </section>
 
-      {data.dataQuality.status !== "complete" ? (
-        <DataQualityIssues bundle={data} />
-      ) : null}
+      {data.dataQuality.status !== "complete" ? <DataQualityIssues bundle={data} /> : null}
 
       <section className="grid gap-4 xl:grid-cols-2">
         <ChartShell
           eyebrow="Risco e retorno"
           title="Dispersão por portfólio"
-          aside={<Badge variant={qualityVariant(data.dataQuality.status)}>{labelQualityStatus(data.dataQuality.status)}</Badge>}
+          aside={
+            <Badge variant={qualityVariant(data.dataQuality.status)}>
+              {labelQualityStatus(data.dataQuality.status)}
+            </Badge>
+          }
         >
           <RiskReturnScatter points={data.charts.riskReturnScatter} />
         </ChartShell>
@@ -501,7 +526,8 @@ function DiagnosticsCharts({ diagnostics }: { diagnostics: DiagnosticsEnvelope }
 
       {meta ? (
         <p className="text-xs text-stone-600">
-          Gerado em {formatDateTime(meta.generatedAt)} com {formatDecimal(meta.calculationDurationMs, 0)} ms.
+          Gerado em {formatDateTime(meta.generatedAt)} com{" "}
+          {formatDecimal(meta.calculationDurationMs, 0)} ms.
         </p>
       ) : null}
     </>
@@ -528,7 +554,9 @@ function Field({
 function MetricCard({ label, value }: { label: string; value: number | string }) {
   return (
     <Card className="grid gap-2">
-      <span className="block text-xs font-semibold uppercase leading-tight text-stone-500">{label}</span>
+      <span className="block text-xs font-semibold uppercase leading-tight text-stone-500">
+        {label}
+      </span>
       <strong className="block text-2xl leading-none text-stone-900">{value}</strong>
     </Card>
   );
@@ -559,7 +587,11 @@ function ChartShell({
   );
 }
 
-function RiskReturnScatter({ points }: { points: AnalystChartBundle["charts"]["riskReturnScatter"] }) {
+function RiskReturnScatter({
+  points
+}: {
+  points: AnalystChartBundle["charts"]["riskReturnScatter"];
+}) {
   return (
     <div className="grid gap-3">
       <ThemedScatterChart
@@ -588,7 +620,11 @@ function RiskReturnScatter({ points }: { points: AnalystChartBundle["charts"]["r
   );
 }
 
-function MetricDistributionPanel({ distributions }: { distributions: AnalystMetricDistribution[] }) {
+function MetricDistributionPanel({
+  distributions
+}: {
+  distributions: AnalystMetricDistribution[];
+}) {
   if (distributions.length === 0) {
     return <EmptyChartState>Nenhuma distribuição calculada.</EmptyChartState>;
   }
@@ -660,7 +696,11 @@ function RollingLineChart({
   );
 }
 
-function CorrelationLineChart({ points }: { points: AnalystChartBundle["charts"]["rollingCorrelation"] }) {
+function CorrelationLineChart({
+  points
+}: {
+  points: AnalystChartBundle["charts"]["rollingCorrelation"];
+}) {
   const rollingPoints = points.map((point) => ({
     ...point,
     value: point.correlation,
@@ -676,7 +716,11 @@ function CorrelationLineChart({ points }: { points: AnalystChartBundle["charts"]
   );
 }
 
-function ExposureHeatmap({ cells }: { cells: AnalystChartBundle["charts"]["sectorExposureHeatmap"] }) {
+function ExposureHeatmap({
+  cells
+}: {
+  cells: AnalystChartBundle["charts"]["sectorExposureHeatmap"];
+}) {
   return (
     <ThemedHeatmapChart
       ariaLabel="Mapa de exposição por portfólio"
@@ -769,8 +813,14 @@ function ConcentrationRankingTable({
             <TableRow key={row.portfolioId}>
               <TableCell>{row.rank}</TableCell>
               <TableCell className="font-medium text-stone-900">{row.portfolioName}</TableCell>
-              <TableCell>{row.concentrationHhi === undefined ? "indisponível" : formatDecimal(row.concentrationHhi, 4)}</TableCell>
-              <TableCell>{row.topHoldingLabel ?? labelUnavailableReason(row.unavailableReason)}</TableCell>
+              <TableCell>
+                {row.concentrationHhi === undefined
+                  ? "indisponível"
+                  : formatDecimal(row.concentrationHhi, 4)}
+              </TableCell>
+              <TableCell>
+                {row.topHoldingLabel ?? labelUnavailableReason(row.unavailableReason)}
+              </TableCell>
               <TableCell>
                 <div className="grid min-w-28 gap-1">
                   <span>{formatOptionalPercent(row.topHoldingWeightPercent)}</span>
@@ -801,7 +851,10 @@ function DataQualityTimeline({
   return (
     <div className="grid gap-2">
       {points.slice(0, 8).map((point) => (
-        <div key={`${point.portfolioId}-${point.date}-${point.issueCode ?? "ok"}`} className="rounded-md border border-border p-3 text-sm">
+        <div
+          key={`${point.portfolioId}-${point.date}-${point.issueCode ?? "ok"}`}
+          className="rounded-md border border-border p-3 text-sm"
+        >
           <div className="flex items-center justify-between gap-3">
             <span className="font-medium text-stone-900">{point.portfolioName}</span>
             <Badge variant={qualityVariant(point.status)}>{labelQualityStatus(point.status)}</Badge>
@@ -833,7 +886,10 @@ function ProviderFreshnessMatrix({
   return (
     <div className="grid gap-2">
       {cells.slice(0, 10).map((cell) => (
-        <div key={`${cell.portfolioId}-${cell.symbol}`} className="grid grid-cols-[1fr_auto] gap-3 rounded-md border border-border p-3 text-sm">
+        <div
+          key={`${cell.portfolioId}-${cell.symbol}`}
+          className="grid grid-cols-[1fr_auto] gap-3 rounded-md border border-border p-3 text-sm"
+        >
           <div className="min-w-0">
             <span className="block break-words font-medium text-stone-900">{cell.symbol}</span>
             <span className="block break-words text-xs leading-relaxed text-stone-500">
@@ -859,7 +915,10 @@ function DataQualityIssues({ bundle }: { bundle: AnalystChartBundle }) {
         {bundle.dataQuality.issues.length > 0 ? (
           <div className="flex flex-wrap gap-2">
             {bundle.dataQuality.issues.map((issue) => (
-              <Badge key={`${issue.code}-${issue.message}`} variant={dataQualitySeverityVariant(issue.severity)}>
+              <Badge
+                key={`${issue.code}-${issue.message}`}
+                variant={dataQualitySeverityVariant(issue.severity)}
+              >
                 {labelDataQualityIssueCode(issue.code)}
               </Badge>
             ))}
@@ -886,7 +945,10 @@ function AuditEvidenceCard({ diagnostics }: { diagnostics: DiagnosticsEnvelope |
         <h2 className="text-xl font-semibold text-stone-900">Fontes do cálculo</h2>
       </div>
       <div className="mt-5 grid gap-3 text-sm">
-        <EvidenceRow label="Gerado em" value={meta ? formatDateTime(meta.generatedAt) : "aguardando"} />
+        <EvidenceRow
+          label="Gerado em"
+          value={meta ? formatDateTime(meta.generatedAt) : "aguardando"}
+        />
         <EvidenceRow label="Snapshots" value={meta?.sourceSnapshotIds.length ?? 0} />
         <EvidenceRow label="Hashes" value={meta?.inputHashes.length ?? 0} />
         <EvidenceRow label="Jobs" value={data?.dataQuality.sourceCounts.analyticsJobs ?? 0} />
@@ -919,7 +981,9 @@ function JobStatusPanel({ job, loading }: { job: ChartJobEnvelope | null; loadin
     <div className="mt-5 grid gap-3 rounded-md border border-border p-4 text-sm">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="min-w-0">
-          <span className="block break-all font-medium text-stone-900" title={job.data.id}>{job.data.id}</span>
+          <span className="block break-all font-medium text-stone-900" title={job.data.id}>
+            {job.data.id}
+          </span>
           <span className="text-xs text-stone-500">
             Correlação {job.meta?.correlationId ?? job.data.correlationId}
           </span>
@@ -934,14 +998,17 @@ function JobStatusPanel({ job, loading }: { job: ChartJobEnvelope | null; loadin
       <div className="grid gap-1 text-xs text-stone-500 sm:grid-cols-3">
         <span>{progress}% concluído</span>
         <span>{job.data.resultMetadata?.chartKeys.length ?? 0} seções</span>
-        <span>Expira em {job.data.expiresAt ? formatDateTime(job.data.expiresAt) : "sem prazo"}</span>
+        <span>
+          Expira em {job.data.expiresAt ? formatDateTime(job.data.expiresAt) : "sem prazo"}
+        </span>
       </div>
       {job.data.errorCode ? (
         <Alert variant="failure">{labelUnavailableReason(job.data.errorCode)}</Alert>
       ) : null}
       {job.data.resultMetadata?.lastSuccessfulResultAt ? (
         <Alert variant="info">
-          Último resultado bem-sucedido em {formatDateTime(job.data.resultMetadata.lastSuccessfulResultAt)}.
+          Último resultado bem-sucedido em{" "}
+          {formatDateTime(job.data.resultMetadata.lastSuccessfulResultAt)}.
         </Alert>
       ) : null}
     </div>

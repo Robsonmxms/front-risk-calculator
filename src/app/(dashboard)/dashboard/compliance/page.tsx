@@ -230,7 +230,9 @@ export default function CompliancePage() {
           showAdmin={actor?.role === "admin"}
           actions={
             <>
-              {activeOffice ? <Badge variant="outline">{labelOfficeRole(activeOffice.role)}</Badge> : null}
+              {activeOffice ? (
+                <Badge variant="outline">{labelOfficeRole(activeOffice.role)}</Badge>
+              ) : null}
               <LogoutButton />
             </>
           }
@@ -275,7 +277,9 @@ export default function CompliancePage() {
                       id="complianceRange"
                       className="mt-2"
                       value={chartRange}
-                      onChange={(event) => setChartRange(event.target.value as ComplianceChartRange)}
+                      onChange={(event) =>
+                        setChartRange(event.target.value as ComplianceChartRange)
+                      }
                     >
                       {CHART_RANGES.map((option) => (
                         <option key={option.value} value={option.value}>
@@ -288,10 +292,10 @@ export default function CompliancePage() {
                     <Label htmlFor="auditAction">Ação</Label>
                     <Input
                       id="auditAction"
-	                      className="mt-2"
-	                      value={actionFilter}
-	                      onChange={(event) => setActionFilter(event.target.value)}
-	                      placeholder="Buscar por ação"
+                      className="mt-2"
+                      value={actionFilter}
+                      onChange={(event) => setActionFilter(event.target.value)}
+                      placeholder="Buscar por ação"
                     />
                   </div>
                   <div>
@@ -300,7 +304,9 @@ export default function CompliancePage() {
                       id="auditSeverity"
                       className="mt-2"
                       value={severityFilter}
-                      onChange={(event) => setSeverityFilter(event.target.value as AuditSeverity | "")}
+                      onChange={(event) =>
+                        setSeverityFilter(event.target.value as AuditSeverity | "")
+                      }
                     >
                       {SEVERITIES.map((entry) => (
                         <option key={entry || "all"} value={entry}>
@@ -315,7 +321,9 @@ export default function CompliancePage() {
                       id="auditOutcome"
                       className="mt-2"
                       value={outcomeFilter}
-                      onChange={(event) => setOutcomeFilter(event.target.value as AuditOutcome | "")}
+                      onChange={(event) =>
+                        setOutcomeFilter(event.target.value as AuditOutcome | "")
+                      }
                     >
                       {OUTCOMES.map((entry) => (
                         <option key={entry || "all"} value={entry}>
@@ -372,7 +380,9 @@ export default function CompliancePage() {
                 </div>
 
                 {auditEvents.length === 0 ? (
-                  <Alert variant="info" className="mt-5">Nenhum evento neste filtro.</Alert>
+                  <Alert variant="info" className="mt-5">
+                    Nenhum evento neste filtro.
+                  </Alert>
                 ) : (
                   <TableViewport className="mt-5" label="Eventos de auditoria">
                     <Table>
@@ -433,13 +443,14 @@ export default function CompliancePage() {
                         <div className="flex items-start justify-between gap-3">
                           <div>
                             <p className="font-medium text-stone-900">
-                              {auditEvent ? labelAuditAction(auditEvent.action) : "Evento de auditoria"}
+                              {auditEvent
+                                ? labelAuditAction(auditEvent.action)
+                                : "Evento de auditoria"}
                             </p>
                             <p className="text-sm text-stone-500">
-	                              {auditEvent
-	                                ? `${formatAuditResourceReference(auditEvent)} · `
-	                                : ""}
-                              {labelAuditSeverity(review.severity)} · {labelReviewStatus(review.status)}
+                              {auditEvent ? `${formatAuditResourceReference(auditEvent)} · ` : ""}
+                              {labelAuditSeverity(review.severity)} ·{" "}
+                              {labelReviewStatus(review.status)}
                             </p>
                           </div>
                           <Badge variant={auditSeverityVariant(review.severity)}>
@@ -593,7 +604,9 @@ function ComplianceChartsPanel({
 function MetricCard({ label, value }: { label: string; value: number }) {
   return (
     <Card className="grid gap-2">
-      <span className="block text-xs font-semibold uppercase leading-tight text-stone-500">{label}</span>
+      <span className="block text-xs font-semibold uppercase leading-tight text-stone-500">
+        {label}
+      </span>
       <strong className="block text-3xl leading-none text-stone-900">{value}</strong>
     </Card>
   );
@@ -608,7 +621,9 @@ function DataQualityBadge({ status }: { status: ComplianceChartBundle["dataQuali
   return <Badge variant={status === "partial" ? "warning" : "outline"}>{labels[status]}</Badge>;
 }
 
-function agingBucketLabel(bucket: ComplianceChartBundle["charts"]["reviewAging"][number]["bucket"]) {
+function agingBucketLabel(
+  bucket: ComplianceChartBundle["charts"]["reviewAging"][number]["bucket"]
+) {
   const labels = {
     "0-1d": "0-1 dia",
     "2-3d": "2-3 dias",
@@ -696,8 +711,14 @@ function metadataValueLabel(event: AuditEvent, key: string, value: unknown) {
   }
   if (key === "resourceId") {
     const metadataResourceType =
-      typeof event.metadata.resourceType === "string" ? event.metadata.resourceType : event.resourceType;
-    return formatResourceReference(metadataResourceType, undefined, businessResourceName(value, event));
+      typeof event.metadata.resourceType === "string"
+        ? event.metadata.resourceType
+        : event.resourceType;
+    return formatResourceReference(
+      metadataResourceType,
+      undefined,
+      businessResourceName(value, event)
+    );
   }
   if (key === "householdId") {
     return businessResourceName(value, event);
@@ -732,11 +753,15 @@ function auditResourceDisplayName(event: AuditEvent) {
   }
 
   if (event.resourceType === "delivery") {
-    return event.action.startsWith("report_package.") ? "Pacote de relatório" : "Entrega de relatório";
+    return event.action.startsWith("report_package.")
+      ? "Pacote de relatório"
+      : "Entrega de relatório";
   }
   if (event.resourceType === "ledger") {
     const assetSymbol = event.metadata.assetSymbol;
-    return typeof assetSymbol === "string" ? `Movimentação de ${assetSymbol}` : "Movimentação registrada";
+    return typeof assetSymbol === "string"
+      ? `Movimentação de ${assetSymbol}`
+      : "Movimentação registrada";
   }
   if (event.resourceType === "permission") {
     return "Permissão do cliente";
@@ -754,11 +779,15 @@ function businessResourceName(value: string, event: AuditEvent) {
   }
 
   if (event.resourceType === "delivery") {
-    return event.action.startsWith("report_package.") ? "Pacote de relatório" : "Entrega de relatório";
+    return event.action.startsWith("report_package.")
+      ? "Pacote de relatório"
+      : "Entrega de relatório";
   }
   if (event.resourceType === "ledger") {
     const assetSymbol = event.metadata.assetSymbol;
-    return typeof assetSymbol === "string" ? `Movimentação de ${assetSymbol}` : "Movimentação registrada";
+    return typeof assetSymbol === "string"
+      ? `Movimentação de ${assetSymbol}`
+      : "Movimentação registrada";
   }
 
   return "referência interna";

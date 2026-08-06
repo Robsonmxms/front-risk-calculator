@@ -74,6 +74,53 @@ export interface PortfolioListResponse {
   portfolios: PortfolioListItem[];
 }
 
+export type PortfolioImportStatus = "queued" | "validating" | "committing" | "succeeded" | "failed";
+
+export type PortfolioImportPhase =
+  | "upload_complete"
+  | "reading_workbook"
+  | "staging_rows"
+  | "validating_ledger"
+  | "creating_portfolio"
+  | "completed"
+  | "validation_failed"
+  | "technical_failed";
+
+export interface PortfolioImportRowError {
+  rowNumber: number;
+  externalId?: string;
+  field: string;
+  code: string;
+  message: string;
+}
+
+export interface PortfolioImportJob {
+  id: string;
+  type: "portfolio_spreadsheet_import";
+  accountId: string;
+  status: PortfolioImportStatus;
+  phase: PortfolioImportPhase;
+  originalFileName: string;
+  portfolioId: string | null;
+  progress: {
+    totalRows: number | null;
+    processedRows: number;
+    succeededRows: number;
+    failedRows: number;
+    percent: number;
+  };
+  failure: {
+    code: string;
+    message: string;
+    errorCount: number;
+    errors: PortfolioImportRowError[];
+  } | null;
+  errorReportAvailable: boolean;
+  createdAt: string;
+  updatedAt: string;
+  completedAt: string | null;
+}
+
 export interface MarketAsset {
   id: string;
   symbol: string;
@@ -390,11 +437,7 @@ export interface PortfolioReport {
 }
 
 export interface AlertCondition {
-  eventType:
-    | "analytics.updated"
-    | "market_data.updated"
-    | "report.generated"
-    | "metric_threshold";
+  eventType: "analytics.updated" | "market_data.updated" | "report.generated" | "metric_threshold";
   metricKey?: AnalyticsMetricKey;
   operator?: "gte" | "lte";
   threshold?: number;

@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   convertCurrency,
   createPortfolio,
+  createPortfolioImport,
   createPortfolioAlert,
   createPortfolioTransaction,
   downloadPortfolioReport,
@@ -10,6 +11,7 @@ import {
   getPortfolioCharts,
   getTradePrice,
   listPortfolioAlerts,
+  listPortfolioImports,
   listNotifications,
   listPortfolioReports,
   listMarketExchanges,
@@ -129,9 +131,7 @@ describe("portfolio api market data client", () => {
         })
       ]
     });
-    expect(fetchMock.mock.calls[0][0]).toBe(
-      "http://localhost:8000/api/v1/market-data/exchanges"
-    );
+    expect(fetchMock.mock.calls[0][0]).toBe("http://localhost:8000/api/v1/market-data/exchanges");
   });
 
   it("requests a provider-calculated trade price", async () => {
@@ -217,7 +217,9 @@ describe("portfolio api market data client", () => {
       .mockResolvedValueOnce(jsonResponse(200, { data: { portfolios: [portfolio] } }))
       .mockResolvedValueOnce(jsonResponse(201, { data: portfolio }))
       .mockResolvedValueOnce(jsonResponse(200, { data: portfolio }))
-      .mockResolvedValueOnce(jsonResponse(200, { data: { ...portfolio, name: "Carteira Ajustada" } }))
+      .mockResolvedValueOnce(
+        jsonResponse(200, { data: { ...portfolio, name: "Carteira Ajustada" } })
+      )
       .mockResolvedValueOnce(jsonResponse(200, { data: { transactions: [transaction] } }))
       .mockResolvedValueOnce(jsonResponse(201, { data: transaction }))
       .mockResolvedValueOnce(
@@ -269,9 +271,11 @@ describe("portfolio api market data client", () => {
       })
     ).resolves.toMatchObject({ id: "prt_main" });
     await expect(getPortfolio("prt_main")).resolves.toMatchObject({ id: "prt_main" });
-    await expect(updatePortfolio("prt_main", { name: "Carteira Ajustada" })).resolves.toMatchObject({
-      name: "Carteira Ajustada"
-    });
+    await expect(updatePortfolio("prt_main", { name: "Carteira Ajustada" })).resolves.toMatchObject(
+      {
+        name: "Carteira Ajustada"
+      }
+    );
     await expect(listPortfolioTransactions("prt_main")).resolves.toMatchObject({
       transactions: [expect.objectContaining({ id: "txn-1" })]
     });
@@ -295,9 +299,7 @@ describe("portfolio api market data client", () => {
 
     expect(fetchMock.mock.calls[0][0]).toBe("http://localhost:8000/api/v1/portfolios");
     expect(fetchMock.mock.calls[1][1]).toMatchObject({ method: "POST" });
-    expect(fetchMock.mock.calls[2][0]).toBe(
-      "http://localhost:8000/api/v1/portfolios/prt_main"
-    );
+    expect(fetchMock.mock.calls[2][0]).toBe("http://localhost:8000/api/v1/portfolios/prt_main");
     expect(fetchMock.mock.calls[3][1]).toMatchObject({ method: "PATCH" });
     expect(fetchMock.mock.calls[5][1].headers["Idempotency-Key"]).toBe("idem-1");
     expect(fetchMock.mock.calls[6][0]).toBe(
@@ -305,6 +307,72 @@ describe("portfolio api market data client", () => {
     );
     expect(fetchMock.mock.calls[7][0]).toBe(
       "http://localhost:8000/api/v1/portfolios/prt_main/snapshots"
+    );
+  });
+
+  it("sends XLSX imports as multipart with idempotency and lists account jobs", async () => {
+    const job = {
+      id: "import-1",
+      type: "portfolio_spreadsheet_import",
+      accountId: "acct_main",
+      status: "queued",
+      phase: "upload_complete",
+      originalFileName: "portfolio.xlsx",
+      portfolioId: null,
+      progress: {
+        totalRows: null,
+        processedRows: 0,
+        succeededRows: 0,
+        failedRows: 0,
+        percent: 0
+      },
+      failure: null,
+      errorReportAvailable: false,
+      createdAt: "2026-08-06T15:00:00.000Z",
+      updatedAt: "2026-08-06T15:00:00.000Z",
+      completedAt: null
+    };
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse(202, { data: job, meta: { pollAfterMs: 1000 } }))
+      .mockResolvedValueOnce(
+        jsonResponse(200, {
+          data: { imports: [job] },
+          meta: {
+            pagination: {
+              page: 1,
+              per_page: 20,
+              total_items: 1,
+              total_pages: 1,
+              has_next: false,
+              has_prev: false
+            }
+          }
+        })
+      );
+    vi.stubGlobal("fetch", fetchMock);
+    const file = new File(["PK"], "portfolio.xlsx", {
+      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    });
+
+    await expect(
+      createPortfolioImport({
+        accountId: "acct_main",
+        file,
+        idempotencyKey: "import-key-1"
+      })
+    ).resolves.toMatchObject({ data: { id: "import-1", status: "queued" } });
+    await expect(listPortfolioImports("acct_main")).resolves.toMatchObject({
+      data: { imports: [expect.objectContaining({ id: "import-1" })] }
+    });
+
+    const uploadOptions = fetchMock.mock.calls[0][1] as RequestInit;
+    expect(uploadOptions.method).toBe("POST");
+    expect(uploadOptions.body).toBeInstanceOf(FormData);
+    expect(uploadOptions.headers).toMatchObject({ "Idempotency-Key": "import-key-1" });
+    expect(uploadOptions.headers).not.toHaveProperty("Content-Type");
+    expect(fetchMock.mock.calls[1][0]).toBe(
+      "http://localhost:8000/api/v1/portfolio-imports?accountId=acct_main&page=1&per_page=20"
     );
   });
 
@@ -548,9 +616,7 @@ describe("portfolio api market data client", () => {
     expect(fetchMock.mock.calls[2][0]).toBe(
       "http://localhost:8000/api/v1/market-data/fx-rate?from=usd&to=brl&amount=100"
     );
-    expect(fetchMock.mock.calls[3][0]).toBe(
-      "http://localhost:8000/api/v1/reports/rpt-1/download"
-    );
+    expect(fetchMock.mock.calls[3][0]).toBe("http://localhost:8000/api/v1/reports/rpt-1/download");
     expect(fetchMock.mock.calls[3][1].headers.Accept).toBe("application/pdf,text/csv");
   });
 
@@ -618,7 +684,12 @@ describe("portfolio api market data client", () => {
       title: "Limite de volatilidade",
       severity: "high",
       status: "monitoring",
-      condition: { eventType: "metric_threshold", metricKey: "volatility", operator: "gte", threshold: 20 },
+      condition: {
+        eventType: "metric_threshold",
+        metricKey: "volatility",
+        operator: "gte",
+        threshold: 20
+      },
       createdAt: "2026-07-16T10:00:00.000Z",
       updatedAt: "2026-07-16T10:00:00.000Z"
     };

@@ -23,7 +23,9 @@ describe("responsive UI primitives", () => {
 
     const region = screen.getByRole("region", { name: "Posições do portfólio" });
     expect(region).toHaveAttribute("tabindex", "0");
-    expect(screen.getByText("Deslize horizontalmente para consultar todas as colunas.")).toBeVisible();
+    expect(
+      screen.getByText("Deslize horizontalmente para consultar todas as colunas.")
+    ).toBeVisible();
   });
 
   it("keeps dense page sections reachable and identifies the selected anchor", () => {

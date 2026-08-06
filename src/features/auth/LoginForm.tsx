@@ -95,7 +95,9 @@ export function LoginForm() {
             type="email"
             value={email}
             className="h-11"
-            aria-describedby={fieldErrors.email ? "email-error" : safeError ? "login-credentials-error" : undefined}
+            aria-describedby={
+              fieldErrors.email ? "email-error" : safeError ? "login-credentials-error" : undefined
+            }
             aria-invalid={Boolean(fieldErrors.email || safeError)}
           />
           <div id="email-error">
@@ -114,7 +116,13 @@ export function LoginForm() {
             type="password"
             value={password}
             className="h-11"
-            aria-describedby={fieldErrors.password ? "password-error" : safeError ? "login-credentials-error" : undefined}
+            aria-describedby={
+              fieldErrors.password
+                ? "password-error"
+                : safeError
+                  ? "login-credentials-error"
+                  : undefined
+            }
             aria-invalid={Boolean(fieldErrors.password || safeError)}
           />
           <div id="password-error">

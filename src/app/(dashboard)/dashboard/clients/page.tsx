@@ -23,11 +23,7 @@ import { Textarea } from "../../../../components/ui/textarea";
 import { useAuth } from "../../../../features/auth/AuthProvider";
 import { LogoutButton } from "../../../../features/auth/LogoutButton";
 import { ProtectedRoute } from "../../../../features/auth/ProtectedRoute";
-import {
-  createClient,
-  listClients,
-  listHouseholds
-} from "../../../../features/client/clientApi";
+import { createClient, listClients, listHouseholds } from "../../../../features/client/clientApi";
 import {
   ClientOnboardingStatus,
   ClientStatus,
@@ -259,7 +255,10 @@ export default function ClientDirectoryPage() {
                         {clients.map((client) => (
                           <TableRow key={client.id}>
                             <TableCell className="font-medium text-stone-900">
-                              <Link href={`/dashboard/clients/${client.id}`} className="hover:text-moss">
+                              <Link
+                                href={`/dashboard/clients/${client.id}`}
+                                className="hover:text-moss"
+                              >
                                 {client.name}
                               </Link>
                               <p className="text-xs text-stone-500">{client.email}</p>

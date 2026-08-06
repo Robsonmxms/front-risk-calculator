@@ -298,7 +298,9 @@ describe("compliance and delivery chart api clients", () => {
       );
     vi.stubGlobal("fetch", fetchMock);
 
-    await expect(listClientReportPackages("client_main", { status: "draft" })).resolves.toMatchObject({
+    await expect(
+      listClientReportPackages("client_main", { status: "draft" })
+    ).resolves.toMatchObject({
       reportPackages: [expect.objectContaining({ id: "pkg-1" })]
     });
     await expect(
@@ -356,8 +358,6 @@ describe("compliance and delivery chart api clients", () => {
       actorId: "usr_client",
       clients: [expect.objectContaining({ id: "client_main" })]
     });
-    expect(fetchMock.mock.calls[0][0]).toBe(
-      "http://localhost:8000/api/v1/client-portal"
-    );
+    expect(fetchMock.mock.calls[0][0]).toBe("http://localhost:8000/api/v1/client-portal");
   });
 });

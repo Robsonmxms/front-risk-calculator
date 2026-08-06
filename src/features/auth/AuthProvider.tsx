@@ -87,11 +87,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     refreshBootstrap();
   }, [refreshBootstrap]);
 
-  const login = useCallback(async (credentials: LoginCredentials) => {
-    const session = await loginWithPassword(credentials);
-    applyActor(session.actor);
-    setStatus("authenticated");
-  }, [applyActor]);
+  const login = useCallback(
+    async (credentials: LoginCredentials) => {
+      const session = await loginWithPassword(credentials);
+      applyActor(session.actor);
+      setStatus("authenticated");
+    },
+    [applyActor]
+  );
 
   const logout = useCallback(async () => {
     await logoutRequest();
@@ -123,15 +126,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       logout,
       refreshBootstrap
     }),
-    [
-      activeOffice,
-      actor,
-      login,
-      logout,
-      refreshBootstrap,
-      selectOffice,
-      status
-    ]
+    [activeOffice, actor, login, logout, refreshBootstrap, selectOffice, status]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

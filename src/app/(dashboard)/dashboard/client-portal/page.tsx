@@ -151,7 +151,9 @@ export default function ClientPortalPage() {
 function MetricCard({ label, value }: { label: string; value: number }) {
   return (
     <Card className="grid gap-2">
-      <span className="block text-xs font-semibold uppercase leading-tight text-stone-500">{label}</span>
+      <span className="block text-xs font-semibold uppercase leading-tight text-stone-500">
+        {label}
+      </span>
       <strong className="block text-3xl leading-none text-stone-900">{value}</strong>
     </Card>
   );

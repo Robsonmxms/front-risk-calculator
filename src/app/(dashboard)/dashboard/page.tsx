@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { AppHeader } from "../../../components/layout/AppHeader";
 import { Alert } from "../../../components/ui/alert";
 import { Badge } from "../../../components/ui/badge";
@@ -14,15 +14,13 @@ import { Textarea } from "../../../components/ui/textarea";
 import { ProtectedRoute } from "../../../features/auth/ProtectedRoute";
 import { useAuth } from "../../../features/auth/AuthProvider";
 import { LogoutButton } from "../../../features/auth/LogoutButton";
+import { PortfolioImportPanel } from "../../../features/portfolio/PortfolioImportPanel";
 import {
   convertCurrency,
   createPortfolio,
   listPortfolios
 } from "../../../features/portfolio/portfolioApi";
-import {
-  CurrencyConversion,
-  PortfolioListItem
-} from "../../../features/portfolio/types";
+import { CurrencyConversion, PortfolioListItem } from "../../../features/portfolio/types";
 import { ApiError } from "../../../lib/api/client";
 import {
   formatCurrency,
@@ -147,6 +145,12 @@ export default function DashboardPage() {
     }
   }
 
+  const handleImportedPortfolioCreated = useCallback(() => {
+    void listPortfolios()
+      .then((data) => setPortfolios(data.portfolios))
+      .catch(() => undefined);
+  }, []);
+
   return (
     <ProtectedRoute roles={DASHBOARD_ROLES}>
       <main className="mx-auto flex min-h-screen max-w-7xl flex-col gap-6 px-4 py-5 lg:px-6">
@@ -161,9 +165,7 @@ export default function DashboardPage() {
           <Card className="h-fit">
             <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
               <div className="space-y-1">
-                <p className="text-xs font-semibold uppercase text-moss">
-                  Portfólios
-                </p>
+                <p className="text-xs font-semibold uppercase text-moss">Portfólios</p>
                 <h1 className="text-3xl font-semibold text-stone-900">{actor?.name}</h1>
                 <p className="text-stone-600">
                   {actor?.email} · perfil {actor ? labelUserRole(actor.role) : "não informado"}
@@ -171,18 +173,14 @@ export default function DashboardPage() {
               </div>
               <div className="grid gap-3 sm:grid-cols-2">
                 <div className="grid gap-1 rounded-lg border border-border bg-muted/40 p-4">
-                  <span className="text-xs font-semibold uppercase text-stone-500">
-                    Portfólios
-                  </span>
+                  <span className="text-xs font-semibold uppercase text-stone-500">Portfólios</span>
                   <strong className="block text-3xl leading-tight text-stone-900">
                     {portfolios.length}
                   </strong>
                   <p className="text-sm text-stone-600">visíveis nesta sessão</p>
                 </div>
                 <div className="grid gap-1 rounded-lg border border-border bg-muted/40 p-4">
-                  <span className="text-xs font-semibold uppercase text-stone-500">
-                    Contas
-                  </span>
+                  <span className="text-xs font-semibold uppercase text-stone-500">Contas</span>
                   <strong className="block text-3xl leading-tight text-stone-900">
                     {memberships.length}
                   </strong>
@@ -196,7 +194,7 @@ export default function DashboardPage() {
 
           <Card className="h-fit">
             <div className="space-y-1">
-              <h2 className="text-xl font-semibold text-stone-900">Criar portfólio</h2>
+              <h2 className="text-xl font-semibold text-stone-900">Criar manualmente</h2>
               <p className="text-sm text-stone-600">
                 Novos portfólios entram com histórico vazio e aguardam as primeiras posições.
               </p>
@@ -296,6 +294,11 @@ export default function DashboardPage() {
           </Card>
         </section>
 
+        <PortfolioImportPanel
+          accounts={memberships}
+          onPortfolioCreated={handleImportedPortfolioCreated}
+        />
+
         {isLoading ? (
           <Alert variant="info">Buscando histórico, estados de análise e transações.</Alert>
         ) : error ? (
@@ -309,16 +312,14 @@ export default function DashboardPage() {
         ) : (
           <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             {portfolios.map((portfolio) => (
-              <Card
-                key={portfolio.id}
-                className="transition-transform hover:-translate-y-1"
-              >
+              <Card key={portfolio.id} className="transition-transform hover:-translate-y-1">
                 <div className="space-y-4">
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <h2 className="text-xl font-semibold text-stone-900">{portfolio.name}</h2>
                       <p className="text-sm text-stone-600">
-                        {portfolio.accountName} · perfil {labelAccountRole(portfolio.membershipRole)}
+                        {portfolio.accountName} · perfil{" "}
+                        {labelAccountRole(portfolio.membershipRole)}
                       </p>
                     </div>
                     <Badge variant={portfolioFreshnessVariant(portfolio.freshness)}>
@@ -332,21 +333,15 @@ export default function DashboardPage() {
 
                   <dl className="grid grid-cols-2 gap-3 text-sm">
                     <div>
-                      <dt className="text-xs font-semibold uppercase text-stone-500">
-                        Posições
-                      </dt>
+                      <dt className="text-xs font-semibold uppercase text-stone-500">Posições</dt>
                       <dd className="mt-1 text-stone-900">{portfolio.holdingsCount}</dd>
                     </div>
                     <div>
-                      <dt className="text-xs font-semibold uppercase text-stone-500">
-                        Transações
-                      </dt>
+                      <dt className="text-xs font-semibold uppercase text-stone-500">Transações</dt>
                       <dd className="mt-1 text-stone-900">{portfolio.transactionCount}</dd>
                     </div>
                     <div>
-                      <dt className="text-xs font-semibold uppercase text-stone-500">
-                        Custo
-                      </dt>
+                      <dt className="text-xs font-semibold uppercase text-stone-500">Custo</dt>
                       <dd className="mt-1 text-stone-900">
                         {formatCurrency(portfolio.totalCostBasis, portfolio.baseCurrency)}
                       </dd>
@@ -462,9 +457,7 @@ function CurrencyConverterCard() {
               {formatCurrency(conversion.convertedAmount, conversion.to)}
             </strong>
           ) : (
-            <span className="block text-base font-medium text-stone-500">
-              Cotação indisponível
-            </span>
+            <span className="block text-base font-medium text-stone-500">Cotação indisponível</span>
           )}
         </div>
         <p className="text-sm text-stone-600">
@@ -472,9 +465,9 @@ function CurrencyConverterCard() {
             ? "Carregando cotação..."
             : status === "error"
               ? "Revise o valor ou tente novamente."
-            : conversion
-              ? `${formatCurrency(conversion.amount, "USD")} · ${currencyProviderLabel(conversion.providerName)}`
-              : "Informe valor e moeda para consultar."}
+              : conversion
+                ? `${formatCurrency(conversion.amount, "USD")} · ${currencyProviderLabel(conversion.providerName)}`
+                : "Informe valor e moeda para consultar."}
         </p>
       </div>
 
@@ -511,7 +504,8 @@ function CurrencyConverterCard() {
       {conversion ? (
         <div className="space-y-1 text-xs text-stone-500">
           <p>
-            Fonte: {currencyProviderLabel(conversion.providerName)} · {currencySourceLabel(conversion)}
+            Fonte: {currencyProviderLabel(conversion.providerName)} ·{" "}
+            {currencySourceLabel(conversion)}
           </p>
           <p>Cotação da fonte: {formatDateTime(conversion.asOf)}</p>
           <p>Consulta da plataforma: {formatDateTime(conversion.updatedAt)}</p>

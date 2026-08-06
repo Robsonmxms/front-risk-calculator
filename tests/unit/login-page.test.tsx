@@ -65,7 +65,9 @@ describe("password-only login page", () => {
     const formRegion = screen.getByRole("region", { name: "Acesso à plataforma" });
 
     expect(wordmark).toHaveClass("premium-display-font");
-    expect(wordmark.compareDocumentPosition(formRegion) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(
+      wordmark.compareDocumentPosition(formRegion) & Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
     expect(formRegion).toHaveClass("lg:justify-end");
     expect(formHeading).toBeInTheDocument();
     expect(screen.getAllByRole("button")).toHaveLength(1);
@@ -97,9 +99,10 @@ describe("password-only login page", () => {
   it("announces rejected credentials and keeps password submission single-flight", async () => {
     let rejectLogin: ((reason?: unknown) => void) | undefined;
     authApiMocks.loginWithPassword.mockImplementationOnce(
-      () => new Promise<AuthSession>((_resolve, reject) => {
-        rejectLogin = reject;
-      })
+      () =>
+        new Promise<AuthSession>((_resolve, reject) => {
+          rejectLogin = reject;
+        })
     );
 
     render(

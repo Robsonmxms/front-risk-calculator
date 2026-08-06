@@ -2,10 +2,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import SessionExpiredPage from "../../src/app/(dashboard)/session-expired/page";
 import { AuthProvider, useAuth } from "../../src/features/auth/AuthProvider";
-import {
-  clearSession,
-  getAccessToken
-} from "../../src/features/auth/sessionStore";
+import { clearSession, getAccessToken } from "../../src/features/auth/sessionStore";
 import { Actor } from "../../src/features/auth/types";
 import { ApiError } from "../../src/lib/api/client";
 

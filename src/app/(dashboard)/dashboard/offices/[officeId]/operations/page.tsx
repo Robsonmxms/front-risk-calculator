@@ -101,8 +101,7 @@ export default function OfficeOperationsPage() {
   const [platformError, setPlatformError] = useState<string | null>(null);
 
   const isGlobalAdmin = actor?.role === "admin";
-  const isOfficeAdmin =
-    activeOffice?.officeId === officeId && activeOffice.role === "office_admin";
+  const isOfficeAdmin = activeOffice?.officeId === officeId && activeOffice.role === "office_admin";
   const canOpenOfficeCharts = Boolean(isGlobalAdmin || isOfficeAdmin);
   const filters = useMemo<OfficeAdminChartFilters>(
     () => ({
@@ -136,7 +135,9 @@ export default function OfficeOperationsPage() {
       })
       .catch((caught: unknown) => {
         if (isActive) {
-          setError(getApiErrorMessage(caught, "Não foi possível carregar os gráficos operacionais."));
+          setError(
+            getApiErrorMessage(caught, "Não foi possível carregar os gráficos operacionais.")
+          );
         }
       })
       .finally(() => {
@@ -188,7 +189,9 @@ export default function OfficeOperationsPage() {
           showAdmin={actor?.role === "admin"}
           actions={
             <>
-              {activeOffice ? <Badge variant="outline">{labelOfficeRole(activeOffice.role)}</Badge> : null}
+              {activeOffice ? (
+                <Badge variant="outline">{labelOfficeRole(activeOffice.role)}</Badge>
+              ) : null}
               <LogoutButton />
             </>
           }
@@ -205,7 +208,9 @@ export default function OfficeOperationsPage() {
         </div>
 
         {!canOpenOfficeCharts ? (
-          <Alert variant="warning">Operação disponível apenas para administração do escritório.</Alert>
+          <Alert variant="warning">
+            Operação disponível apenas para administração do escritório.
+          </Alert>
         ) : (
           <>
             <PageSectionNavigation
@@ -375,20 +380,47 @@ function OfficeChartsView({
   return (
     <section id="operacao-escritorio" className="scroll-mt-4 grid gap-4">
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
-        <MetricCard label="Clientes" value={counts.clients} detail={`${counts.households} grupos`} />
-        <MetricCard label="Contas" value={counts.accounts} detail={`${counts.portfolios} portfólios`} />
-        <MetricCard label="Equipe" value={counts.staff} detail={`${counts.assignments} permissões`} />
-        <MetricCard label="Relatórios" value={counts.reports + counts.reportPackages} detail={`${counts.reportPackages} pacotes`} />
-        <MetricCard label="Alertas" value={counts.alerts + counts.notifications} detail={`${counts.notifications} notificações`} />
+        <MetricCard
+          label="Clientes"
+          value={counts.clients}
+          detail={`${counts.households} grupos`}
+        />
+        <MetricCard
+          label="Contas"
+          value={counts.accounts}
+          detail={`${counts.portfolios} portfólios`}
+        />
+        <MetricCard
+          label="Equipe"
+          value={counts.staff}
+          detail={`${counts.assignments} permissões`}
+        />
+        <MetricCard
+          label="Relatórios"
+          value={counts.reports + counts.reportPackages}
+          detail={`${counts.reportPackages} pacotes`}
+        />
+        <MetricCard
+          label="Alertas"
+          value={counts.alerts + counts.notifications}
+          detail={`${counts.notifications} notificações`}
+        />
       </div>
 
-      <QualityPanel status={charts.dataQuality.status} issues={charts.dataQuality.issues} meta={meta} />
+      <QualityPanel
+        status={charts.dataQuality.status}
+        issues={charts.dataQuality.issues}
+        meta={meta}
+      />
 
       {charts.dataQuality.status === "empty" ? (
         <Alert variant="info">Ainda não há dados operacionais para o filtro aplicado.</Alert>
       ) : (
         <section className="grid gap-4 xl:grid-cols-2">
-          <ChartPanel title="Crescimento" aside={latestGrowth ? `${latestGrowth.clients} clientes` : undefined}>
+          <ChartPanel
+            title="Crescimento"
+            aside={latestGrowth ? `${latestGrowth.clients} clientes` : undefined}
+          >
             <ThemedLineChart
               ariaLabel="Evolução de clientes do escritório"
               data={charts.charts.clientGrowth.map((point) => ({
@@ -548,14 +580,22 @@ function PlatformChartsView({
           <p className="text-xs font-semibold uppercase text-moss">Administração global</p>
           <h2 className="text-xl font-semibold text-stone-900">Plataforma</h2>
         </div>
-        {meta ? <Badge variant="outline">Gerado em {formatDateTime(meta.generatedAt)}</Badge> : null}
+        {meta ? (
+          <Badge variant="outline">Gerado em {formatDateTime(meta.generatedAt)}</Badge>
+        ) : null}
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <MetricCard label="Escritórios" value={charts.dataQuality.sourceCounts.offices} />
         <MetricCard label="Clientes" value={charts.dataQuality.sourceCounts.clients} />
         <MetricCard label="Portfólios" value={charts.dataQuality.sourceCounts.portfolios} />
-        <MetricCard label="Jobs" value={charts.dataQuality.sourceCounts.analyticsJobs + charts.dataQuality.sourceCounts.marketDataJobs} />
+        <MetricCard
+          label="Jobs"
+          value={
+            charts.dataQuality.sourceCounts.analyticsJobs +
+            charts.dataQuality.sourceCounts.marketDataJobs
+          }
+        />
       </div>
 
       <section className="grid gap-4 xl:grid-cols-2">
@@ -672,7 +712,11 @@ function ChartPanel({
   );
 }
 
-function ProviderTable({ rows }: { rows: OfficeAdminChartBundle["charts"]["marketDataFreshness"] }) {
+function ProviderTable({
+  rows
+}: {
+  rows: OfficeAdminChartBundle["charts"]["marketDataFreshness"];
+}) {
   if (rows.length === 0) {
     return <Alert variant="info">Sem leitura de provedor para os ativos filtrados.</Alert>;
   }
@@ -721,9 +765,13 @@ function FailureTable({ rows }: { rows: OfficeAdminChartBundle["charts"]["report
         <TableBody>
           {rows.map((row) => (
             <TableRow key={row.failureCode}>
-              <TableCell className="font-medium text-stone-900">{labelFailureCode(row.failureCode)}</TableCell>
+              <TableCell className="font-medium text-stone-900">
+                {labelFailureCode(row.failureCode)}
+              </TableCell>
               <TableCell>{row.count}</TableCell>
-              <TableCell>{row.latestFailedAt ? formatDateTime(row.latestFailedAt) : "sem data"}</TableCell>
+              <TableCell>
+                {row.latestFailedAt ? formatDateTime(row.latestFailedAt) : "sem data"}
+              </TableCell>
             </TableRow>
           ))}
         </TableBody>
@@ -742,7 +790,9 @@ function LoadingGrid() {
   );
 }
 
-function qualityAlertVariant(status: OfficeAdminDataQualityStatus): "default" | "info" | "warning" | "failure" | "success" {
+function qualityAlertVariant(
+  status: OfficeAdminDataQualityStatus
+): "default" | "info" | "warning" | "failure" | "success" {
   if (status === "stale") {
     return "warning";
   }
@@ -755,7 +805,9 @@ function qualityAlertVariant(status: OfficeAdminDataQualityStatus): "default" | 
   return "success";
 }
 
-function qualityBadgeVariant(status: OfficeAdminDataQualityStatus): "default" | "info" | "success" | "warning" | "failure" | "outline" {
+function qualityBadgeVariant(
+  status: OfficeAdminDataQualityStatus
+): "default" | "info" | "success" | "warning" | "failure" | "outline" {
   return status === "empty" ? "outline" : qualityAlertVariant(status);
 }
 

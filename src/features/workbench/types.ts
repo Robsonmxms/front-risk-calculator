@@ -6,12 +6,7 @@ import { PortfolioListItem } from "../portfolio/types";
 export type ReviewItemSeverity = "low" | "medium" | "high";
 export type ReviewItemStatus = "open" | "in_progress" | "closed";
 export type ReviewResourceType =
-  | "client"
-  | "portfolio"
-  | "analytics"
-  | "report"
-  | "alert"
-  | "notification";
+  "client" | "portfolio" | "analytics" | "report" | "alert" | "notification";
 
 export interface ReviewItem {
   id: string;

@@ -366,7 +366,8 @@ const apiErrorMessages: Record<string, string> = {
   "request.invalid_review_item_id": "Identificador do item de acompanhamento inválido.",
   "request.invalid_team_id": "Identificador do time inválido.",
   "request.validation_failed": "Revise os campos destacados.",
-  "realtime.portfolio_scope_required": "Selecione um portfólio para abrir a atualização em tempo real.",
+  "realtime.portfolio_scope_required":
+    "Selecione um portfólio para abrir a atualização em tempo real.",
   "review_item.not_found": "Item de acompanhamento não encontrado.",
   "supervision_review.not_found": "Revisão de supervisão não encontrada.",
   "team.not_found": "Equipe não encontrada."
@@ -788,7 +789,9 @@ function labelFromMap<T extends Record<string, string>>(map: T, value: string) {
   return map[value as keyof T] ?? humanizeIdentifier(value);
 }
 
-function parseCalendarDate(value: string): { year: number; month: number; day: number } | undefined {
+function parseCalendarDate(
+  value: string
+): { year: number; month: number; day: number } | undefined {
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
   if (!match) {
     return undefined;
@@ -832,7 +835,9 @@ function formatFailureReason(value: string) {
     return sentence.replace(/\.$/, "").toLowerCase();
   }
 
-  return looksTechnical(value) || hasUntranslatedEnglish(value) ? "motivo técnico registrado" : value;
+  return looksTechnical(value) || hasUntranslatedEnglish(value)
+    ? "motivo técnico registrado"
+    : value;
 }
 
 function looksTechnical(value: string) {

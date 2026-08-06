@@ -100,7 +100,9 @@ export default function ReportDeliveryPage() {
   const [chartsMeta, setChartsMeta] = useState<DeliveryChartsMeta | null>(null);
   const [chartsError, setChartsError] = useState<string | null>(null);
   const [title, setTitle] = useState("Pacote de revisão do cliente");
-  const [summaryNotes, setSummaryNotes] = useState("Resumo preparado para consulta do cliente no portal.");
+  const [summaryNotes, setSummaryNotes] = useState(
+    "Resumo preparado para consulta do cliente no portal."
+  );
   const [internalNotes, setInternalNotes] = useState("");
   const [portfolioId, setPortfolioId] = useState("");
   const [loading, setLoading] = useState(true);
@@ -162,7 +164,10 @@ export default function ReportDeliveryPage() {
 
     let isActive = true;
     setError(null);
-    Promise.all([listClientReportPackages(selectedClientId, { status: statusFilter }), getClient(selectedClientId)])
+    Promise.all([
+      listClientReportPackages(selectedClientId, { status: statusFilter }),
+      getClient(selectedClientId)
+    ])
       .then(([packageData, clientDetail]) => {
         if (isActive) {
           setPackages(packageData.reportPackages);
@@ -170,7 +175,7 @@ export default function ReportDeliveryPage() {
           setPortfolioId((current) =>
             clientDetail.portfolios.some((portfolio) => portfolio.id === current)
               ? current
-              : clientDetail.portfolios[0]?.id ?? ""
+              : (clientDetail.portfolios[0]?.id ?? "")
           );
         }
       })
@@ -210,7 +215,9 @@ export default function ReportDeliveryPage() {
       })
       .catch((caught) => {
         if (isActive) {
-          setChartsError(getApiErrorMessage(caught, "Não foi possível carregar os gráficos de entrega."));
+          setChartsError(
+            getApiErrorMessage(caught, "Não foi possível carregar os gráficos de entrega.")
+          );
         }
       });
 
@@ -228,20 +235,20 @@ export default function ReportDeliveryPage() {
     setSaving(true);
     setError(null);
     setNotice(null);
-	    try {
-	      const created = await createReportPackage(selectedClientId, {
-	        title,
-	        summaryNotes,
-	        internalNotes: internalNotes || undefined,
-	        submitForApproval: true,
-	        items: [
-	          {
-	            type: "portfolio_summary",
-	            title: `Resumo do portfólio ${selectedPortfolio?.name ?? "selecionado"}`,
-	            portfolioId,
-	            status: "ready"
-	          }
-	        ]
+    try {
+      const created = await createReportPackage(selectedClientId, {
+        title,
+        summaryNotes,
+        internalNotes: internalNotes || undefined,
+        submitForApproval: true,
+        items: [
+          {
+            type: "portfolio_summary",
+            title: `Resumo do portfólio ${selectedPortfolio?.name ?? "selecionado"}`,
+            portfolioId,
+            status: "ready"
+          }
+        ]
       });
       setPackages((current) => [created, ...current]);
       setNotice("Pacote enviado para aprovação.");
@@ -267,9 +274,7 @@ export default function ReportDeliveryPage() {
           : action === "deliver"
             ? await deliverReportPackage(reportPackage.id)
             : await revokeReportPackage(reportPackage.id);
-      setPackages((current) =>
-        current.map((entry) => (entry.id === updated.id ? updated : entry))
-      );
+      setPackages((current) => current.map((entry) => (entry.id === updated.id ? updated : entry)));
       setNotice(`Pacote ${labelReportPackageStatus(updated.status)}.`);
     } catch (caught) {
       setError(getApiErrorMessage(caught, "Não foi possível atualizar o pacote."));
@@ -287,14 +292,18 @@ export default function ReportDeliveryPage() {
           showAdmin={actor?.role === "admin"}
           actions={
             <>
-              {activeOffice ? <Badge variant="outline">{labelOfficeRole(activeOffice.role)}</Badge> : null}
+              {activeOffice ? (
+                <Badge variant="outline">{labelOfficeRole(activeOffice.role)}</Badge>
+              ) : null}
               <LogoutButton />
             </>
           }
         />
 
         {!officeId ? (
-          <Alert variant="warning">Selecione um escritório para abrir a entrega de relatórios.</Alert>
+          <Alert variant="warning">
+            Selecione um escritório para abrir a entrega de relatórios.
+          </Alert>
         ) : !canUseDelivery ? (
           <Alert variant="failure">Entrega de relatórios indisponível para este perfil.</Alert>
         ) : loading ? (
@@ -311,7 +320,10 @@ export default function ReportDeliveryPage() {
                 />
                 <MetricCard
                   label="Entregues"
-                  value={packages.filter((entry) => ["delivered", "viewed"].includes(entry.status)).length}
+                  value={
+                    packages.filter((entry) => ["delivered", "viewed"].includes(entry.status))
+                      .length
+                  }
                 />
               </section>
 
@@ -369,7 +381,9 @@ export default function ReportDeliveryPage() {
                       id="packageStatus"
                       className="mt-2"
                       value={statusFilter}
-                      onChange={(event) => setStatusFilter(event.target.value as ReportPackageStatus | "")}
+                      onChange={(event) =>
+                        setStatusFilter(event.target.value as ReportPackageStatus | "")
+                      }
                     >
                       {STATUSES.map((status) => (
                         <option key={status || "all"} value={status}>
@@ -422,7 +436,9 @@ export default function ReportDeliveryPage() {
                 </div>
 
                 {packages.length === 0 ? (
-                  <Alert variant="info" className="mt-5">Nenhum pacote neste filtro.</Alert>
+                  <Alert variant="info" className="mt-5">
+                    Nenhum pacote neste filtro.
+                  </Alert>
                 ) : (
                   <TableViewport className="mt-5" label="Pacotes de relatório do cliente">
                     <Table>
@@ -444,7 +460,7 @@ export default function ReportDeliveryPage() {
                             </TableCell>
                             <TableCell>{statusBadge(reportPackage.status)}</TableCell>
                             <TableCell>{reportPackage.items.length}</TableCell>
-                          <TableCell>{formatDateTime(reportPackage.updatedAt)}</TableCell>
+                            <TableCell>{formatDateTime(reportPackage.updatedAt)}</TableCell>
                             <TableCell>
                               <div className="flex flex-wrap gap-2">
                                 {canApprove && reportPackage.status === "pending_approval" ? (
@@ -466,7 +482,8 @@ export default function ReportDeliveryPage() {
                                     Entregar
                                   </Button>
                                 ) : null}
-                                {canApprove && !["revoked", "draft"].includes(reportPackage.status) ? (
+                                {canApprove &&
+                                !["revoked", "draft"].includes(reportPackage.status) ? (
                                   <Button
                                     size="sm"
                                     variant="outline"
@@ -524,31 +541,34 @@ export default function ReportDeliveryPage() {
                     onChange={(event) => setInternalNotes(event.target.value)}
                   />
                 </div>
-	                <div>
-	                  <Label htmlFor="portfolioId">Portfólio</Label>
-	                  {availablePortfolios.length > 0 ? (
-	                    <Select
-	                      id="portfolioId"
-	                      className="mt-2"
-	                      value={portfolioId}
-	                      onChange={(event) => setPortfolioId(event.target.value)}
-	                      required
-	                    >
-	                      {availablePortfolios.map((portfolio) => (
-	                        <option key={portfolio.id} value={portfolio.id}>
-	                          {portfolio.name}
-	                        </option>
-	                      ))}
-	                    </Select>
-	                  ) : (
-	                    <Alert variant="info" className="mt-2">
-	                      Cliente sem portfólios disponíveis para entrega.
-	                    </Alert>
-	                  )}
-	                </div>
-	                <Button type="submit" disabled={saving || !selectedClientId || !portfolioId || !title.trim()}>
-	                  Enviar para aprovação
-	                </Button>
+                <div>
+                  <Label htmlFor="portfolioId">Portfólio</Label>
+                  {availablePortfolios.length > 0 ? (
+                    <Select
+                      id="portfolioId"
+                      className="mt-2"
+                      value={portfolioId}
+                      onChange={(event) => setPortfolioId(event.target.value)}
+                      required
+                    >
+                      {availablePortfolios.map((portfolio) => (
+                        <option key={portfolio.id} value={portfolio.id}>
+                          {portfolio.name}
+                        </option>
+                      ))}
+                    </Select>
+                  ) : (
+                    <Alert variant="info" className="mt-2">
+                      Cliente sem portfólios disponíveis para entrega.
+                    </Alert>
+                  )}
+                </div>
+                <Button
+                  type="submit"
+                  disabled={saving || !selectedClientId || !portfolioId || !title.trim()}
+                >
+                  Enviar para aprovação
+                </Button>
               </form>
             </Card>
           </section>
@@ -592,10 +612,7 @@ function DeliveryChartsPanel({
     1,
     ...charts.charts.clientPackageReadiness.map(
       (point) =>
-        point.readyCount +
-        point.pendingCount +
-        point.failedItemCount +
-        point.staleNotificationCount
+        point.readyCount + point.pendingCount + point.failedItemCount + point.staleNotificationCount
     )
   );
 
@@ -683,7 +700,9 @@ function DeliveryChartsPanel({
           <Badge variant="outline">{charts.charts.clientPackageReadiness.length} clientes</Badge>
         </div>
         {charts.charts.clientPackageReadiness.length === 0 ? (
-          <Alert variant="info" className="mt-4">Sem pacotes no escopo selecionado.</Alert>
+          <Alert variant="info" className="mt-4">
+            Sem pacotes no escopo selecionado.
+          </Alert>
         ) : (
           <TableViewport className="mt-5" label="Prontidão dos pacotes por cliente">
             <Table>
@@ -702,7 +721,9 @@ function DeliveryChartsPanel({
                   <TableRow key={point.clientId}>
                     <TableCell className="font-medium text-stone-900">{point.clientName}</TableCell>
                     <TableCell>
-                      {point.latestPackageStatus ? statusBadge(point.latestPackageStatus) : "sem pacote"}
+                      {point.latestPackageStatus
+                        ? statusBadge(point.latestPackageStatus)
+                        : "sem pacote"}
                     </TableCell>
                     <TableCell>
                       <ThemedInlineBarChart
@@ -735,14 +756,18 @@ function DeliveryChartsPanel({
 function MetricCard({ label, value }: { label: string; value: number }) {
   return (
     <Card className="grid gap-2">
-      <span className="block text-xs font-semibold uppercase leading-tight text-stone-500">{label}</span>
+      <span className="block text-xs font-semibold uppercase leading-tight text-stone-500">
+        {label}
+      </span>
       <strong className="block text-3xl leading-none text-stone-900">{value}</strong>
     </Card>
   );
 }
 
 function statusBadge(status: ReportPackageStatus) {
-  return <Badge variant={reportPackageStatusVariant(status)}>{labelReportPackageStatus(status)}</Badge>;
+  return (
+    <Badge variant={reportPackageStatusVariant(status)}>{labelReportPackageStatus(status)}</Badge>
+  );
 }
 
 function DataQualityBadge({ status }: { status: DeliveryChartBundle["dataQuality"]["status"] }) {

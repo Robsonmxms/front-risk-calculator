@@ -6,13 +6,7 @@ import { Card } from "../../components/ui/card";
 import { useAuth } from "./AuthProvider";
 import { UserRole } from "./types";
 
-export function ProtectedRoute({
-  children,
-  roles
-}: {
-  children: ReactNode;
-  roles?: UserRole[];
-}) {
+export function ProtectedRoute({ children, roles }: { children: ReactNode; roles?: UserRole[] }) {
   const router = useRouter();
   const { actor, status } = useAuth();
   const lastRedirectPath = useRef<string | null>(null);

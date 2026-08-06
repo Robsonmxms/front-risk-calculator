@@ -29,9 +29,7 @@ export async function updateOffice(
 }
 
 export async function getMyOfficePermissions(officeId: string) {
-  return apiFetch<PermissionEvaluation>(
-    `/me/permissions?officeId=${encodeURIComponent(officeId)}`
-  );
+  return apiFetch<PermissionEvaluation>(`/me/permissions?officeId=${encodeURIComponent(officeId)}`);
 }
 
 export async function listAdvisoryTeams(officeId: string) {

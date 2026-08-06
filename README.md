@@ -24,7 +24,7 @@ e origem live/fallback/determinística para conversões.
 
 - `/` redireciona para `/dashboard`;
 - `/login`, `/session-expired` e `/unauthorized` tratam autenticação e sessão;
-- `/dashboard` apresenta contas, portfólios, FX e visão consolidada;
+- `/dashboard` apresenta contas, portfólios, FX, criação manual e importação assíncrona por XLSX;
 - `/admin` lista usuários para administradores;
 - `/dashboard/portfolios/[portfolioId]` cobre ledger, posições, analytics, relatórios e alertas;
 - `/dashboard/analytics-diagnostics` cobre diagnósticos e jobs analíticos;
@@ -38,6 +38,11 @@ e origem live/fallback/determinística para conversões.
 Os clientes em `src/features` correspondem aos grupos de API de auth, office, operational charts,
 client, portfolio/market/analytics/report/alert/notification, workbench, compliance, delivery e
 analytics diagnostics.
+
+No dashboard, `Baixar modelo XLSX` obtém o template versionado do backend. O painel de importação
+envia o arquivo com idempotência, restaura o histórico por conta, acompanha fila/validação/criação
+por polling com atualização por evento quando disponível e permite baixar a planilha de erros sem
+expor chaves de storage.
 
 ## Execução local
 
@@ -65,6 +70,9 @@ yarn test:risk
 yarn test:coverage
 yarn build
 ```
+
+`yarn lint` também verifica a formatação Prettier com largura de 100 caracteres. `yarn lint:fix`
+aplica automaticamente as quebras de linha e demais ajustes mecânicos.
 
 Vitest usa um worker e timeout uniforme de 20 segundos para reduzir flutuação sob carga.
 `test:risk` protege páginas e contratos de data/sessão de maior risco. O gate de cobertura inclui

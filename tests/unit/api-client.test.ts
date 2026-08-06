@@ -7,11 +7,7 @@ import {
   refreshSession,
   SessionExpiredError
 } from "../../src/lib/api/client";
-import {
-  clearSession,
-  getAccessToken,
-  saveSession
-} from "../../src/features/auth/sessionStore";
+import { clearSession, getAccessToken, saveSession } from "../../src/features/auth/sessionStore";
 import { AuthSession } from "../../src/features/auth/types";
 
 const actor: AuthSession["actor"] = {
@@ -74,13 +70,9 @@ describe("apiFetch session behavior", () => {
     await expect(apiFetch<{ ok: boolean }>("/users/me")).resolves.toEqual({ ok: true });
 
     expect(fetchMock).toHaveBeenCalledTimes(3);
-    expect(fetchMock.mock.calls[0][1].headers.Authorization).toBe(
-      "Bearer old-access-token"
-    );
+    expect(fetchMock.mock.calls[0][1].headers.Authorization).toBe("Bearer old-access-token");
     expect(fetchMock.mock.calls[0][1].cache).toBe("no-store");
-    expect(fetchMock.mock.calls[2][1].headers.Authorization).toBe(
-      "Bearer new-access-token"
-    );
+    expect(fetchMock.mock.calls[2][1].headers.Authorization).toBe("Bearer new-access-token");
     expect(fetchMock.mock.calls[2][1].cache).toBe("no-store");
     expect(getAccessToken()).toBe("new-access-token");
     expect(window.localStorage.length).toBe(0);

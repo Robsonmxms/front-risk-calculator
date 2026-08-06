@@ -3,13 +3,7 @@ import { defineConfig } from "vitest/config";
 export default defineConfig({
   test: {
     coverage: {
-      exclude: [
-        ".next/**",
-        "next-env.d.ts",
-        "tests/**",
-        "src/app/layout.tsx",
-        "src/app/page.tsx"
-      ],
+      exclude: [".next/**", "next-env.d.ts", "tests/**", "src/app/layout.tsx", "src/app/page.tsx"],
       include: [
         "src/components/layout/AppHeader.tsx",
         "src/components/charts/risk-charts.tsx",

@@ -12,8 +12,7 @@ const variantClasses: Record<ButtonVariant, string> = {
   outline:
     "border border-border bg-background text-foreground shadow-sm hover:bg-muted focus-visible:ring-ring/25",
   ghost: "text-foreground hover:bg-muted focus-visible:ring-ring/25",
-  destructive:
-    "bg-ember text-white shadow-sm hover:bg-ember-strong focus-visible:ring-ember/25"
+  destructive: "bg-ember text-white shadow-sm hover:bg-ember-strong focus-visible:ring-ember/25"
 };
 
 const sizeClasses: Record<ButtonSize, string> = {
@@ -48,18 +47,11 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 export function Button({ className, variant, size, type = "button", ...props }: ButtonProps) {
-  return (
-    <button
-      className={buttonVariants({ variant, size, className })}
-      type={type}
-      {...props}
-    />
-  );
+  return <button className={buttonVariants({ variant, size, className })} type={type} {...props} />;
 }
 
 export interface LinkButtonProps
-  extends LinkProps,
-    Omit<AnchorHTMLAttributes<HTMLAnchorElement>, keyof LinkProps> {
+  extends LinkProps, Omit<AnchorHTMLAttributes<HTMLAnchorElement>, keyof LinkProps> {
   variant?: ButtonVariant;
   size?: ButtonSize;
 }

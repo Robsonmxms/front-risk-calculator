@@ -1,14 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import {
-  getCurrentUser,
-  loginWithPassword,
-  logout
-} from "../../src/features/auth/authApi";
-import {
-  clearSession,
-  getAccessToken,
-  saveSession
-} from "../../src/features/auth/sessionStore";
+import { getCurrentUser, loginWithPassword, logout } from "../../src/features/auth/authApi";
+import { clearSession, getAccessToken, saveSession } from "../../src/features/auth/sessionStore";
 import { AuthSession } from "../../src/features/auth/types";
 
 const actor: AuthSession["actor"] = {
@@ -96,9 +88,7 @@ describe("auth API", () => {
 
     await logout();
 
-    expect(fetchMock.mock.calls[0][0]).toBe(
-      "http://localhost:8000/api/v1/auth/logout"
-    );
+    expect(fetchMock.mock.calls[0][0]).toBe("http://localhost:8000/api/v1/auth/logout");
     expect(JSON.parse(fetchMock.mock.calls[0][1].body as string)).toEqual({
       refreshToken: "refresh-one"
     });
@@ -111,10 +101,7 @@ describe("auth API", () => {
       refreshToken: "refresh-one",
       actor
     });
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockRejectedValueOnce(new Error("network unavailable"))
-    );
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValueOnce(new Error("network unavailable")));
 
     await expect(logout()).resolves.toBeUndefined();
     expect(getAccessToken()).toBeNull();

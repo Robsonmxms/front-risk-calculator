@@ -22,11 +22,7 @@ export function connectRealtime(input: {
   const query = params.toString();
 
   input.onStatus("connecting");
-  void readStream(
-    `${API_BASE_URL}/realtime${query ? `?${query}` : ""}`,
-    controller,
-    input
-  );
+  void readStream(`${API_BASE_URL}/realtime${query ? `?${query}` : ""}`, controller, input);
 
   return {
     close: () => controller.abort()

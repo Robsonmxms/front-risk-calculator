@@ -48,10 +48,7 @@ export interface ApiEnvelope<T, M = Record<string, unknown> | undefined> {
   meta?: M;
 }
 
-export async function apiFetch<T>(
-  path: string,
-  options: ApiFetchOptions = {}
-): Promise<T> {
+export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): Promise<T> {
   const envelope = await apiFetchEnvelope<T>(path, options);
   return envelope.data;
 }
@@ -126,11 +123,13 @@ async function rawFetch(path: string, options: ApiFetchOptions = {}): Promise<Re
   const { retryOnUnauthorized: _retryOnUnauthorized, headers, ...fetchOptions } = options;
   const accessToken = getAccessToken();
 
+  const isFormData = typeof FormData !== "undefined" && fetchOptions.body instanceof FormData;
+
   return fetch(`${API_BASE_URL}${path}`, {
     ...fetchOptions,
     cache: fetchOptions.cache ?? "no-store",
     headers: {
-      ...(fetchOptions.body !== undefined && fetchOptions.body !== null
+      ...(fetchOptions.body !== undefined && fetchOptions.body !== null && !isFormData
         ? { "Content-Type": "application/json" }
         : {}),
       ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
@@ -146,8 +145,7 @@ async function parseResponse<T, M = Record<string, unknown> | undefined>(
     return { data: undefined as T };
   }
 
-  const body = (await response.json().catch(() => ({}))) as SuccessEnvelope<T> &
-    ErrorEnvelope;
+  const body = (await response.json().catch(() => ({}))) as SuccessEnvelope<T> & ErrorEnvelope;
 
   if (!response.ok) {
     throw new ApiError(

@@ -181,7 +181,11 @@ export interface PlatformAdminChartBundle {
     officeStatusDistribution: Array<{ status: string; count: number }>;
     officeVolume: Array<{ bucket: string; count: number }>;
     staffRoleDistribution: Array<{ role: OfficeMembershipRole; count: number }>;
-    tenantDataFreshness: Array<{ freshness: MarketDataFreshness; officeCount: number; portfolioCount: number }>;
+    tenantDataFreshness: Array<{
+      freshness: MarketDataFreshness;
+      officeCount: number;
+      portfolioCount: number;
+    }>;
     providerHealth: Array<{
       providerName: string;
       status: "available" | "degraded" | "unavailable" | "unconfigured";
@@ -189,7 +193,11 @@ export interface PlatformAdminChartBundle {
       errorCount: number;
       averageLatencyMs: number;
     }>;
-    jobHealth: Array<{ kind: "analytics" | "market_data" | "report"; status: string; count: number }>;
+    jobHealth: Array<{
+      kind: "analytics" | "market_data" | "report";
+      status: string;
+      count: number;
+    }>;
     reportThroughput: OfficeReportThroughputPoint[];
     alertNotificationVolume: OfficeAlertNotificationVolumePoint[];
     permissionActivity: OfficePermissionActivityPoint[];

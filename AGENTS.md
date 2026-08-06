@@ -7,7 +7,8 @@ Guidance for AI agents working in the frontend project.
 `front-risk-calculator` is the Next.js user interface for the Investment Portfolio Analytics
 Platform. Today it presents auth, protected routes, dashboard/account access visibility, admin
 user listing, portfolio dashboard/detail flows, market-data-assisted transaction entry, analytics
-views, report requests, alert setup, notifications, realtime refresh, and session-expired or
+views, asynchronous XLSX portfolio import/template/error-report flows, report requests, alert setup,
+notifications, realtime refresh, and session-expired or
 unauthorized states, plus office/client/workbench, compliance, analytics diagnostics, report
 delivery, and client portal flows.
 
