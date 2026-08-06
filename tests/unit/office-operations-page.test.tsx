@@ -11,7 +11,6 @@ import {
 
 const authApiMocks = vi.hoisted(() => ({
   getCurrentUser: vi.fn(),
-  loginWithGoogle: vi.fn(),
   loginWithPassword: vi.fn(),
   logout: vi.fn()
 }));

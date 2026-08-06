@@ -292,8 +292,6 @@ const apiErrorMessages: Record<string, string> = {
   "auth.account_access_denied": "Este recurso não está disponível para o seu perfil.",
   "auth.actor_not_found": "Sessão inválida. Entre novamente.",
   "auth.forbidden": "Este recurso não está disponível para o seu perfil.",
-  "auth.google_invalid": "Não foi possível validar o login com Google.",
-  "auth.google_unavailable": "Login com Google indisponível no momento.",
   "auth.invalid_credentials": "Credenciais inválidas.",
   "auth.notification_access_denied": "Notificação indisponível para esta sessão.",
   "auth.office_access_denied": "Este escritório não está disponível para o seu perfil.",

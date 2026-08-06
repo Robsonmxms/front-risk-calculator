@@ -1,7 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   getCurrentUser,
-  loginWithGoogle,
   loginWithPassword,
   logout
 } from "../../src/features/auth/authApi";
@@ -52,37 +51,6 @@ describe("auth API", () => {
       code: "auth.invalid_credentials"
     });
     expect(fetchMock.mock.calls[0][1]?.cache).toBe("no-store");
-  });
-
-  it("stores Google login sessions returned by the backend", async () => {
-    const fetchMock = vi.fn().mockResolvedValueOnce(
-      jsonResponse(200, {
-        data: {
-          accessToken: "access-google",
-          refreshToken: "refresh-google",
-          actor
-        }
-      })
-    );
-    vi.stubGlobal("fetch", fetchMock);
-
-    await expect(
-      loginWithGoogle({
-        idToken: "google-id-token",
-        redirectUri: "http://localhost/login"
-      })
-    ).resolves.toMatchObject({
-      accessToken: "access-google",
-      actor: { email: "user@risk.local" }
-    });
-    expect(fetchMock.mock.calls[0][0]).toBe(
-      "http://localhost:8000/api/v1/auth/google"
-    );
-    expect(JSON.parse(fetchMock.mock.calls[0][1].body as string)).toEqual({
-      idToken: "google-id-token",
-      redirectUri: "http://localhost/login"
-    });
-    expect(getAccessToken()).toBe("access-google");
   });
 
   it("loads the current authenticated user through the protected API client", async () => {
