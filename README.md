@@ -25,7 +25,7 @@ e origem live/fallback/determinística para conversões.
 - `/` redireciona para `/dashboard`;
 - `/login`, `/session-expired` e `/unauthorized` tratam autenticação e sessão;
 - `/dashboard` apresenta contas, portfólios, FX, criação manual e importação assíncrona por XLSX;
-- `/admin` lista usuários para administradores;
+- `/admin` lista usuários em modo somente leitura para administradores;
 - `/dashboard/portfolios/[portfolioId]` cobre ledger, posições, analytics, relatórios e alertas;
 - `/dashboard/analytics-diagnostics` cobre diagnósticos e jobs analíticos;
 - `/dashboard/clients` e `/dashboard/clients/[clientId]` cobrem clientes e grupos;
@@ -43,6 +43,15 @@ No dashboard, `Baixar modelo XLSX` obtém o template versionado do backend. O pa
 envia o arquivo com idempotência, restaura o histórico por conta, acompanha fila/validação/criação
 por polling com atualização por evento quando disponível e permite baixar a planilha de erros sem
 expor chaves de storage.
+
+## Features ativas ainda não implementadas
+
+- A feature raiz `1 - centralized-secrets-runtime-configuration` pertence ao backend. Nenhum
+  segredo deve chegar ao frontend ou ser publicado por `NEXT_PUBLIC_*`; o navegador recebe somente
+  configuração explicitamente pública.
+- A feature raiz `2 - hierarchical-user-management` adicionará listas separadas por classe e os
+  fluxos autorizados de criação/edição na hierarquia `admin > analyst > user`. Hoje não existem
+  mutações de usuário nem telas de gestão para analistas.
 
 ## Execução local
 
@@ -101,4 +110,5 @@ tests/unit/          contratos, componentes, páginas e fluxos
 
 Veja também [Atomic Design e inventário de duplicações](docs/architecture/atomic-design.md),
 [prontidão AWS](docs/aws-frontend-readiness.md) e
-[branch protection](docs/branch-protection.md). Licença MIT em [LICENSE](LICENSE).
+[branch protection](docs/branch-protection.md). O contexto e as features ativas ficam somente em
+`../.specs/` na raiz do workspace. Licença MIT em [LICENSE](LICENSE).

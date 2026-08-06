@@ -42,6 +42,17 @@ DEPLOY_TARGET=aws NEXT_PUBLIC_API_BASE_URL=https://api.example.com/api/v1 yarn c
 The check fails when the URL is missing, not absolute, points to localhost, or does not end with
 `/api/v1`.
 
+This is intentionally public configuration. Backend secrets, secret identifiers, credentials, and
+the runtime configuration document specified by root feature
+`1 - centralized-secrets-runtime-configuration` must never use `NEXT_PUBLIC_*`, enter the browser
+bundle, or be returned by an API payload.
+
+The current Dockerfile runs `yarn build` without declaring a build argument for
+`NEXT_PUBLIC_API_BASE_URL` and does not run `check:public-config` inside the image build. Therefore,
+the image pipeline is not yet self-validating: before promotion, the Docker build path must be
+updated so the build stage receives and validates the public API base URL. Runtime-only injection
+after `next build` cannot replace a value already inlined into the client bundle.
+
 ## Current Performance Guardrails
 
 The frontend already keeps business data behind backend authorization and uses client-side session

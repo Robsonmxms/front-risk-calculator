@@ -10,7 +10,7 @@ components receive typed props, callbacks, and slots. `components.json` routes s
 | Repeated structure | Previous sources | Decision and canonical target |
 | --- | --- | --- |
 | shadcn/Radix primitives | `components/ui/*` and every product route | Reclassified as atoms under `components/atoms/*`; behavior and variants preserved. |
-| authenticated application header | twelve protected routes plus `components/layout/AppHeader.tsx` | Session/RBAC mapping moved to the auth feature container; feature-neutral rendering lives in `components/organisms/AppHeader.tsx`. |
+| authenticated application header | protected route implementations plus the former `components/layout/AppHeader.tsx` | Session/RBAC mapping moved to the auth feature container; feature-neutral rendering lives in `components/organisms/AppHeader.tsx`. |
 | section navigation | portfolio, workbench, diagnostics, office operations | One organism at `components/organisms/PageSectionNavigation.tsx`. |
 | KPI/metric cards | office operations, compliance, diagnostics, workbench, delivery and client portal | One variant-driven molecule at `components/molecules/MetricCard.tsx`. The analytics-metric card remains feature-specific because it carries metric status, calculation version, sample evidence, and unavailable-reason semantics. |
 | chart shell | diagnostics and workbench | One organism at `components/organisms/ChartShell.tsx` with an explicit heading-level variant. |
@@ -28,3 +28,8 @@ Feature-neutral API contracts used by transport, realtime, presentation, or mult
 not importable by another feature. The automated architecture check covers relative paths, `@/*`
 aliases, barrels, type-only imports, exports, dynamic imports, CommonJS imports, upward Atomic Design
 imports, route-local named components, and production cycles.
+
+The current `/admin` feature container remains a read-only roster. Root feature
+`2 - hierarchical-user-management` is active but not implemented; its future role-specific routes,
+forms, and responsive rosters must reuse these boundaries rather than introduce route-local or
+cross-feature component copies.
