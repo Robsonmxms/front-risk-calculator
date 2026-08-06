@@ -1,47 +1,43 @@
+import { Cormorant_Garamond } from "next/font/google";
 import { LoginForm } from "../../../features/auth/LoginForm";
-import { Card } from "../../../components/ui/card";
+
+const displayFont = Cormorant_Garamond({
+  display: "swap",
+  fallback: ["Georgia", "Times New Roman", "serif"],
+  subsets: ["latin"],
+  weight: "600"
+});
 
 export default function LoginPage() {
   return (
-    <main className="mx-auto grid min-h-screen max-w-6xl content-center items-center gap-5 px-5 py-6 lg:grid-cols-[minmax(320px,420px)_minmax(280px,1fr)] lg:px-8">
-      <LoginForm />
-      <Card className="w-full max-w-md lg:max-w-none">
-        <div className="grid gap-4 sm:grid-cols-3 lg:grid-cols-1">
-          <TrustSignal
-            label="Sessão"
-            value="Tokens protegidos"
-            detail="Renovação controlada pela API da plataforma."
-          />
-          <TrustSignal
-            label="Dados"
-            value="Mercado via backend"
-            detail="O navegador não consulta provedores externos diretamente."
-          />
-          <TrustSignal
-            label="Ambiente"
-            value="Acesso por perfil"
-            detail="Rotas visíveis seguem escritório, conta e papel da sessão."
-          />
-        </div>
-      </Card>
-    </main>
-  );
-}
+    <main className="relative min-h-screen overflow-hidden bg-background">
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute left-0 top-0 h-[46%] w-full bg-gradient-to-br from-emerald-200/80 via-moss/10 to-transparent lg:h-full lg:w-[68%]"
+      />
 
-function TrustSignal({
-  label,
-  value,
-  detail
-}: {
-  label: string;
-  value: string;
-  detail: string;
-}) {
-  return (
-    <div className="border-b border-border pb-4 last:border-b-0 last:pb-0 sm:border-b-0 sm:border-r sm:pb-0 sm:pr-4 sm:last:border-r-0 sm:last:pr-0 lg:border-b lg:border-r-0 lg:pb-4 lg:pr-0 lg:last:border-b-0 lg:last:pb-0">
-      <p className="text-xs font-semibold uppercase text-stone-500">{label}</p>
-      <strong className="mt-1 block text-base font-semibold text-stone-900">{value}</strong>
-      <p className="mt-1 hidden text-sm text-stone-600 sm:block">{detail}</p>
-    </div>
+      <div className="relative mx-auto grid min-h-screen max-w-[96rem] grid-rows-[auto_1fr] gap-10 px-5 py-10 sm:px-8 sm:py-14 lg:grid-cols-[minmax(0,1fr)_minmax(24rem,0.8fr)] lg:grid-rows-1 lg:items-center lg:gap-16 lg:px-16 xl:px-24">
+        <section
+          aria-labelledby="product-wordmark"
+          className="flex min-h-48 items-end py-4 lg:min-h-0 lg:items-center lg:py-0"
+        >
+          <h1
+            id="product-wordmark"
+            aria-label="Risk Calculator"
+            className={`${displayFont.className} text-[3.25rem] font-semibold leading-[0.86] tracking-[-0.035em] text-stone-950 sm:text-6xl lg:text-8xl xl:text-[6.5rem]`}
+          >
+            <span className="block">Risk</span>
+            <span className="block">Calculator</span>
+          </h1>
+        </section>
+
+        <section
+          aria-label="Acesso à plataforma"
+          className="flex w-full items-start justify-center pb-6 lg:items-center lg:justify-end lg:pb-0"
+        >
+          <LoginForm />
+        </section>
+      </div>
+    </main>
   );
 }

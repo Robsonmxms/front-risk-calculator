@@ -54,7 +54,6 @@ Configuracao por ambiente:
 Chamadas usadas no frontend atual:
 
 - `POST /auth/login`
-- `POST /auth/google`
 - `POST /auth/refresh`
 - `POST /auth/logout`
 - `GET /users/me`
@@ -140,7 +139,7 @@ Os testes unitarios atuais validam fluxos de sessao, telas protegidas e contrato
 
 - retry apos refresh bem-sucedido;
 - limpeza de sessao quando o refresh falha.
-- login por senha e Google;
+- login por senha;
 - logout e limpeza local mesmo em falha de rede;
 - download de blobs e envelopes de erro;
 - contratos dos clientes de auth, client, office, portfolio, workbench, compliance e delivery;

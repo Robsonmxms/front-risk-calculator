@@ -11,7 +11,6 @@ import { ApiError } from "../../src/lib/api/client";
 
 const authApiMocks = vi.hoisted(() => ({
   getCurrentUser: vi.fn(),
-  loginWithGoogle: vi.fn(),
   loginWithPassword: vi.fn(),
   logout: vi.fn()
 }));

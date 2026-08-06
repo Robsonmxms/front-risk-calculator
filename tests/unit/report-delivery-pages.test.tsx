@@ -8,7 +8,6 @@ import { Actor, SafeUser } from "../../src/features/auth/types";
 
 const authApiMocks = vi.hoisted(() => ({
   getCurrentUser: vi.fn(),
-  loginWithGoogle: vi.fn(),
   loginWithPassword: vi.fn(),
   logout: vi.fn()
 }));

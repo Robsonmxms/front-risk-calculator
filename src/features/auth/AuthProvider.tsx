@@ -9,12 +9,7 @@ import {
   useMemo,
   useState
 } from "react";
-import {
-  getCurrentUser,
-  loginWithGoogle,
-  loginWithPassword,
-  logout as logoutRequest
-} from "./authApi";
+import { getCurrentUser, loginWithPassword, logout as logoutRequest } from "./authApi";
 import {
   clearSession,
   getAccessToken,
@@ -33,7 +28,6 @@ interface AuthContextValue {
   officeMemberships: OfficeMembershipSummary[];
   selectOffice: (officeId: string) => void;
   login: (credentials: LoginCredentials) => Promise<void>;
-  loginWithGoogleCredential: (credential: string) => Promise<void>;
   logout: () => Promise<void>;
   refreshBootstrap: () => Promise<void>;
 }
@@ -99,12 +93,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setStatus("authenticated");
   }, [applyActor]);
 
-  const loginWithGoogleCredential = useCallback(async (credential: string) => {
-    const session = await loginWithGoogle({ idToken: credential });
-    applyActor(session.actor);
-    setStatus("authenticated");
-  }, [applyActor]);
-
   const logout = useCallback(async () => {
     await logoutRequest();
     applyActor(null);
@@ -132,7 +120,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       officeMemberships: actor?.officeMemberships ?? [],
       selectOffice,
       login,
-      loginWithGoogleCredential,
       logout,
       refreshBootstrap
     }),
@@ -140,7 +127,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       activeOffice,
       actor,
       login,
-      loginWithGoogleCredential,
       logout,
       refreshBootstrap,
       selectOffice,

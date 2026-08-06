@@ -11,16 +11,6 @@ export async function loginWithPassword(
   return session;
 }
 
-export async function loginWithGoogle(input: {
-  idToken?: string;
-  code?: string;
-  redirectUri?: string;
-}): Promise<AuthSession> {
-  const session = await postPublic<AuthSession>("/auth/google", input);
-  saveSession(session);
-  return session;
-}
-
 export async function getCurrentUser(): Promise<CurrentUserResponse> {
   return apiFetch<CurrentUserResponse>("/users/me");
 }
