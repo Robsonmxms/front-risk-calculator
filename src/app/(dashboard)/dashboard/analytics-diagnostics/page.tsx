@@ -2,6 +2,7 @@
 
 import { FormEvent, ReactNode, useEffect, useMemo, useState } from "react";
 import { AppHeader } from "../../../../components/layout/AppHeader";
+import { PageSectionNavigation } from "../../../../components/layout/PageSectionNavigation";
 import { Alert } from "../../../../components/ui/alert";
 import { Badge, BadgeVariant } from "../../../../components/ui/badge";
 import { Button } from "../../../../components/ui/button";
@@ -23,7 +24,8 @@ import {
   TableCell,
   TableHead,
   TableHeader,
-  TableRow
+  TableRow,
+  TableViewport
 } from "../../../../components/ui/table";
 import {
   createAnalystChartJob,
@@ -198,7 +200,7 @@ export default function AnalyticsDiagnosticsPage() {
       const job = await getAnalystChartJob(officeId, chartJob.data.id);
       setChartJob(job);
     } catch (caught) {
-      setJobError(getApiErrorMessage(caught, "Não foi possível atualizar o status do job."));
+      setJobError(getApiErrorMessage(caught, "Não foi possível atualizar o status do processamento."));
     } finally {
       setJobLoading(false);
     }
@@ -225,18 +227,26 @@ export default function AnalyticsDiagnosticsPage() {
           <Alert variant="failure">Seu perfil não possui acesso aos diagnósticos de analista.</Alert>
         ) : (
           <section className="grid gap-4">
+            <PageSectionNavigation
+              label="Seções dos diagnósticos"
+              links={[
+                { href: "#diagnosticos-filtros", label: "Filtros" },
+                { href: "#diagnosticos-processamento", label: "Processamento" },
+                { href: "#diagnosticos-graficos", label: "Gráficos e fontes" }
+              ]}
+            />
             <DiagnosticsFilters
               filters={draftFilters}
               onChange={setDraftFilters}
               onSubmit={handleSubmitFilters}
             />
 
-            <section className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
+            <section id="diagnosticos-processamento" className="scroll-mt-4 grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
               <Card>
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
                   <div>
                     <p className="text-xs font-semibold uppercase text-moss">Processamento</p>
-                    <h2 className="text-xl font-semibold text-stone-900">Job de diagnóstico</h2>
+                    <h2 className="text-xl font-semibold text-stone-900">Processamento do diagnóstico</h2>
                   </div>
                   <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto_auto]">
                     <Input
@@ -245,7 +255,7 @@ export default function AnalyticsDiagnosticsPage() {
                       onChange={(event) => setIdempotencyKey(event.target.value)}
                     />
                     <Button onClick={handleCreateJob} disabled={jobLoading || !idempotencyKey.trim()}>
-                      {jobLoading ? "Solicitando..." : "Solicitar job"}
+                      {jobLoading ? "Solicitando..." : "Solicitar processamento"}
                     </Button>
                     <Button
                       variant="outline"
@@ -272,7 +282,9 @@ export default function AnalyticsDiagnosticsPage() {
             ) : diagnostics.data.dataQuality.status === "empty" ? (
               <Alert variant="info">Nenhum portfólio encontrado para os filtros aplicados.</Alert>
             ) : (
-              <DiagnosticsCharts diagnostics={diagnostics} />
+              <section id="diagnosticos-graficos" className="scroll-mt-4 grid gap-4">
+                <DiagnosticsCharts diagnostics={diagnostics} />
+              </section>
             )}
           </section>
         )}
@@ -302,12 +314,12 @@ function DiagnosticsFilters({
   }
 
   return (
-    <Card>
+    <Card id="diagnosticos-filtros" className="scroll-mt-4">
       <form className="grid gap-4" onSubmit={onSubmit}>
         <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
           <div>
             <p className="text-xs font-semibold uppercase text-moss">Filtros</p>
-            <h1 className="text-2xl font-semibold text-stone-900">Workbench de diagnósticos</h1>
+            <h1 className="text-2xl font-semibold text-stone-900">Área de diagnósticos</h1>
           </div>
           <Button type="submit">Aplicar filtros</Button>
         </div>
@@ -384,7 +396,7 @@ function DiagnosticsFilters({
               ))}
             </Select>
           </Field>
-          <Field label="Benchmark" htmlFor="benchmarkSymbol">
+          <Field label="Índice de referência (benchmark)" htmlFor="benchmarkSymbol">
             <Input
               id="benchmarkSymbol"
               value={filters.benchmarkSymbol}
@@ -466,7 +478,7 @@ function DiagnosticsCharts({ diagnostics }: { diagnostics: DiagnosticsEnvelope }
           <ExposureHeatmap cells={data.charts.assetExposureHeatmap} />
         </ChartShell>
 
-        <ChartShell eyebrow="Benchmark" title="Sensibilidade">
+        <ChartShell eyebrow="Índice de referência" title="Sensibilidade">
           <BenchmarkSensitivityChart points={data.charts.benchmarkSensitivity} />
         </ChartShell>
 
@@ -476,7 +488,7 @@ function DiagnosticsCharts({ diagnostics }: { diagnostics: DiagnosticsEnvelope }
       </section>
 
       <section className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_420px]">
-        <ChartShell eyebrow="Concentração" title="Ranking de portfólios">
+        <ChartShell eyebrow="Concentração" title="Classificação de portfólios">
           <ConcentrationRankingTable rows={data.charts.concentrationRanking} />
         </ChartShell>
         <ChartShell eyebrow="Dados" title="Linha do tempo e provedores">
@@ -488,7 +500,7 @@ function DiagnosticsCharts({ diagnostics }: { diagnostics: DiagnosticsEnvelope }
       </section>
 
       {meta ? (
-        <p className="text-xs text-stone-500">
+        <p className="text-xs text-stone-600">
           Gerado em {formatDateTime(meta.generatedAt)} com {formatDecimal(meta.calculationDurationMs, 0)} ms.
         </p>
       ) : null}
@@ -515,9 +527,9 @@ function Field({
 
 function MetricCard({ label, value }: { label: string; value: number | string }) {
   return (
-    <Card>
-      <span className="text-xs font-semibold uppercase text-stone-500">{label}</span>
-      <strong className="text-2xl text-stone-900">{value}</strong>
+    <Card className="grid gap-2">
+      <span className="block text-xs font-semibold uppercase leading-tight text-stone-500">{label}</span>
+      <strong className="block text-2xl leading-none text-stone-900">{value}</strong>
     </Card>
   );
 }
@@ -735,13 +747,13 @@ function ConcentrationRankingTable({
   rows: AnalystChartBundle["charts"]["concentrationRanking"];
 }) {
   if (rows.length === 0) {
-    return <EmptyChartState>Nenhum ranking de concentração disponível.</EmptyChartState>;
+    return <EmptyChartState>Nenhuma classificação de concentração disponível.</EmptyChartState>;
   }
 
   const maxWeight = Math.max(...rows.map((row) => row.topHoldingWeightPercent ?? 0), 1);
 
   return (
-    <div className="overflow-x-auto">
+    <TableViewport label="Classificação de concentração dos portfólios">
       <Table>
         <TableHeader>
           <TableRow>
@@ -773,7 +785,7 @@ function ConcentrationRankingTable({
           ))}
         </TableBody>
       </Table>
-    </div>
+    </TableViewport>
   );
 }
 
@@ -823,8 +835,8 @@ function ProviderFreshnessMatrix({
       {cells.slice(0, 10).map((cell) => (
         <div key={`${cell.portfolioId}-${cell.symbol}`} className="grid grid-cols-[1fr_auto] gap-3 rounded-md border border-border p-3 text-sm">
           <div className="min-w-0">
-            <span className="block truncate font-medium text-stone-900">{cell.symbol}</span>
-            <span className="block truncate text-xs text-stone-500">
+            <span className="block break-words font-medium text-stone-900">{cell.symbol}</span>
+            <span className="block break-words text-xs leading-relaxed text-stone-500">
               {cell.providerName ?? "provedor indisponível"} · {cell.portfolioName}
             </span>
           </div>
@@ -880,9 +892,9 @@ function AuditEvidenceCard({ diagnostics }: { diagnostics: DiagnosticsEnvelope |
         <EvidenceRow label="Jobs" value={data?.dataQuality.sourceCounts.analyticsJobs ?? 0} />
       </div>
       {meta?.inputHashes.length ? (
-        <div className="mt-4 grid gap-2 text-xs text-stone-500">
+        <div className="mt-4 grid gap-2 text-xs text-stone-600">
           {meta.inputHashes.slice(0, 3).map((hash) => (
-            <code key={hash} className="truncate rounded-md bg-muted px-2 py-1">
+            <code key={hash} className="break-all rounded-md bg-muted px-2 py-1" title={hash}>
               {hash}
             </code>
           ))}
@@ -896,7 +908,7 @@ function JobStatusPanel({ job, loading }: { job: ChartJobEnvelope | null; loadin
   if (!job) {
     return (
       <div className="mt-5 rounded-md border border-border p-4 text-sm text-stone-600">
-        Nenhum job solicitado nesta sessão.
+        Nenhum processamento solicitado nesta sessão.
       </div>
     );
   }
@@ -907,7 +919,7 @@ function JobStatusPanel({ job, loading }: { job: ChartJobEnvelope | null; loadin
     <div className="mt-5 grid gap-3 rounded-md border border-border p-4 text-sm">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="min-w-0">
-          <span className="block truncate font-medium text-stone-900">{job.data.id}</span>
+          <span className="block break-all font-medium text-stone-900" title={job.data.id}>{job.data.id}</span>
           <span className="text-xs text-stone-500">
             Correlação {job.meta?.correlationId ?? job.data.correlationId}
           </span>

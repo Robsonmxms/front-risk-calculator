@@ -79,14 +79,16 @@ export function AppHeader({
   const activeNavLabel = navItems.find((item) => item.active)?.label ?? "Menu";
 
   return (
-    <header className="rounded-lg border border-border bg-card/95 px-4 py-3 shadow-sm">
-      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        <div className="flex min-w-0 items-start justify-between gap-3">
-          <Link href="/dashboard" className="min-w-0">
+    <header className="rounded-lg border border-border bg-card/95 px-4 py-4 shadow-sm sm:px-5">
+      <div className="grid gap-4">
+        <div className="flex min-w-0 items-start justify-between gap-4">
+          <Link href="/dashboard" className="min-w-0 max-w-2xl">
             <span className="block text-xs font-semibold uppercase tracking-normal text-moss">
               Risk Calculator
             </span>
-            <span className="block truncate text-lg font-semibold text-foreground">{title}</span>
+            <span className="mt-0.5 block text-lg font-semibold leading-tight text-foreground sm:text-xl">
+              {title}
+            </span>
           </Link>
 
           <button
@@ -110,7 +112,7 @@ export function AppHeader({
 
         <div className="flex min-w-0 flex-wrap items-center gap-3 md:justify-end">
           <nav
-            className="hidden max-w-full flex-wrap items-center gap-1 md:flex"
+            className="order-last hidden w-full flex-wrap items-center gap-1 border-t border-border pt-3 md:flex"
             aria-label="Navegação principal"
           >
             {navItems.map((item) => (
@@ -134,7 +136,7 @@ export function AppHeader({
               ))}
             </select>
           ) : activeOffice ? (
-            <span className="max-w-full truncate rounded-md border border-border bg-muted px-3 py-2 text-sm font-medium text-foreground">
+            <span className="max-w-full break-words rounded-md border border-border bg-muted px-3 py-2 text-sm font-medium leading-tight text-foreground">
               {activeOffice.officeName}
             </span>
           ) : null}
@@ -145,7 +147,7 @@ export function AppHeader({
       {isMobileNavOpen ? (
         <nav
           id="app-header-mobile-nav"
-          className="mt-3 grid gap-1 border-t border-border pt-3 md:hidden"
+          className="mt-4 grid gap-1 border-t border-border pt-3 md:hidden"
           aria-label="Navegação principal"
         >
           {navItems.map((item) => (

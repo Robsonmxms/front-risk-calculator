@@ -137,7 +137,7 @@ describe("office operations page", () => {
     );
 
     expect(await screen.findByText("Administração global")).toBeInTheDocument();
-    expect(screen.getByText("Plataforma")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Plataforma" })).toBeInTheDocument();
     expect(chartApiMocks.getPlatformAdminCharts).toHaveBeenCalledWith(
       expect.objectContaining({ range: "30d" })
     );

@@ -16,7 +16,8 @@ import {
   TableCell,
   TableHead,
   TableHeader,
-  TableRow
+  TableRow,
+  TableViewport
 } from "../../../../components/ui/table";
 import { Textarea } from "../../../../components/ui/textarea";
 import { useAuth } from "../../../../features/auth/AuthProvider";
@@ -242,7 +243,7 @@ export default function ClientDirectoryPage() {
                 <Alert variant="info">Nenhum cliente encontrado para este escritório.</Alert>
               ) : (
                 <Card>
-                  <div className="overflow-x-auto">
+                  <TableViewport label="Clientes do escritório">
                     <Table>
                       <TableHeader>
                         <TableRow>
@@ -276,7 +277,7 @@ export default function ClientDirectoryPage() {
                         ))}
                       </TableBody>
                     </Table>
-                  </div>
+                  </TableViewport>
                 </Card>
               )}
             </div>

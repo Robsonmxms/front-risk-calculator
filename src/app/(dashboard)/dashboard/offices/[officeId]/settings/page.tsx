@@ -16,7 +16,8 @@ import {
   TableCell,
   TableHead,
   TableHeader,
-  TableRow
+  TableRow,
+  TableViewport
 } from "../../../../../../components/ui/table";
 import { LogoutButton } from "../../../../../../features/auth/LogoutButton";
 import { ProtectedRoute } from "../../../../../../features/auth/ProtectedRoute";
@@ -341,7 +342,7 @@ export default function OfficeSettingsPage() {
                       <Badge variant="outline">{members.length} membros</Badge>
                     </div>
 
-                    <div className="mt-5 overflow-x-auto">
+                    <TableViewport className="mt-5" label="Membros do escritório">
                       <Table>
                         <TableHeader>
                           <TableRow>
@@ -362,7 +363,7 @@ export default function OfficeSettingsPage() {
                           ))}
                         </TableBody>
                       </Table>
-                    </div>
+                    </TableViewport>
                   </Card>
 
                   <Card>
@@ -420,7 +421,7 @@ export default function OfficeSettingsPage() {
                       </div>
                     </form>
 
-                    <div className="mt-5 overflow-x-auto">
+                    <TableViewport className="mt-5" label="Times de assessoria">
                       <Table>
                         <TableHeader>
                           <TableRow>
@@ -443,7 +444,7 @@ export default function OfficeSettingsPage() {
                           ))}
                         </TableBody>
                       </Table>
-                    </div>
+                    </TableViewport>
                   </Card>
 
                   <Card>
@@ -548,7 +549,7 @@ export default function OfficeSettingsPage() {
                       </div>
                     </form>
 
-                    <div className="mt-5 overflow-x-auto">
+                    <TableViewport className="mt-5" label="Permissões por recurso">
                       <Table>
                         <TableHeader>
                           <TableRow>
@@ -586,7 +587,7 @@ export default function OfficeSettingsPage() {
                           ))}
                         </TableBody>
                       </Table>
-                    </div>
+                    </TableViewport>
                   </Card>
                 </>
               ) : null}

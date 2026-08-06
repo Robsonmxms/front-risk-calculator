@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { FormEvent, ReactNode, useEffect, useMemo, useState } from "react";
 import { AppHeader } from "../../../../components/layout/AppHeader";
+import { PageSectionNavigation } from "../../../../components/layout/PageSectionNavigation";
 import { Alert } from "../../../../components/ui/alert";
 import { Badge } from "../../../../components/ui/badge";
 import { Button } from "../../../../components/ui/button";
@@ -325,8 +326,20 @@ export default function WorkbenchPage() {
               isClientOffice ? "grid gap-4" : "grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]"
             }
           >
+            <PageSectionNavigation
+              className="xl:col-span-2"
+              label="Seções da mesa de acompanhamento"
+              links={[
+                { href: "#workbench-resumo", label: "Resumo" },
+                { href: "#workbench-graficos", label: "Gráficos" },
+                { href: "#workbench-fila", label: "Fila" },
+                { href: "#workbench-clientes", label: "Clientes" },
+                { href: "#workbench-atencao", label: "Atenção" },
+                { href: "#workbench-criar", label: "Criar item" }
+              ]}
+            />
             <div className="grid gap-4">
-              <section className="grid gap-4 md:grid-cols-4">
+              <section id="workbench-resumo" className="scroll-mt-4 grid gap-4 md:grid-cols-4">
                 <MetricCard label="Clientes" value={workbench.counts.assignedClients} />
                 <MetricCard label="Atenção" value={workbench.counts.portfoliosNeedingAttention} />
                 <MetricCard label="Em aberto" value={workbench.counts.openReviewItems} />
@@ -351,7 +364,7 @@ export default function WorkbenchPage() {
                 onAdvisorChange={setSelectedAdvisorUserId}
               />
 
-              <Card>
+              <Card id="workbench-fila" className="scroll-mt-4">
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <p className="text-xs font-semibold uppercase text-moss">Fila de acompanhamento</p>
@@ -452,7 +465,7 @@ export default function WorkbenchPage() {
                 )}
               </Card>
 
-              <Card>
+              <Card id="workbench-clientes" className="scroll-mt-4">
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <p className="text-xs font-semibold uppercase text-moss">Clientes</p>
@@ -481,7 +494,7 @@ export default function WorkbenchPage() {
                 </div>
               </Card>
 
-              <Card>
+              <Card id="workbench-atencao" className="scroll-mt-4">
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <p className="text-xs font-semibold uppercase text-moss">Atenção operacional</p>
@@ -520,7 +533,7 @@ export default function WorkbenchPage() {
             </div>
 
             {!isClientOffice ? (
-              <Card>
+              <Card id="workbench-criar" className="scroll-mt-4">
                 <div className="space-y-1">
                   <p className="text-xs font-semibold uppercase text-moss">Novo acompanhamento</p>
                   <h2 className="text-xl font-semibold text-stone-900">Criar item</h2>
@@ -715,14 +728,14 @@ function AdvisorChartsDashboard({
   onAdvisorChange: (value: string) => void;
 }) {
   return (
-    <section className="grid gap-4" aria-label="Gráficos da carteira do assessor">
+    <section id="workbench-graficos" className="scroll-mt-4 grid gap-4" aria-label="Gráficos da carteira do assessor">
       <Card>
-        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start">
+        <div className="grid gap-5">
           <div>
             <p className="text-xs font-semibold uppercase text-moss">Carteira do assessor</p>
             <h2 className="text-xl font-semibold text-stone-900">Monitoramento do livro de clientes</h2>
           </div>
-          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             {canSelectAdvisor ? (
               <Select
                 aria-label="Selecionar assessor"

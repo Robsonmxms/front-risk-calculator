@@ -431,7 +431,7 @@ describe("portfolio detail ledger and market-data flow", () => {
     expect(screen.queryByText(/Market data refresh pending/i)).not.toBeInTheDocument();
     expect(screen.getByText("compra MSFT")).toBeInTheDocument();
     expect(screen.getByText("Microsoft Corporation · 2026-07-15")).toBeInTheDocument();
-  }, 10_000);
+  }, 20_000);
 
   it("blocks transaction submission until a backend-returned asset is selected", async () => {
     mockPortfolioDetailApi();

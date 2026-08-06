@@ -15,7 +15,8 @@ import {
   TableCell,
   TableHead,
   TableHeader,
-  TableRow
+  TableRow,
+  TableViewport
 } from "../../../../components/ui/table";
 import { Textarea } from "../../../../components/ui/textarea";
 import { useAuth } from "../../../../features/auth/AuthProvider";
@@ -423,7 +424,7 @@ export default function ReportDeliveryPage() {
                 {packages.length === 0 ? (
                   <Alert variant="info" className="mt-5">Nenhum pacote neste filtro.</Alert>
                 ) : (
-                  <div className="mt-5 overflow-x-auto">
+                  <TableViewport className="mt-5" label="Pacotes de relatório do cliente">
                     <Table>
                       <TableHeader>
                         <TableRow>
@@ -481,7 +482,7 @@ export default function ReportDeliveryPage() {
                         ))}
                       </TableBody>
                     </Table>
-                  </div>
+                  </TableViewport>
                 )}
               </Card>
             </div>
@@ -603,7 +604,7 @@ function DeliveryChartsPanel({
       <Card>
         <div className="flex items-start justify-between gap-3">
           <div>
-            <p className="text-xs font-semibold uppercase text-moss">Lifecycle</p>
+            <p className="text-xs font-semibold uppercase text-moss">Ciclo de vida</p>
             <h2 className="text-xl font-semibold text-stone-900">Pacotes por status</h2>
           </div>
           <DataQualityBadge status={charts.dataQuality.status} />
@@ -684,7 +685,7 @@ function DeliveryChartsPanel({
         {charts.charts.clientPackageReadiness.length === 0 ? (
           <Alert variant="info" className="mt-4">Sem pacotes no escopo selecionado.</Alert>
         ) : (
-          <div className="mt-5 overflow-x-auto">
+          <TableViewport className="mt-5" label="Prontidão dos pacotes por cliente">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -718,7 +719,7 @@ function DeliveryChartsPanel({
                 ))}
               </TableBody>
             </Table>
-          </div>
+          </TableViewport>
         )}
       </Card>
 
@@ -733,9 +734,9 @@ function DeliveryChartsPanel({
 
 function MetricCard({ label, value }: { label: string; value: number }) {
   return (
-    <Card>
-      <span className="text-xs font-semibold uppercase text-stone-500">{label}</span>
-      <strong className="text-3xl text-stone-900">{value}</strong>
+    <Card className="grid gap-2">
+      <span className="block text-xs font-semibold uppercase leading-tight text-stone-500">{label}</span>
+      <strong className="block text-3xl leading-none text-stone-900">{value}</strong>
     </Card>
   );
 }

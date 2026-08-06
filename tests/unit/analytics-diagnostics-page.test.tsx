@@ -300,10 +300,10 @@ describe("analytics diagnostics page", () => {
       </AuthProvider>
     );
 
-    expect(await screen.findByText("Workbench de diagnósticos")).toBeInTheDocument();
+    expect(await screen.findByText("Área de diagnósticos")).toBeInTheDocument();
     expect(screen.getByText("Dispersão por portfólio")).toBeInTheDocument();
     expect(screen.getAllByText("Core Growth").length).toBeGreaterThan(0);
-    expect(screen.getByText("Ranking de portfólios")).toBeInTheDocument();
+    expect(screen.getByText("Classificação de portfólios")).toBeInTheDocument();
     expect(screen.getByText("Linha do tempo e provedores")).toBeInTheDocument();
     expect(diagnosticsApiMocks.getAnalystCharts).toHaveBeenCalledWith("ofc_main", {
       accountId: "",
@@ -342,7 +342,7 @@ describe("analytics diagnostics page", () => {
       );
     });
 
-    fireEvent.click(screen.getByRole("button", { name: "Solicitar job" }));
+    fireEvent.click(screen.getByRole("button", { name: "Solicitar processamento" }));
     await waitFor(() => {
       expect(diagnosticsApiMocks.createAnalystChartJob).toHaveBeenCalledWith(
         "ofc_main",

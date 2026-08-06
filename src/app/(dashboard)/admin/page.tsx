@@ -10,7 +10,8 @@ import {
   TableCell,
   TableHead,
   TableHeader,
-  TableRow
+  TableRow,
+  TableViewport
 } from "../../../components/ui/table";
 import { ProtectedRoute } from "../../../features/auth/ProtectedRoute";
 import { useAuth } from "../../../features/auth/AuthProvider";
@@ -104,7 +105,7 @@ export default function AdminPage() {
               A plataforma não retornou registros para esta consulta administrativa.
             </Alert>
           ) : (
-            <div className="overflow-x-auto">
+            <TableViewport label="Usuários da plataforma">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -125,7 +126,7 @@ export default function AdminPage() {
                   ))}
                 </TableBody>
               </Table>
-            </div>
+            </TableViewport>
           )}
         </section>
       </main>
