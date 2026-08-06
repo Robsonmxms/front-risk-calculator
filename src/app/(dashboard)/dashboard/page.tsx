@@ -26,6 +26,8 @@ import {
 import { ApiError } from "../../../lib/api/client";
 import {
   formatCurrency,
+  formatDate,
+  formatDateTime,
   getApiErrorMessage,
   labelAccountRole,
   labelPortfolioFreshness,
@@ -354,7 +356,9 @@ export default function DashboardPage() {
                         Última transação
                       </dt>
                       <dd className="mt-1 text-stone-900">
-                        {portfolio.lastTransactionDate ?? "sem transações"}
+                        {portfolio.lastTransactionDate
+                          ? formatDate(portfolio.lastTransactionDate)
+                          : "sem transações"}
                       </dd>
                     </div>
                   </dl>
@@ -443,7 +447,13 @@ function CurrencyConverterCard() {
   return (
     <Card className="h-fit">
       <div className="space-y-1">
-        <p className="text-xs font-semibold uppercase text-moss">Dólar agora</p>
+        <p className="text-xs font-semibold uppercase text-moss">
+          {conversion?.sourceType === "live" && conversion.freshness === "fresh"
+            ? "Dólar agora"
+            : conversion
+              ? "Câmbio de referência"
+              : "Conversão de moeda"}
+        </p>
         <div className="min-h-9" aria-live="polite">
           {status === "loading" ? (
             <Skeleton className="h-8 w-36" aria-label="Carregando cotação" />
@@ -463,7 +473,7 @@ function CurrencyConverterCard() {
             : status === "error"
               ? "Revise o valor ou tente novamente."
             : conversion
-              ? `${formatCurrency(conversion.amount, "USD")} via dados de mercado da plataforma`
+              ? `${formatCurrency(conversion.amount, "USD")} · ${currencyProviderLabel(conversion.providerName)}`
               : "Informe valor e moeda para consultar."}
         </p>
       </div>
@@ -499,13 +509,40 @@ function CurrencyConverterCard() {
       </div>
 
       {conversion ? (
-        <p className="text-xs text-stone-500">
-          Cotação {new Date(conversion.asOf).toLocaleString("pt-BR")}
-        </p>
+        <div className="space-y-1 text-xs text-stone-500">
+          <p>
+            Fonte: {currencyProviderLabel(conversion.providerName)} · {currencySourceLabel(conversion)}
+          </p>
+          <p>Cotação da fonte: {formatDateTime(conversion.asOf)}</p>
+          <p>Consulta da plataforma: {formatDateTime(conversion.updatedAt)}</p>
+        </div>
       ) : null}
       {status === "error" ? <Alert variant="failure">{error}</Alert> : null}
     </Card>
   );
+}
+
+function currencyProviderLabel(providerName: string): string {
+  const labels: Record<string, string> = {
+    yahoo: "Yahoo Finance",
+    "open.er-api": "Open ER API",
+    "local-seeded-market-data": "Dados determinísticos de QA"
+  };
+  return labels[providerName] ?? providerName;
+}
+
+function currencySourceLabel(conversion: CurrencyConversion): string {
+  if (conversion.sourceType === "deterministic") {
+    return "ambiente de QA, sem cotação ao vivo";
+  }
+  if (conversion.sourceType === "fallback") {
+    return "fonte alternativa";
+  }
+  return conversion.freshness === "fresh"
+    ? "fonte principal atualizada"
+    : conversion.freshness === "partial"
+      ? "cotação com atraso"
+      : `cotação desatualizada desde ${formatDate(conversion.asOf)}`;
 }
 
 interface ValidationDetails {

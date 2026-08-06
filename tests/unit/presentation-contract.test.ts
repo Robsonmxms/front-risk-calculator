@@ -26,6 +26,10 @@ import type { ReviewItemStatus, ReviewResourceType } from "../../src/features/wo
 import type { RealtimeConnectionStatus } from "../../src/lib/realtime/client";
 import { ApiError } from "../../src/lib/api/client";
 import {
+  formatDate,
+  formatDateInputValue,
+  formatDateTime,
+  formatPercentage,
   formatPortfolioWarning,
   getApiErrorMessage,
   labelAccountRole,
@@ -57,6 +61,7 @@ import {
   labelReportStatus,
   labelResourceType,
   labelReviewStatus,
+  labelSector,
   labelTransactionType,
   labelUserRole,
   labelUserStatus
@@ -94,6 +99,7 @@ describe("presentation contract", () => {
     );
     expectLocalized(["info", "warning", "blocking"], labelDataQualitySeverity);
     expect(labelDataQualityIssueCode("market_data.stale")).toBe("Dados de mercado desatualizados");
+    expect(labelSector("Technology")).toBe("Tecnologia");
     expectLocalized(["info", "watch", "high"] satisfies RiskInsightSeverity[], labelInsightSeverity);
     expectLocalized(["connected", "connecting", "disconnected"] satisfies RealtimeConnectionStatus[], labelRealtimeStatus);
     expectLocalized(["pending", "running", "ready", "failed"] satisfies ReportStatus[], labelReportStatus);
@@ -182,6 +188,18 @@ describe("presentation contract", () => {
     expect(formatPortfolioWarning("Provider failed while refreshing market data.")).toBe(
       "Aviso operacional registrado pela plataforma."
     );
+  });
+
+  it("preserves calendar dates and formats instants in the documented Brazilian timezone", () => {
+    expect(formatDate("2026-07-15")).toBe("15/07/2026");
+    expect(formatDate("2026-02-30")).toBe("data inválida");
+    expect(formatDate("not-a-date")).toBe("data inválida");
+    expect(formatPercentage(4.69)).toBe("4,69%");
+    expect(formatDateTime("2026-07-15T03:00:00.000Z")).toMatch(
+      /^15\/07\/2026,? 00:00$/
+    );
+    expect(formatDateTime("not-a-date")).toBe("data e hora inválidas");
+    expect(formatDateInputValue(new Date(2026, 6, 15, 23, 30))).toBe("2026-07-15");
   });
 });
 

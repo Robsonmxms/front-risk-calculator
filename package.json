@@ -15,6 +15,7 @@
     "lint-staged": "lint-staged",
     "prepare": "husky",
     "test": "vitest run",
+    "test:risk": "vitest run tests/unit/presentation-contract.test.ts tests/unit/api-client.test.ts tests/unit/realtime-client.test.ts tests/unit/portfolio-flows.test.tsx tests/unit/workbench-page.test.tsx tests/unit/analytics-diagnostics-page.test.tsx tests/unit/report-delivery-pages.test.tsx tests/unit/session-expiration.test.tsx",
     "test:coverage": "vitest run --coverage",
     "test:watch": "vitest"
   },

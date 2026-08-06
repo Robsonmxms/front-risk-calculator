@@ -243,7 +243,10 @@ describe("dashboard portfolio creation flow", () => {
           asOf: "2026-07-16T10:00:00.000Z",
           updatedAt: "2026-07-16T10:00:00.000Z",
           amount: 1,
-          convertedAmount: 5.2
+          convertedAmount: 5.2,
+          freshness: "fresh",
+          sourceAgeSeconds: 0,
+          sourceType: "live"
         }
       },
       meta: { providerName: "yahoo", asOf: "2026-07-16T10:00:00.000Z" }
@@ -252,6 +255,9 @@ describe("dashboard portfolio creation flow", () => {
     renderWithAuth(<DashboardPage />);
 
     expect(await screen.findByRole("heading", { name: "Investidor Principal" })).toBeInTheDocument();
+    expect(await screen.findByText("Fonte: Yahoo Finance · fonte principal atualizada")).toBeInTheDocument();
+    expect(screen.getByText(/Cotação da fonte:/)).toHaveTextContent("16/07/2026");
+    expect(screen.getByText(/Consulta da plataforma:/)).toHaveTextContent("16/07/2026");
     expect(document.querySelector("#app-header-mobile-nav")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Painel" }));
     expect(document.querySelector("#app-header-mobile-nav")).not.toBeNull();
@@ -429,7 +435,7 @@ describe("portfolio detail ledger and market-data flow", () => {
     expect(screen.queryByText(/Analytics recomputation pending/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/Market data refresh pending/i)).not.toBeInTheDocument();
     expect(screen.getByText("compra MSFT")).toBeInTheDocument();
-    expect(screen.getByText("Microsoft Corporation · 2026-07-15")).toBeInTheDocument();
+    expect(screen.getByText("Microsoft Corporation · 15/07/2026")).toBeInTheDocument();
   }, 20_000);
 
   it("blocks transaction submission until a backend-returned asset is selected", async () => {
@@ -468,7 +474,7 @@ describe("portfolio analytics states", () => {
 
     expect((await screen.findAllByText("dados completos")).length).toBeGreaterThan(0);
     expect(screen.getByText("Retorno total")).toBeInTheDocument();
-    expect(screen.getByText("12.00%")).toBeInTheDocument();
+    expect(screen.getByText("12,00%")).toBeInTheDocument();
     expect(screen.getByText("Concentração elevada")).toBeInTheDocument();
   });
 
@@ -483,13 +489,16 @@ describe("portfolio analytics states", () => {
     expect(screen.getByText("As análises ainda não possuem retrato de risco calculado.")).toBeInTheDocument();
   });
 
-  it("renders partial analytics with unavailable metrics and stale data-quality issues", async () => {
+  it("renders partial analytics with explicit insufficient-sample metadata", async () => {
     const snapshot = makeAnalyticsSnapshot({
       status: "partial",
       metrics: makeMetrics({
         beta: makeMetric("beta", "Beta", "ratio", {
           status: "unavailable",
-          reason: "Histórico insuficiente para benchmark SPY."
+          reason: "Requer ao menos 30 retornos e 30 dias de horizonte efetivo.",
+          reasonCode: "analytics.insufficient_sample",
+          observationCount: 8,
+          effectiveHorizonDays: 7
         })
       }),
       dataQuality: {
@@ -498,6 +507,13 @@ describe("portfolio analytics states", () => {
             code: "market_data.stale",
             severity: "warning",
             message: "Cotação stale para MSFT.",
+            symbols: ["MSFT"],
+            metricKeys: ["beta"]
+          },
+          {
+            code: "analytics.insufficient_sample",
+            severity: "blocking",
+            message: "A amostra disponível não atende ao mínimo para calcular beta.",
             symbols: ["MSFT"],
             metricKeys: ["beta"]
           }
@@ -518,6 +534,8 @@ describe("portfolio analytics states", () => {
     expect(screen.getByText("Retrato de risco parcial com 1 métricas indisponíveis.")).toBeInTheDocument();
     expect(screen.getByText("Indisponível")).toBeInTheDocument();
     expect(screen.getByText("Dados de mercado desatualizados")).toBeInTheDocument();
+    expect(screen.getByText("Amostra insuficiente")).toBeInTheDocument();
+    expect(screen.getByText("8 observações · 7 dias · versão risk-v2-minimum-sample")).toBeInTheDocument();
     expect(screen.queryByText("market_data.stale")).not.toBeInTheDocument();
     expect(screen.getByText("Cotação desatualizada para MSFT.")).toBeInTheDocument();
   });
@@ -987,6 +1005,9 @@ function makeMetric(
     value: 0,
     assumptions: ["SPY como benchmark", "252 períodos por ano", "Taxa livre de risco 0"],
     requiredData: ["positions", "market_data"],
-    ...overrides
+    ...overrides,
+    observationCount: overrides.observationCount ?? 30,
+    effectiveHorizonDays: overrides.effectiveHorizonDays ?? 30,
+    calculationVersion: overrides.calculationVersion ?? "risk-v2-minimum-sample"
   };
 }

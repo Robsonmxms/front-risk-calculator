@@ -19,6 +19,7 @@ const prohibitedBusinessLiterals = [
   "prt_growth",
   "acct_main"
 ];
+const fixedCalendarDatePattern = /["'`]20\d{2}-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12]\d|3[01])["'`]/g;
 
 const failures = [];
 
@@ -30,6 +31,10 @@ for (const file of listFiles(join(root, "src"))) {
     if (content.includes(literal)) {
       failures.push(`${relativePath}: contains prohibited runtime business literal "${literal}"`);
     }
+  }
+
+  for (const match of content.matchAll(fixedCalendarDatePattern)) {
+    failures.push(`${relativePath}: contains fixed runtime calendar date ${match[0]}`);
   }
 }
 

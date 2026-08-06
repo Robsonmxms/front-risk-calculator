@@ -8,7 +8,8 @@ Guidance for AI agents working in the frontend project.
 Platform. Today it presents auth, protected routes, dashboard/account access visibility, admin
 user listing, portfolio dashboard/detail flows, market-data-assisted transaction entry, analytics
 views, report requests, alert setup, notifications, realtime refresh, and session-expired or
-unauthorized states.
+unauthorized states, plus office/client/workbench, compliance, analytics diagnostics, report
+delivery, and client portal flows.
 
 Production-grade report templates, external object storage, and hardened realtime operations remain
 planned macro-spec scope.
@@ -76,12 +77,21 @@ front-risk-calculator/
       (auth)/
       (dashboard)/
     components/
+      charts/
       layout/
+      ui/
     features/
+      analytics-diagnostics/
       auth/
+      client/
+      compliance/
+      delivery/
+      office/
       portfolio/
+      workbench/
     lib/
       api/
+      realtime/
   tests/
     unit/
 ```

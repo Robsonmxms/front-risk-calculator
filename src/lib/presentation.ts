@@ -57,7 +57,7 @@ const portfolioStatusLabels: LabelMap<PortfolioStatus> = {
 };
 
 const processingStateLabels: LabelMap<ProcessingState> = {
-  ready: "atualizado",
+  ready: "sem pendência",
   pending: "pendente"
 };
 
@@ -97,6 +97,7 @@ const dataQualitySeverityLabels = {
 } as const;
 
 const dataQualityIssueCodeLabels: Record<string, string> = {
+  "analytics.insufficient_sample": "Amostra insuficiente",
   "analytics.benchmark_unavailable": "Referência de mercado indisponível",
   "analytics.history_unavailable": "Histórico insuficiente",
   "analytics.metric_unavailable": "Métrica indisponível",
@@ -105,6 +106,20 @@ const dataQualityIssueCodeLabels: Record<string, string> = {
   "market_data.quote_unavailable": "Cotação indisponível",
   "market_data.stale": "Dados de mercado desatualizados",
   "market_data.usd_conversion_unavailable": "Conversão para USD indisponível"
+};
+
+const sectorLabels: Record<string, string> = {
+  Benchmark: "Referência",
+  "Dividend Equity": "Ações de dividendos",
+  Energy: "Energia",
+  ETF: "ETF",
+  Financials: "Serviços financeiros",
+  "Fixed Income": "Renda fixa",
+  "Fixed income": "Renda fixa",
+  Materials: "Materiais",
+  "Não classificado": "Não classificado",
+  "Real Estate": "Imobiliário",
+  Technology: "Tecnologia"
 };
 
 const insightSeverityLabels: LabelMap<RiskInsightSeverity> = {
@@ -380,21 +395,57 @@ export function formatDecimal(value: number, maximumFractionDigits = 8) {
   }).format(value);
 }
 
+export function formatPercentage(value: number, fractionDigits = 2) {
+  return `${new Intl.NumberFormat("pt-BR", {
+    minimumFractionDigits: fractionDigits,
+    maximumFractionDigits: fractionDigits
+  }).format(value)}%`;
+}
+
 export function formatInputDecimal(value: number, maximumFractionDigits = 8) {
   return Number(value.toFixed(maximumFractionDigits)).toString();
 }
 
 export function formatDate(value: string) {
+  const calendarDate = parseCalendarDate(value);
+  if (calendarDate) {
+    return `${padDatePart(calendarDate.day)}/${padDatePart(calendarDate.month)}/${calendarDate.year}`;
+  }
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return "data inválida";
+  }
+
+  const instant = new Date(value);
+  if (Number.isNaN(instant.getTime())) {
+    return "data inválida";
+  }
+
   return new Intl.DateTimeFormat("pt-BR", {
-    dateStyle: "short"
-  }).format(new Date(value));
+    dateStyle: "short",
+    timeZone: "America/Fortaleza"
+  }).format(instant);
 }
 
 export function formatDateTime(value: string) {
+  const instant = new Date(value);
+  if (Number.isNaN(instant.getTime())) {
+    return "data e hora inválidas";
+  }
+
   return new Intl.DateTimeFormat("pt-BR", {
     dateStyle: "short",
-    timeStyle: "short"
-  }).format(new Date(value));
+    timeStyle: "short",
+    timeZone: "America/Fortaleza",
+    hour12: false
+  }).format(instant);
+}
+
+export function formatDateInputValue(value: Date = new Date()): string {
+  return [
+    value.getFullYear().toString().padStart(4, "0"),
+    padDatePart(value.getMonth() + 1),
+    padDatePart(value.getDate())
+  ].join("-");
 }
 
 export function getApiErrorMessage(error: unknown, fallback: string) {
@@ -480,6 +531,10 @@ export function labelDataQualitySeverity(value: string) {
 
 export function labelDataQualityIssueCode(value: string) {
   return dataQualityIssueCodeLabels[value] ?? "Qualidade de dados pendente";
+}
+
+export function labelSector(value: string) {
+  return sectorLabels[value] ?? value;
 }
 
 export function labelInsightSeverity(value: RiskInsightSeverity | string) {
@@ -731,6 +786,32 @@ export function officeStatusVariant(value: string): BadgeVariant {
 
 function labelFromMap<T extends Record<string, string>>(map: T, value: string) {
   return map[value as keyof T] ?? humanizeIdentifier(value);
+}
+
+function parseCalendarDate(value: string): { year: number; month: number; day: number } | undefined {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (!match) {
+    return undefined;
+  }
+
+  const [, yearValue, monthValue, dayValue] = match;
+  const year = Number(yearValue);
+  const month = Number(monthValue);
+  const day = Number(dayValue);
+  const parsed = new Date(Date.UTC(year, month - 1, day));
+  if (
+    parsed.getUTCFullYear() !== year ||
+    parsed.getUTCMonth() !== month - 1 ||
+    parsed.getUTCDate() !== day
+  ) {
+    return undefined;
+  }
+
+  return { year, month, day };
+}
+
+function padDatePart(value: number): string {
+  return value.toString().padStart(2, "0");
 }
 
 function humanizeIdentifier(value: string) {

@@ -307,6 +307,7 @@ describe("workbench page", () => {
       "/dashboard/clients/client_main"
     );
     expect(screen.queryByText("cliente: client_main")).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Prazo")).toHaveValue("");
     expect(screen.getByText("Silva Family").closest("a")).toHaveAttribute(
       "href",
       "/dashboard/clients/client_main"
@@ -347,7 +348,7 @@ describe("workbench page", () => {
         clientId: "client_main",
         portfolioId: undefined,
         assignedToUserId: "usr_advisor",
-        dueDate: "2026-07-21",
+        dueDate: undefined,
         notes: undefined
       });
     });

@@ -54,7 +54,8 @@ import {
   labelPortfolioStatus,
   labelReportPackageStatus,
   labelResourceType,
-  labelReviewStatus
+  labelReviewStatus,
+  labelSector
 } from "../../../../lib/presentation";
 
 const SEVERITIES: Array<ReviewItemSeverity | ""> = ["", "low", "medium", "high"];
@@ -81,7 +82,7 @@ export default function WorkbenchPage() {
   const [resourceId, setResourceId] = useState("");
   const [clientId, setClientId] = useState("");
   const [severity, setSeverity] = useState<ReviewItemSeverity>("medium");
-  const [dueDate, setDueDate] = useState("2026-07-21");
+  const [dueDate, setDueDate] = useState("");
   const [notes, setNotes] = useState("");
   const [loading, setLoading] = useState(true);
   const [chartLoading, setChartLoading] = useState(true);
@@ -233,11 +234,12 @@ export default function WorkbenchPage() {
         clientId: clientId || undefined,
         portfolioId: resourceType === "portfolio" ? resourceId : undefined,
         assignedToUserId: actor?.id,
-        dueDate,
+        dueDate: dueDate || undefined,
         notes: notes || undefined
       });
       setReviewItems((current) => [item, ...current]);
       setTitle("");
+      setDueDate("");
       setNotes("");
       setNotice("Item de acompanhamento criado.");
     } catch (caught) {
@@ -436,7 +438,7 @@ export default function WorkbenchPage() {
                           <span className="block text-xs font-semibold uppercase text-stone-500 md:hidden">
                             Prazo
                           </span>
-                          {item.dueDate ?? "Sem prazo"}
+                          {item.dueDate ? formatDate(item.dueDate) : "Sem prazo"}
                         </div>
                         <div>
                           <span className="block text-xs font-semibold uppercase text-stone-500 md:hidden">
@@ -961,7 +963,7 @@ function SectorHeatmap({ cells }: { cells: AdvisorChartBundle["charts"]["sectorE
     <ThemedHeatmapChart
       ariaLabel="Mapa setorial por cliente"
       data={cells.slice(0, 14).map((cell) => ({
-        x: cell.sector,
+        x: labelSector(cell.sector),
         y: cell.clientName,
         value: cell.weightPercent,
         fill: heatColor(cell.weightPercent),
@@ -1127,7 +1129,7 @@ function DataQualityPanel({ charts }: { charts: AdvisorChartBundle }) {
         <span>Clientes: {charts.dataQuality.sourceCounts.clients}</span>
         <span>Grupos: {charts.dataQuality.sourceCounts.households}</span>
         <span>Portfólios: {charts.dataQuality.sourceCounts.portfolios}</span>
-        <span>Snapshots: {charts.dataQuality.sourceCounts.analyticsSnapshots}</span>
+        <span>Retratos analíticos: {charts.dataQuality.sourceCounts.analyticsSnapshots}</span>
       </div>
       {charts.dataQuality.issues.length === 0 ? (
         <Alert variant="success">Fontes carregadas para os filtros atuais.</Alert>

@@ -934,7 +934,7 @@ function JobStatusPanel({ job, loading }: { job: ChartJobEnvelope | null; loadin
       <div className="grid gap-1 text-xs text-stone-500 sm:grid-cols-3">
         <span>{progress}% concluído</span>
         <span>{job.data.resultMetadata?.chartKeys.length ?? 0} seções</span>
-        <span>Expira em {job.data.expiresAt ? formatDate(job.data.expiresAt) : "sem prazo"}</span>
+        <span>Expira em {job.data.expiresAt ? formatDateTime(job.data.expiresAt) : "sem prazo"}</span>
       </div>
       {job.data.errorCode ? (
         <Alert variant="failure">{labelUnavailableReason(job.data.errorCode)}</Alert>
