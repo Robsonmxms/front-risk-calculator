@@ -10,6 +10,7 @@ import { useAuth } from "./AuthProvider";
 export type ActiveRoute =
   | "dashboard"
   | "admin"
+  | "users"
   | "office"
   | "clients"
   | "workbench"
@@ -21,7 +22,6 @@ export type ActiveRoute =
 export function AppHeader({
   title,
   active,
-  showAdmin,
   actions
 }: {
   title: string;
@@ -38,10 +38,10 @@ export function AppHeader({
   const navigationItems: Array<AppHeaderNavigationItem & { visible: boolean }> = [
     { href: "/dashboard", active: active === "dashboard", label: "Painel", visible: true },
     {
-      href: "/admin",
-      active: active === "admin",
-      label: "Administração",
-      visible: Boolean(showAdmin)
+      href: actor?.role === "admin" ? "/dashboard/users/admins" : "/dashboard/users/users",
+      active: active === "users" || active === "admin",
+      label: "Usuários",
+      visible: actor?.role === "admin" || actor?.role === "analyst"
     },
     {
       href: "/dashboard/workbench",

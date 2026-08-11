@@ -5,21 +5,20 @@ Guidance for AI agents working in the frontend project.
 ## Frontend Role
 
 `front-risk-calculator` is the Next.js user interface for the Investment Portfolio Analytics
-Platform. Today it presents auth, protected routes, dashboard/account access visibility, read-only
-admin user listing, portfolio dashboard/detail flows, market-data-assisted transaction entry,
-analytics views, asynchronous XLSX portfolio import/template/error-report flows, report requests,
-alert setup, notifications, realtime refresh, and session-expired or unauthorized states, plus
-office/client/workbench, compliance, analytics diagnostics, report delivery, and client portal
-flows.
+Platform. Today it presents auth, protected routes, dashboard/account access visibility,
+hierarchical global user management, portfolio dashboard/detail flows, market-data-assisted
+transaction entry, analytics views, asynchronous XLSX portfolio import/template/error-report flows,
+report requests, alert setup, notifications, realtime refresh, and session-expired or unauthorized
+states, plus office/client/workbench, compliance, analytics diagnostics, report delivery, and client
+portal flows.
 
 Production-grade report templates, external object storage, and hardened realtime operations remain
 planned macro-spec scope.
 
-Two root macro features are active but not implemented. Feature
-`1 - centralized-secrets-runtime-configuration` is backend-owned and must never expose secret
-material through `NEXT_PUBLIC_*` or API payloads. Feature `2 - hierarchical-user-management` adds
-the role-specific rosters and create/edit flows; the current `/admin` screen remains an admin-only,
-read-only list until that feature is delivered.
+Centralized secrets runtime configuration remains backend-owned and must never expose secret
+material through `NEXT_PUBLIC_*` or API payloads. Hierarchical user management is implemented with
+role-specific rosters, create/edit dialogs, the `admin > analyst > user` matrix, and a compatibility
+redirect from `/admin` to the canonical management area.
 
 Specs are not local to this project. Before implementation, read the relevant root macro spec in
 `../.specs/features/<feature>/`.
@@ -100,6 +99,7 @@ front-risk-calculator/
       delivery/
       office/
       portfolio/
+      user-management/
       workbench/
     lib/
       api/

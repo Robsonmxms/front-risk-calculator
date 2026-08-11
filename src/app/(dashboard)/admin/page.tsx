@@ -1,1 +1,5 @@
-export { default } from "@/features/auth/AdminUsersPage";
+import { redirect } from "next/navigation";
+
+export default function LegacyAdminPage() {
+  redirect("/dashboard/users/admins");
+}

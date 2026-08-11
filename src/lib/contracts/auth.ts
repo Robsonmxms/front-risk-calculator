@@ -32,6 +32,34 @@ export interface SafeUser {
   status: UserStatus;
 }
 
+export interface UserPagination {
+  page: number;
+  per_page: number;
+  total_items: number;
+  total_pages: number;
+  has_next: boolean;
+  has_prev: boolean;
+}
+
+export interface UserListMeta {
+  pagination: UserPagination;
+}
+
+export interface CreateManagedUserInput {
+  name: string;
+  email: string;
+  role: UserRole;
+  status: UserStatus;
+  initialPassword: string;
+}
+
+export interface UpdateManagedUserInput {
+  name?: string;
+  email?: string;
+  role?: UserRole;
+  status?: UserStatus;
+}
+
 export interface AuthSession {
   accessToken: string;
   refreshToken: string;
