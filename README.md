@@ -25,7 +25,9 @@ e origem live/fallback/determinística para conversões.
 - `/` redireciona para `/dashboard`;
 - `/login`, `/session-expired` e `/unauthorized` tratam autenticação e sessão;
 - `/dashboard` apresenta contas, portfólios, FX, criação manual e importação assíncrona por XLSX;
-- `/admin` lista usuários em modo somente leitura para administradores;
+- `/admin` redireciona administradores para a gestão canônica de usuários;
+- `/dashboard/users/admins`, `/analysts` e `/users` oferecem listas e mutações conforme a
+  hierarquia global `admin > analyst > user`;
 - `/dashboard/portfolios/[portfolioId]` cobre ledger, posições, analytics, relatórios e alertas;
 - `/dashboard/analytics-diagnostics` cobre diagnósticos e jobs analíticos;
 - `/dashboard/clients` e `/dashboard/clients/[clientId]` cobrem clientes e grupos;
@@ -44,14 +46,14 @@ envia o arquivo com idempotência, restaura o histórico por conta, acompanha fi
 por polling com atualização por evento quando disponível e permite baixar a planilha de erros sem
 expor chaves de storage.
 
-## Features ativas ainda não implementadas
+## Identidade e configuração
 
-- A feature raiz `1 - centralized-secrets-runtime-configuration` pertence ao backend. Nenhum
-  segredo deve chegar ao frontend ou ser publicado por `NEXT_PUBLIC_*`; o navegador recebe somente
-  configuração explicitamente pública.
-- A feature raiz `2 - hierarchical-user-management` adicionará listas separadas por classe e os
-  fluxos autorizados de criação/edição na hierarquia `admin > analyst > user`. Hoje não existem
-  mutações de usuário nem telas de gestão para analistas.
+- A configuração centralizada pertence ao backend. Nenhum segredo chega ao frontend ou é publicado
+  por `NEXT_PUBLIC_*`; o navegador recebe somente configuração explicitamente pública.
+- A gestão de identidades oferece listas separadas por perfil global, busca, status, paginação,
+  criação e edição. Administradores gerenciam todos os perfis; analistas gerenciam somente
+  usuários. O backend permanece como autoridade para a matriz, a proteção da própria conta e a
+  preservação do último administrador ativo.
 
 ## Execução local
 
