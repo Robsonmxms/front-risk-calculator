@@ -4,9 +4,13 @@ Interface Next.js do Risk Calculator para investidores, clientes e equipes de es
 exclusivamente os contratos do backend e cobre sessão, portfólios, analytics, operações de
 escritório, compliance e entrega de relatórios.
 
+Documentação verificada em 13/08/2026 contra a branch `develop` e o inventário implementado em
+`../.specs/features/implemented-slices-inventory.md`.
+
 ## Stack e contratos
 
-- Next.js 16 App Router, React 19 e TypeScript;
+- Node.js 26.5.0 e Yarn 4.17.1;
+- Next.js 16.2, React 19.2 e TypeScript 6;
 - Tailwind CSS com tokens e componentes project-owned do shadcn/ui sobre Radix UI;
 - `fetch` por um cliente central com refresh de sessão único após `401`;
 - Vitest, Testing Library e jsdom.
@@ -57,17 +61,38 @@ expor chaves de storage.
 
 ## Execução local
 
+### Pré-requisitos
+
+- Node.js 26.5.0, fixado em `.nvmrc`;
+- Corepack com Yarn 4.17.1, fixado em `package.json`;
+- backend acessível pela URL pública configurada para a API;
+- Docker com Compose, opcional para execução isolada do frontend em container.
+
+Para executar no host:
+
 ```bash
 nvm use
 corepack enable
-yarn install
+yarn install --immutable
 yarn dev
 ```
 
 Configure `NEXT_PUBLIC_API_BASE_URL` (padrão local
-`http://localhost:8000/api/v1`). Para QA manual reproduzível, inicie o backend com
-`yarn dev:seeded`; essa fonte é explicitamente identificada como determinística nas superfícies de
-mercado. O boot normal do backend permanece vazio.
+`http://localhost:8000/api/v1`). O backend aceita automaticamente origens HTTP em `localhost` e
+`127.0.0.1`; outras origens devem ser declaradas em `CORS_ALLOWED_ORIGINS`. Para QA manual
+reproduzível, inicie o backend com `yarn dev:seeded`; essa fonte é explicitamente identificada como
+determinística nas superfícies de mercado. O boot normal do backend permanece vazio.
+
+Para executar o frontend em container:
+
+```bash
+docker compose up --build
+```
+
+A aplicação fica em `http://localhost:3000` e usa
+`NEXT_PUBLIC_API_BASE_URL=http://localhost:8000/api/v1`, conforme o Compose. O backend deve ser
+iniciado separadamente. Como a variável é pública e incorporada ao bundle do navegador, ela deve
+conter somente a URL da API, nunca credenciais ou configuração sensível.
 
 ## Qualidade
 
