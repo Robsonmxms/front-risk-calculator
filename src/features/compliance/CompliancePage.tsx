@@ -1,0 +1,807 @@
+"use client";
+
+import Link from "next/link";
+import { useEffect, useMemo, useState } from "react";
+import { AppHeader, LogoutButton, ProtectedRoute, useAuth } from "../auth";
+import { Alert } from "../../components/atoms/alert";
+import { Badge } from "../../components/atoms/badge";
+import { Button } from "../../components/atoms/button";
+import { Card } from "../../components/atoms/card";
+import { MetricCard } from "../../components/molecules/MetricCard";
+import { DataQualityBadge } from "../../components/molecules/DataQualityBadge";
+import { Label } from "../../components/atoms/form";
+import { Input } from "../../components/atoms/input";
+import { Select } from "../../components/atoms/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+  TableViewport
+} from "../../components/atoms/table";
+import {
+  chartPalette,
+  ThemedHeatmapChart,
+  ThemedHorizontalBarChart,
+  ThemedStackedBarChart
+} from "../../components/organisms/risk-charts";
+import {
+  listAuditEvents,
+  listSupervisionReviews,
+  getComplianceCharts,
+  requestAuditExport,
+  updateSupervisionReview
+} from "./complianceApi";
+import {
+  AuditEvent,
+  AuditEventFilters,
+  AuditOutcome,
+  AuditResourceType,
+  AuditSeverity,
+  ComplianceChartBundle,
+  ComplianceChartsMeta,
+  ComplianceChartRange,
+  SupervisionReview
+} from "./types";
+import {
+  auditOutcomeVariant,
+  auditSeverityVariant,
+  formatDateTime,
+  formatResourceReference,
+  getApiErrorMessage,
+  labelAuditAction,
+  labelAuditOutcome,
+  labelAuditSeverity,
+  labelOnboardingStatus,
+  labelOfficeRole,
+  labelReportPackageStatus,
+  labelResourceType,
+  labelReviewStatus,
+  labelTransactionType
+} from "../../lib/presentation";
+
+const SEVERITIES: Array<AuditSeverity | ""> = ["", "info", "warning", "critical"];
+const OUTCOMES: Array<AuditOutcome | ""> = ["", "success", "failure"];
+const CHART_RANGES: Array<{ value: ComplianceChartRange; label: string }> = [
+  { value: "7d", label: "7 dias" },
+  { value: "30d", label: "30 dias" },
+  { value: "90d", label: "90 dias" },
+  { value: "ytd", label: "Ano atual" },
+  { value: "1y", label: "1 ano" },
+  { value: "all", label: "Tudo" }
+];
+const RESOURCE_TYPES: Array<AuditResourceType | ""> = [
+  "",
+  "auth",
+  "office",
+  "permission",
+  "client",
+  "portfolio",
+  "ledger",
+  "analytics",
+  "market_data",
+  "report",
+  "delivery",
+  "portal",
+  "review"
+];
+
+export default function CompliancePage() {
+  const { actor, activeOffice } = useAuth();
+  const officeId = activeOffice?.officeId;
+  const canReadAudit = actor?.role === "admin" || activeOffice?.role === "office_admin";
+  const [auditEvents, setAuditEvents] = useState<AuditEvent[]>([]);
+  const [reviews, setReviews] = useState<SupervisionReview[]>([]);
+  const [total, setTotal] = useState(0);
+  const [actionFilter, setActionFilter] = useState("");
+  const [severityFilter, setSeverityFilter] = useState<AuditSeverity | "">("");
+  const [outcomeFilter, setOutcomeFilter] = useState<AuditOutcome | "">("");
+  const [resourceTypeFilter, setResourceTypeFilter] = useState<AuditResourceType | "">("");
+  const [clientFilter, setClientFilter] = useState("");
+  const [chartRange, setChartRange] = useState<ComplianceChartRange>("30d");
+  const [charts, setCharts] = useState<ComplianceChartBundle | null>(null);
+  const [chartsMeta, setChartsMeta] = useState<ComplianceChartsMeta | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+
+  const filters = useMemo<AuditEventFilters>(
+    () => ({
+      action: actionFilter || undefined,
+      severity: severityFilter,
+      outcome: outcomeFilter,
+      resourceType: resourceTypeFilter,
+      clientId: clientFilter || undefined,
+      page: 1,
+      pageSize: 25
+    }),
+    [actionFilter, clientFilter, outcomeFilter, resourceTypeFilter, severityFilter]
+  );
+  const auditEventsById = useMemo(
+    () => new Map(auditEvents.map((event) => [event.id, event])),
+    [auditEvents]
+  );
+  const chartFilters = useMemo(
+    () => ({
+      range: chartRange,
+      action: actionFilter || undefined,
+      severity: severityFilter,
+      resourceType: resourceTypeFilter
+    }),
+    [actionFilter, chartRange, resourceTypeFilter, severityFilter]
+  );
+
+  useEffect(() => {
+    if (!officeId || !canReadAudit) {
+      setAuditEvents([]);
+      setReviews([]);
+      setTotal(0);
+      setCharts(null);
+      setChartsMeta(null);
+      setLoading(false);
+      return;
+    }
+
+    let isActive = true;
+    setLoading(true);
+    setError(null);
+
+    Promise.all([
+      listAuditEvents(officeId, filters),
+      listSupervisionReviews(officeId, { status: "open" }),
+      getComplianceCharts(officeId, chartFilters)
+    ])
+      .then(([auditPage, reviewPage, chartsPage]) => {
+        if (!isActive) {
+          return;
+        }
+        setAuditEvents(auditPage.auditEvents);
+        setTotal(auditPage.total);
+        setReviews(reviewPage.supervisionReviews);
+        setCharts(chartsPage.data);
+        setChartsMeta(chartsPage.meta ?? null);
+      })
+      .catch((caught) => {
+        if (isActive) {
+          setError(getApiErrorMessage(caught, "Não foi possível carregar conformidade."));
+        }
+      })
+      .finally(() => {
+        if (isActive) {
+          setLoading(false);
+        }
+      });
+
+    return () => {
+      isActive = false;
+    };
+  }, [canReadAudit, chartFilters, filters, officeId]);
+
+  async function handleExport(format: "csv" | "json") {
+    if (!officeId) {
+      return;
+    }
+
+    setSaving(true);
+    setError(null);
+    setNotice(null);
+    try {
+      const exportJob = await requestAuditExport(officeId, { format, filters });
+      setNotice(
+        `Exportação ${exportJob.format.toUpperCase()} pronta com ${exportJob.eventCount} ${
+          exportJob.eventCount === 1 ? "evento" : "eventos"
+        }.`
+      );
+    } catch (caught) {
+      setError(getApiErrorMessage(caught, "Não foi possível solicitar a exportação."));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleResolveReview(review: SupervisionReview) {
+    setSaving(true);
+    setError(null);
+    setNotice(null);
+    try {
+      const updated = await updateSupervisionReview(review.id, {
+        status: "resolved",
+        resolutionComment: "Revisado no painel de conformidade."
+      });
+      setReviews((current) => current.map((entry) => (entry.id === updated.id ? updated : entry)));
+      setNotice("Revisão de supervisão resolvida.");
+    } catch (caught) {
+      setError(getApiErrorMessage(caught, "Não foi possível atualizar a revisão."));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <ProtectedRoute roles={["admin", "analyst", "user"]}>
+      <main className="mx-auto flex min-h-screen max-w-7xl flex-col gap-6 px-4 py-5 lg:px-6">
+        <AppHeader
+          title="Conformidade"
+          active="compliance"
+          showAdmin={actor?.role === "admin"}
+          actions={
+            <>
+              {activeOffice ? (
+                <Badge variant="outline">{labelOfficeRole(activeOffice.role)}</Badge>
+              ) : null}
+              <LogoutButton />
+            </>
+          }
+        />
+
+        {!officeId ? (
+          <Alert variant="warning">Selecione um escritório para abrir conformidade.</Alert>
+        ) : !canReadAudit ? (
+          <Alert variant="failure">Acesso de auditoria indisponível para este perfil.</Alert>
+        ) : loading ? (
+          <Alert variant="info">Carregando trilha de auditoria.</Alert>
+        ) : error ? (
+          <Alert variant="failure">{error}</Alert>
+        ) : (
+          <section className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
+            <div className="grid gap-4">
+              <section className="grid gap-4 md:grid-cols-4">
+                <MetricCard label="Eventos" value={total} />
+                <MetricCard
+                  label="Falhas"
+                  value={auditEvents.filter((event) => event.outcome === "failure").length}
+                />
+                <MetricCard
+                  label="Críticos"
+                  value={auditEvents.filter((event) => event.severity === "critical").length}
+                />
+                <MetricCard
+                  label="Supervisão"
+                  value={reviews.filter((review) => review.status !== "resolved").length}
+                />
+              </section>
+
+              {notice ? <Alert variant="info">{notice}</Alert> : null}
+
+              {charts ? <ComplianceChartsPanel charts={charts} meta={chartsMeta} /> : null}
+
+              <Card>
+                <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-[180px_minmax(0,1.2fr)_repeat(4,minmax(140px,1fr))]">
+                  <div>
+                    <Label htmlFor="complianceRange">Período</Label>
+                    <Select
+                      id="complianceRange"
+                      className="mt-2"
+                      value={chartRange}
+                      onChange={(event) =>
+                        setChartRange(event.target.value as ComplianceChartRange)
+                      }
+                    >
+                      {CHART_RANGES.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </Select>
+                  </div>
+                  <div>
+                    <Label htmlFor="auditAction">Ação</Label>
+                    <Input
+                      id="auditAction"
+                      className="mt-2"
+                      value={actionFilter}
+                      onChange={(event) => setActionFilter(event.target.value)}
+                      placeholder="Buscar por ação"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="auditSeverity">Severidade</Label>
+                    <Select
+                      id="auditSeverity"
+                      className="mt-2"
+                      value={severityFilter}
+                      onChange={(event) =>
+                        setSeverityFilter(event.target.value as AuditSeverity | "")
+                      }
+                    >
+                      {SEVERITIES.map((entry) => (
+                        <option key={entry || "all"} value={entry}>
+                          {entry ? labelAuditSeverity(entry) : "todas"}
+                        </option>
+                      ))}
+                    </Select>
+                  </div>
+                  <div>
+                    <Label htmlFor="auditOutcome">Resultado</Label>
+                    <Select
+                      id="auditOutcome"
+                      className="mt-2"
+                      value={outcomeFilter}
+                      onChange={(event) =>
+                        setOutcomeFilter(event.target.value as AuditOutcome | "")
+                      }
+                    >
+                      {OUTCOMES.map((entry) => (
+                        <option key={entry || "all"} value={entry}>
+                          {entry ? labelAuditOutcome(entry) : "todos"}
+                        </option>
+                      ))}
+                    </Select>
+                  </div>
+                  <div>
+                    <Label htmlFor="auditResourceType">Recurso</Label>
+                    <Select
+                      id="auditResourceType"
+                      className="mt-2"
+                      value={resourceTypeFilter}
+                      onChange={(event) =>
+                        setResourceTypeFilter(event.target.value as AuditResourceType | "")
+                      }
+                    >
+                      {RESOURCE_TYPES.map((entry) => (
+                        <option key={entry || "all"} value={entry}>
+                          {entry ? labelResourceType(entry) : "todos"}
+                        </option>
+                      ))}
+                    </Select>
+                  </div>
+                  <div>
+                    <Label htmlFor="auditClient">Cliente</Label>
+                    <Input
+                      id="auditClient"
+                      className="mt-2"
+                      value={clientFilter}
+                      onChange={(event) => setClientFilter(event.target.value)}
+                      placeholder="Filtrar por cliente"
+                    />
+                  </div>
+                </div>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <Button variant="outline" disabled={saving} onClick={() => handleExport("csv")}>
+                    Exportar CSV
+                  </Button>
+                  <Button variant="outline" disabled={saving} onClick={() => handleExport("json")}>
+                    Exportar JSON
+                  </Button>
+                </div>
+              </Card>
+
+              <Card>
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-xs font-semibold uppercase text-moss">Trilha de auditoria</p>
+                    <h1 className="text-2xl font-semibold text-stone-900">Eventos auditáveis</h1>
+                  </div>
+                  <Badge variant="outline">{total} eventos</Badge>
+                </div>
+
+                {auditEvents.length === 0 ? (
+                  <Alert variant="info" className="mt-5">
+                    Nenhum evento neste filtro.
+                  </Alert>
+                ) : (
+                  <TableViewport className="mt-5" label="Eventos de auditoria">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Ação</TableHead>
+                          <TableHead>Recurso</TableHead>
+                          <TableHead>Ator</TableHead>
+                          <TableHead>Resultado</TableHead>
+                          <TableHead>Metadados</TableHead>
+                          <TableHead>Data</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {auditEvents.map((event) => (
+                          <TableRow key={event.id}>
+                            <TableCell className="font-medium text-stone-900">
+                              {labelAuditAction(event.action)}
+                            </TableCell>
+                            <TableCell>{resourceLink(event)}</TableCell>
+                            <TableCell>{event.actorName ?? event.actorId ?? "sistema"}</TableCell>
+                            <TableCell>
+                              <Badge variant={auditOutcomeVariant(event.outcome)}>
+                                {labelAuditOutcome(event.outcome)}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="max-w-[260px] text-xs text-stone-600">
+                              {metadataSummary(event)}
+                            </TableCell>
+                            <TableCell>{formatDate(event.createdAt)}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </TableViewport>
+                )}
+              </Card>
+            </div>
+
+            <Card>
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-xs font-semibold uppercase text-moss">Supervisão</p>
+                  <h2 className="text-xl font-semibold text-stone-900">Fila de revisão</h2>
+                </div>
+                <Badge variant="outline">{reviews.length}</Badge>
+              </div>
+
+              <div className="mt-5 grid gap-3">
+                {reviews.length === 0 ? (
+                  <Alert variant="info">Sem revisões abertas.</Alert>
+                ) : (
+                  reviews.map((review) => {
+                    const auditEvent = auditEventsById.get(review.auditEventId);
+
+                    return (
+                      <div key={review.id} className="rounded-md border border-border p-3">
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <p className="font-medium text-stone-900">
+                              {auditEvent
+                                ? labelAuditAction(auditEvent.action)
+                                : "Evento de auditoria"}
+                            </p>
+                            <p className="text-sm text-stone-500">
+                              {auditEvent ? `${formatAuditResourceReference(auditEvent)} · ` : ""}
+                              {labelAuditSeverity(review.severity)} ·{" "}
+                              {labelReviewStatus(review.status)}
+                            </p>
+                          </div>
+                          <Badge variant={auditSeverityVariant(review.severity)}>
+                            {labelAuditSeverity(review.severity)}
+                          </Badge>
+                        </div>
+                        <Button
+                          className="mt-3 w-full"
+                          variant="secondary"
+                          disabled={saving || review.status === "resolved"}
+                          onClick={() => handleResolveReview(review)}
+                        >
+                          Resolver revisão
+                        </Button>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </Card>
+          </section>
+        )}
+      </main>
+    </ProtectedRoute>
+  );
+}
+
+function ComplianceChartsPanel({
+  charts,
+  meta
+}: {
+  charts: ComplianceChartBundle;
+  meta: ComplianceChartsMeta | null;
+}) {
+  const timelineData = charts.charts.auditEventTimeline.map((point) => ({
+    name: formatChartDate(point.date),
+    total: point.total,
+    success: point.success,
+    failure: point.failure,
+    warning: point.warning,
+    critical: point.critical
+  }));
+  const actionData = charts.charts.auditActionBreakdown.slice(0, 8).map((point) => ({
+    name: labelAuditAction(point.action),
+    value: point.count,
+    detail: `${labelResourceType(point.resourceType)} · ${labelAuditSeverity(point.severity)}`
+  }));
+  const agingData = charts.charts.reviewAging.map((point) => ({
+    name: agingBucketLabel(point.bucket),
+    value: point.count,
+    detail: `${point.reviewIds.length} revisões`
+  }));
+  const heatmapData = charts.charts.exceptionHeatmap.map((point) => ({
+    x: formatChartDate(point.date),
+    y: labelAuditSeverity(point.severity),
+    value: point.count,
+    fill:
+      point.severity === "critical"
+        ? chartPalette.rose
+        : point.severity === "warning"
+          ? chartPalette.amber
+          : chartPalette.blue,
+    detail: `${point.eventIds.length} eventos`
+  }));
+
+  return (
+    <section className="grid gap-4 xl:grid-cols-2">
+      <Card>
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-xs font-semibold uppercase text-moss">Auditoria</p>
+            <h2 className="text-xl font-semibold text-stone-900">Linha do tempo</h2>
+          </div>
+          <DataQualityBadge status={charts.dataQuality.status} />
+        </div>
+        <div className="mt-4">
+          <ThemedStackedBarChart
+            data={timelineData}
+            ariaLabel="Linha do tempo de eventos de auditoria por resultado"
+            bars={[
+              { key: "success", label: "Sucesso", color: chartPalette.emerald },
+              { key: "failure", label: "Falha", color: chartPalette.rose },
+              { key: "warning", label: "Atenção", color: chartPalette.amber },
+              { key: "critical", label: "Crítico", color: chartPalette.violet }
+            ]}
+          />
+        </div>
+      </Card>
+
+      <Card>
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-xs font-semibold uppercase text-moss">Ações</p>
+            <h2 className="text-xl font-semibold text-stone-900">Eventos por ação</h2>
+          </div>
+          <Badge variant="outline">{charts.dataQuality.sourceCounts.auditEvents}</Badge>
+        </div>
+        <div className="mt-4">
+          <ThemedHorizontalBarChart
+            data={actionData}
+            ariaLabel="Distribuição de eventos de auditoria por ação"
+            color={chartPalette.moss}
+          />
+        </div>
+      </Card>
+
+      <Card>
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-xs font-semibold uppercase text-moss">Supervisão</p>
+            <h2 className="text-xl font-semibold text-stone-900">Tempo em aberto das revisões</h2>
+          </div>
+          <Badge variant="outline">{charts.dataQuality.sourceCounts.supervisionReviews}</Badge>
+        </div>
+        <div className="mt-4">
+          <ThemedHorizontalBarChart
+            data={agingData}
+            ariaLabel="Tempo em aberto das revisões de supervisão"
+            color={chartPalette.blue}
+          />
+        </div>
+      </Card>
+
+      <Card>
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-xs font-semibold uppercase text-moss">Exceções</p>
+            <h2 className="text-xl font-semibold text-stone-900">Mapa de severidade</h2>
+          </div>
+          {meta ? <Badge variant="outline">{formatDateTime(meta.generatedAt)}</Badge> : null}
+        </div>
+        <div className="mt-4">
+          <ThemedHeatmapChart
+            data={heatmapData}
+            ariaLabel="Mapa de exceções por data e severidade"
+            valueLabel="eventos"
+            valueFormatter={(value) => String(value)}
+          />
+        </div>
+      </Card>
+
+      {charts.dataQuality.issues.length > 0 ? (
+        <Alert variant="warning" className="xl:col-span-2">
+          {charts.dataQuality.issues[0].message}
+        </Alert>
+      ) : null}
+    </section>
+  );
+}
+
+function agingBucketLabel(
+  bucket: ComplianceChartBundle["charts"]["reviewAging"][number]["bucket"]
+) {
+  const labels = {
+    "0-1d": "0-1 dia",
+    "2-3d": "2-3 dias",
+    "4-7d": "4-7 dias",
+    "8-14d": "8-14 dias",
+    "15d+": "15+ dias"
+  };
+  return labels[bucket];
+}
+
+function formatChartDate(value: string) {
+  return new Intl.DateTimeFormat("pt-BR", {
+    day: "2-digit",
+    month: "2-digit"
+  }).format(new Date(`${value}T00:00:00.000Z`));
+}
+
+function resourceLink(event: AuditEvent) {
+  if (event.clientId) {
+    return (
+      <Link href={`/dashboard/clients/${event.clientId}`} className="font-medium text-moss">
+        {formatAuditResourceReference(event)}
+      </Link>
+    );
+  }
+  if (event.portfolioId) {
+    return (
+      <Link href={`/dashboard/portfolios/${event.portfolioId}`} className="font-medium text-moss">
+        {formatAuditResourceReference(event)}
+      </Link>
+    );
+  }
+  return formatAuditResourceReference(event);
+}
+
+function metadataSummary(event: AuditEvent) {
+  const entries = Object.entries(event.metadata).slice(0, 3);
+  if (entries.length === 0) {
+    return "Sem metadados";
+  }
+  return entries
+    .map(([key, value]) => `${metadataKeyLabel(key)}: ${metadataValueLabel(event, key, value)}`)
+    .join(" · ");
+}
+
+function formatDate(value: string) {
+  return formatDateTime(value);
+}
+
+function metadataKeyLabel(key: string) {
+  const labels: Record<string, string> = {
+    assetSymbol: "ativo",
+    channel: "canal",
+    failureCode: "falha",
+    householdId: "grupo familiar",
+    itemCount: "itens",
+    onboardingStatus: "cadastro",
+    permissionCount: "permissões",
+    previousStatus: "status anterior",
+    resourceId: "recurso",
+    resourceType: "tipo de recurso",
+    status: "status",
+    transactionType: "tipo"
+  };
+
+  return labels[key] ?? "campo";
+}
+
+function metadataValueLabel(event: AuditEvent, key: string, value: unknown) {
+  if (value === null || value === undefined) {
+    return "não informado";
+  }
+  if (typeof value === "boolean") {
+    return value ? "sim" : "não";
+  }
+  if (typeof value === "number") {
+    return String(value);
+  }
+  if (typeof value !== "string") {
+    return String(value);
+  }
+
+  if (key === "resourceType") {
+    return labelResourceType(value);
+  }
+  if (key === "resourceId") {
+    const metadataResourceType =
+      typeof event.metadata.resourceType === "string"
+        ? event.metadata.resourceType
+        : event.resourceType;
+    return formatResourceReference(
+      metadataResourceType,
+      undefined,
+      businessResourceName(value, event)
+    );
+  }
+  if (key === "householdId") {
+    return businessResourceName(value, event);
+  }
+  if (key === "failureCode") {
+    return failureCodeLabel(value);
+  }
+  if (key === "channel") {
+    return channelLabel(value);
+  }
+  if (key === "onboardingStatus") {
+    return labelOnboardingStatus(value);
+  }
+  if (key === "transactionType") {
+    return labelTransactionType(value);
+  }
+  if (key === "status" || key === "previousStatus") {
+    return labelReportPackageStatus(value);
+  }
+
+  return businessResourceName(value, event);
+}
+
+function formatAuditResourceReference(event: AuditEvent) {
+  return formatResourceReference(event.resourceType, undefined, auditResourceDisplayName(event));
+}
+
+function auditResourceDisplayName(event: AuditEvent) {
+  const knownName = businessResourceName(event.resourceId, event);
+  if (knownName !== "referência interna") {
+    return knownName;
+  }
+
+  if (event.resourceType === "delivery") {
+    return event.action.startsWith("report_package.")
+      ? "Pacote de relatório"
+      : "Entrega de relatório";
+  }
+  if (event.resourceType === "ledger") {
+    const assetSymbol = event.metadata.assetSymbol;
+    return typeof assetSymbol === "string"
+      ? `Movimentação de ${assetSymbol}`
+      : "Movimentação registrada";
+  }
+  if (event.resourceType === "permission") {
+    return "Permissão do cliente";
+  }
+  if (event.resourceType === "client") {
+    return "Cliente acompanhado";
+  }
+
+  return labelResourceType(event.resourceType);
+}
+
+function businessResourceName(value: string, event: AuditEvent) {
+  if (!looksTechnical(value)) {
+    return value;
+  }
+
+  if (event.resourceType === "delivery") {
+    return event.action.startsWith("report_package.")
+      ? "Pacote de relatório"
+      : "Entrega de relatório";
+  }
+  if (event.resourceType === "ledger") {
+    const assetSymbol = event.metadata.assetSymbol;
+    return typeof assetSymbol === "string"
+      ? `Movimentação de ${assetSymbol}`
+      : "Movimentação registrada";
+  }
+
+  return "referência interna";
+}
+
+function failureCodeLabel(value: string) {
+  const labels: Record<string, string> = {
+    delivery_timeout: "tempo limite na entrega"
+  };
+
+  return labels[value] ?? businessResourceName(value, emptyAuditEvent);
+}
+
+function channelLabel(value: string) {
+  const labels: Record<string, string> = {
+    email: "e-mail",
+    portal: "portal"
+  };
+
+  return labels[value] ?? businessResourceName(value, emptyAuditEvent);
+}
+
+function looksTechnical(value: string) {
+  return /^[a-z]+[a-z0-9]*[_:.][a-z0-9_.:-]+$/i.test(value);
+}
+
+const emptyAuditEvent: AuditEvent = {
+  id: "",
+  officeId: "",
+  action: "",
+  resourceType: "review",
+  resourceId: "",
+  outcome: "success",
+  severity: "info",
+  reviewRequired: false,
+  metadata: {},
+  createdAt: ""
+};

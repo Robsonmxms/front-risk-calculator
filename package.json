@@ -1,0 +1,69 @@
+{
+  "name": "front-risk-calculator",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Next.js frontend for the Risk Calculator platform.",
+  "scripts": {
+    "dev": "next dev",
+    "start": "next start",
+    "build": "next build",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "architecture:check": "node scripts/check-architecture.mjs",
+    "lint": "yarn architecture:check && eslint . && prettier --check \"src/**/*.{ts,tsx}\" \"tests/**/*.{ts,tsx}\" \"*.ts\"",
+    "lint:fix": "eslint . --fix && prettier --write \"src/**/*.{ts,tsx}\" \"tests/**/*.{ts,tsx}\" \"*.ts\"",
+    "check:public-config": "node scripts/check-public-runtime-config.mjs",
+    "check:runtime-data": "node scripts/check-runtime-mock-data.mjs",
+    "lint-staged": "lint-staged",
+    "prepare": "husky",
+    "test": "vitest run",
+    "test:risk": "vitest run tests/unit/architecture-graph.test.ts tests/unit/atomic-components.test.tsx tests/unit/presentation-contract.test.ts tests/unit/api-client.test.ts tests/unit/realtime-client.test.ts tests/unit/portfolio-flows.test.tsx tests/unit/workbench-page.test.tsx tests/unit/analytics-diagnostics-page.test.tsx tests/unit/report-delivery-pages.test.tsx tests/unit/session-expiration.test.tsx",
+    "test:coverage": "vitest run --coverage",
+    "test:watch": "vitest"
+  },
+  "packageManager": "yarn@4.17.1",
+  "engines": {
+    "node": ">=26.5.0",
+    "yarn": ">=4.0.0"
+  },
+  "dependencies": {
+    "@radix-ui/react-dialog": "^1.1.15",
+    "next": "^16.2.10",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
+    "react-is": "19.2.8",
+    "recharts": "3.10.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@testing-library/dom": "^10.4.1",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@types/node": "^26.1.1",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "@types/react-is": "^19",
+    "@vitest/coverage-v8": "4.1.10",
+    "autoprefixer": "^10.4.21",
+    "eslint": "^10.6.0",
+    "globals": "^17.7.0",
+    "husky": "^9.1.7",
+    "jsdom": "^29.1.1",
+    "lint-staged": "^17.0.8",
+    "postcss": "8.5.16",
+    "prettier": "^3.9.6",
+    "tailwindcss": "^3.4.17",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.63.0",
+    "vitest": "^4.1.10"
+  },
+  "optionalDependencies": {
+    "@rolldown/binding-linux-x64-gnu": "^1.1.5"
+  },
+  "lint-staged": {
+    "*.{ts,tsx}": [
+      "eslint --fix",
+      "prettier --write"
+    ]
+  },
+  "overrides": {}
+}

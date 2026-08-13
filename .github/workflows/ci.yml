@@ -1,0 +1,102 @@
+name: Frontend CI
+
+on:
+  pull_request:
+    types:
+      - opened
+      - synchronize
+      - reopened
+
+permissions:
+  contents: read
+
+concurrency:
+  group: frontend-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: "26.5.0"
+  YARN_ENABLE_IMMUTABLE_INSTALLS: "true"
+
+jobs:
+  quality:
+    name: Frontend Quality
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Install dependencies
+        run: yarn install --immutable
+
+      - name: Runtime data audit
+        run: yarn check:runtime-data
+
+      - name: Public runtime config audit
+        env:
+          DEPLOY_TARGET: aws
+          NEXT_PUBLIC_API_BASE_URL: https://api.example.com/api/v1
+        run: yarn check:public-config
+
+      - name: Architecture boundaries
+        run: yarn architecture:check
+
+      - name: Lint
+        run: yarn lint
+
+      - name: Typecheck
+        run: yarn typecheck
+
+      - name: Test
+        run: yarn test
+
+      - name: Risk-based regression
+        run: yarn test:risk
+
+      - name: Coverage
+        run: yarn test:coverage
+
+      - name: Coverage summary
+        if: always()
+        run: |
+          node - <<'NODE' >> "$GITHUB_STEP_SUMMARY"
+          const fs = require("node:fs");
+          const coverageSummaryPath = "./coverage/coverage-summary.json";
+          console.log("## Frontend Coverage");
+          console.log("Threshold scope: HTTP/API clients, session storage, presentation/date helpers, realtime client, authenticated header, and shared risk charts.");
+          console.log("Thresholds: 80% statements/functions/lines and 60% branches for this expanded risk scope.");
+          console.log("Page-level authorization and workflow regressions run in the separate risk-based regression step; generated framework entrypoints and test fixtures are excluded.");
+          if (!fs.existsSync(coverageSummaryPath)) {
+            console.log("Coverage summary was not generated.");
+            process.exit(0);
+          }
+          const summary = require(coverageSummaryPath).total;
+          console.log("| Metric | Percent | Covered / Total |");
+          console.log("| --- | ---: | ---: |");
+          for (const key of ["statements", "branches", "functions", "lines"]) {
+            const item = summary[key];
+            console.log(`| ${key} | ${item.pct}% | ${item.covered} / ${item.total} |`);
+          }
+          NODE
+
+      - name: Upload coverage artifact
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: frontend-coverage
+          path: coverage/
+          if-no-files-found: ignore
+
+      - name: Build
+        env:
+          DEPLOY_TARGET: aws
+          NEXT_PUBLIC_API_BASE_URL: https://api.example.com/api/v1
+        run: yarn build
